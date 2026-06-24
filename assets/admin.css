@@ -423,3 +423,45 @@
     display: grid;
   }
 }
+
+
+.hexa-tts-upload-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  border: 1px solid #dcdcde;
+  border-radius: 12px;
+  background: #fff;
+  padding: 18px;
+  margin: 14px 0;
+}
+
+.hexa-tts-upload-card h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.hexa-tts-upload-card p {
+  margin: 0 0 8px;
+  color: #3c434a;
+  max-width: 760px;
+}
+
+.hexa-tts-selected-audio {
+  color: #646970;
+  font-weight: 600;
+}
+
+.hexa-tts-upload-card code {
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: #f0f0f1;
+}
+
+@media (max-width: 960px) {
+  .hexa-tts-upload-card {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}

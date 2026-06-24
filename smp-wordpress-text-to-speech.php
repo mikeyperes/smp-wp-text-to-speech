@@ -3,7 +3,7 @@
  * Plugin Name: HexaTextToSpeech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.1.1
+ * Version: 1.1.2
  * Author: Hexa Web Systems
  * Text Domain: smp-wordpress-text-to-speech
  * Requires at least: 6.0
@@ -15,7 +15,7 @@ if ( ! defined( "ABSPATH" ) ) {
 }
 
 final class HexaTextToSpeech {
-    const VERSION = "1.1.1";
+    const VERSION = "1.1.2";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "hexa-text-to-speech";
@@ -24,12 +24,14 @@ final class HexaTextToSpeech {
     public static function init() {
         add_action( "admin_menu", [ __CLASS__, "register_admin_menu" ] );
         add_action( "admin_enqueue_scripts", [ __CLASS__, "enqueue_admin_assets" ] );
+        add_action( "acf/init", [ __CLASS__, "register_acf_audio_field" ] );
         add_action( "admin_post_hexa_tts_save_settings", [ __CLASS__, "handle_save_settings" ] );
         add_action( "add_meta_boxes", [ __CLASS__, "register_post_metabox" ] );
         add_action( "wp_ajax_hexa_tts_validate_central_api", [ __CLASS__, "ajax_validate_central_api" ] );
         add_action( "wp_ajax_hexa_tts_validate_provider", [ __CLASS__, "ajax_validate_central_api" ] );
         add_action( "wp_ajax_hexa_tts_extract_post_content", [ __CLASS__, "ajax_extract_post_content" ] );
         add_action( "wp_ajax_hexa_tts_generate_audio", [ __CLASS__, "ajax_generate_audio" ] );
+        add_action( "wp_ajax_hexa_tts_save_manual_audio", [ __CLASS__, "ajax_save_manual_audio" ] );
         add_filter( "the_content", [ __CLASS__, "maybe_insert_player" ], 12 );
         add_shortcode( "hexa_tts_player", [ __CLASS__, "render_player_shortcode" ] );
         register_activation_hook( __FILE__, [ __CLASS__, "activate" ] );
@@ -52,11 +54,15 @@ final class HexaTextToSpeech {
         if ( ! $is_settings && ! $is_post ) {
             return;
         }
+        if ( $is_post ) {
+            wp_enqueue_media();
+        }
         wp_enqueue_style( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.css", [], self::VERSION );
         wp_enqueue_script( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.js", [ "jquery" ], self::VERSION, true );
         wp_localize_script( "hexa-tts-admin", "hexaTts", [ "ajaxUrl" => admin_url( "admin-ajax.php" ), "nonce" => wp_create_nonce( self::NONCE_ACTION ) ] );
         wp_add_inline_script( "hexa-tts-admin", self::admin_inline_script(), "after" );
     }
+
 
 
     private static function admin_inline_script() {
@@ -65,7 +71,7 @@ final class HexaTextToSpeech {
   var jq = jQuery;
 
   function escapeHtml(value) {
-    return String(value || "").replace(/[&<>"\u0027]/g, function (char) {
+    return String(value || "").replace(/[&<>\"\u0027]/g, function (char) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "\u0027": "&#039;" }[char];
     });
   }
@@ -84,6 +90,43 @@ final class HexaTextToSpeech {
     };
   }
 
+  function ensureAudio(box, audioUrl) {
+    var audio = box.find("audio");
+    if (!audio.length) {
+      audio = jq(document.createElement("audio"));
+      audio.attr("controls", "controls");
+      audio.attr("preload", "none");
+      audio.insertAfter(box.find(".hexa-tts-post-feedback"));
+    }
+    audio.attr("src", audioUrl);
+  }
+
+  function showSuccess(box, data, message) {
+    var feedback = box.find(".hexa-tts-post-feedback");
+    var link = jq(document.createElement("a"));
+    link.attr("href", data.audio_url);
+    link.attr("target", "_blank");
+    link.attr("rel", "noopener noreferrer");
+    link.text("Open audio");
+
+    box.find(".hexa-tts-post-status").text("Ready");
+    feedback.removeClass("is-loading is-error").addClass("is-success").empty();
+    feedback.append(document.createTextNode(message + " "));
+    feedback.append(link);
+    ensureAudio(box, data.audio_url);
+    box.find(".hexa-tts-storage-state").text("Saved to Media Library and ACF");
+    box.find(".hexa-tts-storage-note").text("Current " + (data.acf_field || "article_audio") + " value is set.");
+    var selected = box.find(".hexa-tts-selected-audio");
+    var selectedLink = jq(document.createElement("a"));
+    selectedLink.attr("href", data.audio_url);
+    selectedLink.attr("target", "_blank");
+    selectedLink.attr("rel", "noopener noreferrer");
+    selectedLink.text("Open MP3");
+    selected.empty();
+    selected.append(document.createTextNode("Selected audio: "));
+    selected.append(selectedLink);
+  }
+
   jq(document).off("click", ".hexa-tts-generate-post");
   jq(document).on("click", ".hexa-tts-generate-post", function () {
     var button = jq(this);
@@ -100,33 +143,111 @@ final class HexaTextToSpeech {
 
     jq.ajax({ url: hexaTts.ajaxUrl, method: "POST", data: payload })
       .done(function (response) {
-        feedback.removeClass("is-loading");
         if (response && response.success) {
-          box.find(".hexa-tts-post-status").text("Ready");
-          feedback.addClass("is-success").html(
-            escapeHtml(response.data.message) + " <a href="" + encodeURI(response.data.audio_url) + "" target="_blank" rel="noopener noreferrer">Open audio</a>"
-          );
-          var audio = box.find("audio");
-          if (!audio.length) {
-            audio = jq("<audio controls preload="none"></audio>").insertAfter(feedback);
-          }
-          audio.attr("src", response.data.audio_url);
-          box.find(".hexa-tts-storage-row strong").first().text("Saved to Media Library and ACF");
+          showSuccess(box, response.data, response.data.message || "Audio generated and saved to ACF.");
           return;
         }
         box.find(".hexa-tts-post-status").text("Failed");
-        feedback.addClass("is-error").text(response && response.data ? response.data.message : "Generation failed.");
+        feedback.removeClass("is-loading is-success").addClass("is-error").text(response && response.data ? response.data.message : "Generation failed.");
       })
       .fail(function (xhr) {
         box.find(".hexa-tts-post-status").text("Failed");
-        feedback.removeClass("is-loading").addClass("is-error").text(xhr.responseText || xhr.statusText);
+        feedback.removeClass("is-loading is-success").addClass("is-error").text(xhr.responseText || xhr.statusText);
       })
       .always(function () {
         button.prop("disabled", false);
       });
   });
+
+  jq(document).on("click", ".hexa-tts-select-audio", function () {
+    var button = jq(this);
+    var box = button.closest(".hexa-tts-postbox");
+    var feedback = box.find(".hexa-tts-post-feedback");
+
+    if (typeof wp === "undefined" || !wp.media) {
+      feedback.removeClass("is-loading is-success").addClass("is-error").text("WordPress media uploader is not available on this screen.");
+      return;
+    }
+
+    var frame = wp.media({
+      title: "Select article audio",
+      button: { text: "Use this audio file" },
+      library: { type: "audio" },
+      multiple: false
+    });
+
+    frame.on("select", function () {
+      var attachment = frame.state().get("selection").first().toJSON();
+      if (!attachment || !attachment.id) {
+        return;
+      }
+
+      button.prop("disabled", true);
+      feedback.removeClass("is-error is-success").addClass("is-loading").text("Saving selected audio to ACF field...");
+
+      jq.ajax({
+        url: hexaTts.ajaxUrl,
+        method: "POST",
+        data: {
+          action: "hexa_tts_save_manual_audio",
+          nonce: hexaTts.nonce,
+          post_id: box.data("post-id"),
+          attachment_id: attachment.id
+        }
+      })
+        .done(function (response) {
+          if (response && response.success) {
+            showSuccess(box, response.data, response.data.message || "Audio file saved to ACF.");
+            return;
+          }
+          feedback.removeClass("is-loading is-success").addClass("is-error").text(response && response.data ? response.data.message : "Could not save selected audio.");
+        })
+        .fail(function (xhr) {
+          feedback.removeClass("is-loading is-success").addClass("is-error").text(xhr.responseText || xhr.statusText);
+        })
+        .always(function () {
+          button.prop("disabled", false);
+        });
+    });
+
+    frame.open();
+  });
 })();
 JS;
+    }
+
+    public static function register_acf_audio_field() {
+        if ( ! function_exists( "acf_add_local_field_group" ) ) {
+            return;
+        }
+        $settings = self::get_settings();
+        $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
+        acf_add_local_field_group( [
+            "key" => "group_hexa_tts_article_audio",
+            "title" => "Article Audio",
+            "fields" => [
+                [
+                    "key" => self::acf_audio_field_key(),
+                    "label" => "Article Audio",
+                    "name" => $acf_field,
+                    "type" => "file",
+                    "instructions" => "Upload or select the audio file for this article. Generated TTS audio is saved here automatically.",
+                    "required" => 0,
+                    "return_format" => "url",
+                    "library" => "all",
+                    "mime_types" => "mp3,m4a,wav,aac,ogg",
+                ],
+            ],
+            "location" => [
+                [ [ "param" => "post_type", "operator" => "==", "value" => "post" ] ],
+                [ [ "param" => "post_type", "operator" => "==", "value" => "press-release" ] ],
+            ],
+            "position" => "acf_after_title",
+            "style" => "default",
+            "label_placement" => "top",
+            "instruction_placement" => "label",
+            "active" => true,
+        ] );
     }
 
     public static function default_settings() {
@@ -249,17 +370,24 @@ JS;
         }
     }
 
+
     public static function render_post_metabox( $post ) {
         $settings = self::get_settings();
-        $audio_url = get_post_meta( $post->ID, "_hexa_tts_audio_url", true );
-        $attachment_id = get_post_meta( $post->ID, "_hexa_tts_attachment_id", true );
-        $status = get_post_meta( $post->ID, "_hexa_tts_status", true );
         $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
         $acf_value = get_post_meta( $post->ID, $acf_field, true );
+        $audio_url = get_post_meta( $post->ID, "_hexa_tts_audio_url", true );
+        $attachment_id = get_post_meta( $post->ID, "_hexa_tts_attachment_id", true );
+        if ( ! $audio_url ) {
+            $audio_url = self::resolve_audio_url( $acf_value );
+        }
+        if ( ! $attachment_id && is_numeric( $acf_value ) ) {
+            $attachment_id = (int) $acf_value;
+        }
+        $status = get_post_meta( $post->ID, "_hexa_tts_status", true );
         $api_ready = "" !== self::api_key();
         $provider_label = trim( implode( " / ", array_filter( [ $settings["default_provider"] ?? "", $settings["default_voice"] ?? "" ] ) ) );
         ?>
-        <div class="hexa-tts-postbox hexa-tts-postbox-simple" data-post-id="<?php echo esc_attr( $post->ID ); ?>">
+        <div class="hexa-tts-postbox hexa-tts-postbox-simple" data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-acf-field="<?php echo esc_attr( $acf_field ); ?>">
             <input type="hidden" class="hexa-tts-post-provider" value="<?php echo esc_attr( $settings["default_provider"] ); ?>">
             <input type="hidden" class="hexa-tts-post-profile" value="<?php echo esc_attr( $settings["default_profile"] ); ?>">
             <input type="hidden" class="hexa-tts-post-voice" value="<?php echo esc_attr( $settings["default_voice"] ); ?>">
@@ -268,7 +396,7 @@ JS;
             <div class="hexa-tts-simple-status">
                 <div><span class="hexa-tts-kicker">Connection</span><strong class="hexa-tts-api-state <?php echo $api_ready ? "is-ready" : "is-missing"; ?>"><?php echo $api_ready ? "API connected" : "Missing API key"; ?></strong></div>
                 <div><span class="hexa-tts-kicker">Audio</span><strong class="hexa-tts-post-status"><?php echo esc_html( $status ?: ( $audio_url ? "Ready" : "Not generated" ) ); ?></strong></div>
-                <div><span class="hexa-tts-kicker">ACF field</span><strong><?php echo esc_html( $acf_field ); ?></strong></div>
+                <div><span class="hexa-tts-kicker">ACF audio file</span><strong><?php echo esc_html( $acf_field ); ?></strong></div>
             </div>
 
             <div class="hexa-tts-one-click-card">
@@ -280,20 +408,29 @@ JS;
                 <button type="button" class="button button-primary button-hero hexa-tts-generate-post">Generate audio from article</button>
             </div>
 
+            <div class="hexa-tts-upload-card">
+                <div>
+                    <h3>Audio file upload</h3>
+                    <p>Upload or select your own MP3/M4A/WAV file. It saves directly into the ACF audio file field <code><?php echo esc_html( $acf_field ); ?></code>.</p>
+                    <div class="hexa-tts-selected-audio"><?php if ( $audio_url ) : ?>Selected audio: <a href="<?php echo esc_url( $audio_url ); ?>" target="_blank" rel="noopener noreferrer">Open MP3</a><?php else : ?>No audio file selected yet.<?php endif; ?></div>
+                </div>
+                <button type="button" class="button button-secondary button-hero hexa-tts-select-audio">Upload/select audio file</button>
+            </div>
+
             <div class="hexa-tts-storage-row">
                 <span>Audio storage</span>
                 <?php if ( $audio_url ) : ?>
-                    <strong>Saved to Media Library</strong>
-                    <a href="<?php echo esc_url( $audio_url ); ?>" target="_blank" rel="noopener noreferrer">Open MP3</a>
+                    <strong class="hexa-tts-storage-state">Saved to Media Library and ACF</strong>
+                    <a class="hexa-tts-open-audio" href="<?php echo esc_url( $audio_url ); ?>" target="_blank" rel="noopener noreferrer">Open MP3</a>
                 <?php else : ?>
-                    <strong>Will save to Media Library and <?php echo esc_html( $acf_field ); ?></strong>
+                    <strong class="hexa-tts-storage-state">Will save to Media Library and <?php echo esc_html( $acf_field ); ?></strong>
                 <?php endif; ?>
-                <?php if ( $acf_value ) : ?><small>Current <?php echo esc_html( $acf_field ); ?> value is set.</small><?php else : ?><small>No value is currently stored in <?php echo esc_html( $acf_field ); ?>.</small><?php endif; ?>
+                <?php if ( $acf_value ) : ?><small class="hexa-tts-storage-note">Current <?php echo esc_html( $acf_field ); ?> value is set.</small><?php else : ?><small class="hexa-tts-storage-note">No value is currently stored in <?php echo esc_html( $acf_field ); ?>.</small><?php endif; ?>
             </div>
 
             <?php if ( $audio_url ) : ?>
                 <audio controls preload="none" src="<?php echo esc_url( $audio_url ); ?>"></audio>
-                <p class="hexa-tts-current-storage">Attachment ID: <?php echo esc_html( $attachment_id ?: "n/a" ); ?> · ACF/meta field: <?php echo esc_html( $acf_field ); ?></p>
+                <p class="hexa-tts-current-storage">Attachment ID: <?php echo esc_html( $attachment_id ?: "n/a" ); ?> · ACF audio file field: <?php echo esc_html( $acf_field ); ?></p>
             <?php endif; ?>
 
             <div class="hexa-tts-post-feedback" aria-live="polite"></div>
@@ -312,6 +449,31 @@ JS;
             </details>
         </div>
         <?php
+    }
+
+
+    public static function ajax_save_manual_audio() {
+        check_ajax_referer( self::NONCE_ACTION, "nonce" );
+        $post_id = absint( $_POST["post_id"] ?? 0 );
+        $attachment_id = absint( $_POST["attachment_id"] ?? 0 );
+        if ( ! $post_id || ! current_user_can( "edit_post", $post_id ) ) {
+            wp_send_json_error( [ "message" => "You do not have permission to update audio for this post." ], 403 );
+        }
+        if ( ! $attachment_id ) {
+            wp_send_json_error( [ "message" => "No audio attachment was selected." ], 400 );
+        }
+        $mime = (string) get_post_mime_type( $attachment_id );
+        if ( 0 !== strpos( $mime, "audio/" ) ) {
+            wp_send_json_error( [ "message" => "Selected file is not an audio attachment." ], 400 );
+        }
+        $audio_url = wp_get_attachment_url( $attachment_id );
+        if ( ! $audio_url ) {
+            wp_send_json_error( [ "message" => "Could not resolve selected audio URL." ], 400 );
+        }
+        $file_path = get_attached_file( $attachment_id );
+        $stored = self::sync_audio_attachment( $post_id, $attachment_id, $audio_url, $file_path ?: "", [ "provider" => "manual_upload", "cost_usd" => 0 ] );
+        update_post_meta( $post_id, "_hexa_tts_status", "Ready" );
+        wp_send_json_success( array_merge( $stored, [ "message" => "Audio file saved to ACF and Media Library." ] ) );
     }
 
     public static function ajax_extract_post_content() {
@@ -439,6 +601,50 @@ JS;
         return $body;
     }
 
+
+    private static function acf_audio_field_key() {
+        return "field_643ce428d9b50";
+    }
+
+    private static function resolve_audio_url( $value ) {
+        if ( is_numeric( $value ) ) {
+            $url = wp_get_attachment_url( (int) $value );
+            return $url ? $url : "";
+        }
+        if ( is_string( $value ) && preg_match( "#^https?://#i", $value ) ) {
+            return $value;
+        }
+        return "";
+    }
+
+    private static function sync_audio_attachment( $post_id, $attachment_id, $audio_url, $file_path = "", array $api_result = [] ) {
+        $settings = self::get_settings();
+        $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
+        update_post_meta( $post_id, "_hexa_tts_audio_url", esc_url_raw( $audio_url ) );
+        update_post_meta( $post_id, "_hexa_tts_attachment_id", (int) $attachment_id );
+        if ( $file_path ) {
+            update_post_meta( $post_id, "_hexa_tts_audio_path", $file_path );
+        }
+        if ( ! empty( $api_result["request_id"] ) ) {
+            update_post_meta( $post_id, "_hexa_tts_request_id", sanitize_text_field( $api_result["request_id"] ) );
+        }
+        if ( ! empty( $api_result["archive_url"] ) ) {
+            update_post_meta( $post_id, "_hexa_tts_archive_url", esc_url_raw( $api_result["archive_url"] ) );
+        }
+        update_post_meta( $post_id, "_hexa_tts_cost_usd", sanitize_text_field( (string) ( $api_result["cost_usd"] ?? "0" ) ) );
+        update_post_meta( $post_id, "_hexa_tts_generated_at", current_time( "mysql" ) );
+        update_post_meta( $post_id, "_hexa_tts_provider", sanitize_key( $api_result["provider"] ?? "manual_upload" ) );
+        update_post_meta( $post_id, "_hexa_tts_provider_key_last4", sanitize_text_field( $api_result["provider_key_last4"] ?? "" ) );
+        update_post_meta( $post_id, "_hexa_tts_acf_field", $acf_field );
+        if ( function_exists( "update_field" ) ) {
+            update_field( self::acf_audio_field_key(), (int) $attachment_id, $post_id );
+        } else {
+            update_post_meta( $post_id, $acf_field, (int) $attachment_id );
+        }
+        $bytes = $file_path && file_exists( $file_path ) ? filesize( $file_path ) : 0;
+        return [ "audio_url" => $audio_url, "attachment_id" => (int) $attachment_id, "acf_field" => $acf_field, "acf_value" => (int) $attachment_id, "bytes" => (int) $bytes ];
+    }
+
     private static function store_api_audio( $post_id, array $api_result, $content ) {
         if ( empty( $api_result["audio_base64"] ) ) {
             return new WP_Error( "hexa_tts_missing_audio", "API response did not include audio_base64." );
@@ -468,22 +674,7 @@ JS;
         if ( is_array( $metadata ) ) {
             wp_update_attachment_metadata( $attachment_id, $metadata );
         }
-        $settings = self::get_settings();
-        $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
-        update_post_meta( $post_id, "_hexa_tts_audio_url", esc_url_raw( $upload["url"] ) );
-        update_post_meta( $post_id, "_hexa_tts_attachment_id", (int) $attachment_id );
-        update_post_meta( $post_id, "_hexa_tts_audio_path", $upload["file"] );
-        update_post_meta( $post_id, "_hexa_tts_request_id", sanitize_text_field( $api_result["request_id"] ?? "" ) );
-        update_post_meta( $post_id, "_hexa_tts_archive_url", esc_url_raw( $api_result["archive_url"] ?? "" ) );
-        update_post_meta( $post_id, "_hexa_tts_cost_usd", sanitize_text_field( (string) ( $api_result["cost_usd"] ?? "" ) ) );
-        update_post_meta( $post_id, "_hexa_tts_generated_at", current_time( "mysql" ) );
-        update_post_meta( $post_id, "_hexa_tts_provider", sanitize_key( $api_result["provider"] ?? "" ) );
-        update_post_meta( $post_id, "_hexa_tts_provider_key_last4", sanitize_text_field( $api_result["provider_key_last4"] ?? "" ) );
-        update_post_meta( $post_id, $acf_field, esc_url_raw( $upload["url"] ) );
-        if ( function_exists( "update_field" ) ) {
-            update_field( $acf_field, esc_url_raw( $upload["url"] ), $post_id );
-        }
-        return [ "audio_url" => $upload["url"], "attachment_id" => (int) $attachment_id, "acf_field" => $acf_field, "bytes" => strlen( $bytes ) ];
+        return self::sync_audio_attachment( $post_id, (int) $attachment_id, $upload["url"], $upload["file"], $api_result );
     }
 
     public static function maybe_insert_player( $content ) {
