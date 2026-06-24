@@ -266,3 +266,53 @@
     flex-direction: column;
   }
 }
+
+.hexa-tts-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.hexa-tts-status-card,
+.hexa-tts-current-storage {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #c3c4c7;
+  border-radius: 6px;
+  background: #f6f7f7;
+}
+.hexa-tts-status-card span {
+  display: block;
+  margin-top: 4px;
+  color: #646970;
+}
+.hexa-tts-api-state.is-ready {
+  color: #008a20;
+  font-weight: 700;
+}
+.hexa-tts-api-state.is-missing {
+  color: #b32d2e;
+  font-weight: 700;
+}
+.hexa-tts-activity-log {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+.hexa-tts-log-line {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  border: 1px solid #dcdcde;
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: #fff;
+}
+.hexa-tts-log-line span {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #2271b1;
+  margin-top: 5px;
+  flex: 0 0 auto;
+}
+.hexa-tts-log-line p {
+  margin: 0;
+}
