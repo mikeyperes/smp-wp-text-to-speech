@@ -1,24 +1,28 @@
 <?php
 /**
- * Plugin Name: HexaTextToSpeech
+ * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.1.2
+ * Version: 1.2.0
  * Author: Hexa Web Systems
- * Text Domain: smp-wordpress-text-to-speech
+ * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
  * Requires PHP: 7.4
  */
+
+namespace smp_text_to_speech;
+
+use WP_Error;
 
 if ( ! defined( "ABSPATH" ) ) {
     exit;
 }
 
-final class HexaTextToSpeech {
-    const VERSION = "1.1.2";
+final class Plugin {
+    const VERSION = "1.2.0";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
-    const SETTINGS_SLUG = "hexa-text-to-speech";
+    const SETTINGS_SLUG = "smp-wp-text-to-speech";
     const API_BASE = "https://publish.scalemypublication.com/api/smp-wordpress-tts/v1";
 
     public static function init() {
@@ -44,7 +48,7 @@ final class HexaTextToSpeech {
     }
 
     public static function register_admin_menu() {
-        add_options_page( "HexaTextToSpeech", "HexaTextToSpeech", "manage_options", self::SETTINGS_SLUG, [ __CLASS__, "render_settings_page" ] );
+        add_options_page( "SMP WP Text To Speech", "SMP WP Text To Speech", "manage_options", self::SETTINGS_SLUG, [ __CLASS__, "render_settings_page" ] );
     }
 
     public static function enqueue_admin_assets( $hook ) {
@@ -291,8 +295,8 @@ JS;
         $last_status = is_array( $settings["last_status"] ?? null ) ? $settings["last_status"] : [];
         ?>
         <div class="wrap hexa-tts-wrap">
-            <div class="hexa-tts-page-head"><div><h1>HexaTextToSpeech</h1><p>WordPress client for Publish Scale article audio. Browser requests stay inside WordPress; upstream calls are server-side only.</p></div></div>
-            <?php if ( $saved ) : ?><div class="notice notice-success is-dismissible"><p>HexaTextToSpeech settings saved.</p></div><?php endif; ?>
+            <div class="hexa-tts-page-head"><div><h1>SMP WP Text To Speech</h1><p>WordPress client for Publish Scale article audio. Browser requests stay inside WordPress; upstream calls are server-side only.</p></div></div>
+            <?php if ( $saved ) : ?><div class="notice notice-success is-dismissible"><p>SMP WP Text To Speech settings saved.</p></div><?php endif; ?>
             <form method="post" action="<?php echo esc_url( admin_url( "admin-post.php" ) ); ?>" class="hexa-tts-settings-form">
                 <?php wp_nonce_field( self::NONCE_ACTION, "hexa_tts_nonce" ); ?>
                 <input type="hidden" name="action" value="hexa_tts_save_settings">
@@ -317,7 +321,7 @@ JS;
                         <label class="hexa-tts-check-row"><input type="checkbox" name="hexa_tts[include_title]" value="1" <?php checked( ! empty( $settings["include_title"] ) ); ?>><span>Include post title</span></label>
                     </div>
                 </section>
-                <p class="submit hexa-tts-submit"><button type="submit" class="button button-primary button-hero">Save HexaTextToSpeech settings</button></p>
+                <p class="submit hexa-tts-submit"><button type="submit" class="button button-primary button-hero">Save SMP WP Text To Speech settings</button></p>
             </form>
         </div>
         <?php
@@ -365,7 +369,7 @@ JS;
     public static function register_post_metabox() {
         foreach ( [ "post", "press-release" ] as $post_type ) {
             if ( post_type_exists( $post_type ) ) {
-                add_meta_box( "hexa-tts-post-box", "HexaTextToSpeech", [ __CLASS__, "render_post_metabox" ], $post_type, "normal", "high" );
+                add_meta_box( "hexa-tts-post-box", "SMP WP Text To Speech", [ __CLASS__, "render_post_metabox" ], $post_type, "normal", "high" );
             }
         }
     }
@@ -750,4 +754,4 @@ JS;
     }
 }
 
-HexaTextToSpeech::init();
+Plugin::init();
