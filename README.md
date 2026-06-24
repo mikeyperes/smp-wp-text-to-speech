@@ -1,17 +1,17 @@
-# HexaTextToSpeech
+# SMP WP Text To Speech
 
 Standalone WordPress plugin for converting post/page text into audio with provider-specific settings, AJAX credential validation, editor extraction, and one-click post audio generation.
 
 Plugin folder/slug:
 
 ```text
-smp-wordpress-text-to-speech
+smp-wp-text-to-speech
 ```
 
 Main file:
 
 ```text
-smp-wordpress-text-to-speech.php
+smp-wp-text-to-speech.php
 ```
 
 ## Providers
@@ -26,14 +26,14 @@ smp-wordpress-text-to-speech.php
 
 ## Admin Workflow
 
-1. Install the folder under `wp-content/plugins/smp-wordpress-text-to-speech`.
-2. Activate `HexaTextToSpeech`.
-3. Open Settings -> HexaTextToSpeech.
+1. Install the folder under `wp-content/plugins/smp-wp-text-to-speech`.
+2. Activate `SMP WP Text To Speech`.
+3. Open Settings -> SMP WP Text To Speech.
 4. Fill provider credentials.
 5. Use each provider card's `Test credentials` button. Validation runs through `admin-ajax.php` and does not refresh the page.
 6. Set default service and default profile.
 7. Edit a post in `post.php`.
-8. Use the `HexaTextToSpeech` metabox:
+8. Use the `SMP WP Text To Speech` metabox:
    - Extract content
    - Review the AJAX preview
    - One-click generate audio

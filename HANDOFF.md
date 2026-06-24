@@ -1,25 +1,25 @@
-# AI Agent Handoff: HexaTextToSpeech
+# AI Agent Handoff: SMP WP Text To Speech
 
 ## Current Build
 
 Created a new standalone WordPress plugin:
 
 ```text
-/Users/mp/Projects/smp-wordpress-text-to-speech
+/Users/mp/Projects/smp-wp-text-to-speech
 ```
 
 Plugin identity:
 
-- Plugin name: `HexaTextToSpeech`
-- Slug/folder: `smp-wordpress-text-to-speech`
-- Main file: `smp-wordpress-text-to-speech.php`
+- Plugin name: `SMP WP Text To Speech`
+- Slug/folder: `smp-wp-text-to-speech`
+- Main file: `smp-wp-text-to-speech.php`
 - Version: `1.0`
 
 ## Implemented
 
 Settings page:
 
-- Location: Settings -> HexaTextToSpeech
+- Location: Settings -> SMP WP Text To Speech
 - Stores settings in option `hexa_tts_settings`.
 - Provides default service/profile controls.
 - Provides profile presets: `default`, `local`, `premium`.
@@ -51,7 +51,7 @@ AJAX validation:
 
 Post editor integration:
 
-- Metabox title: `HexaTextToSpeech`
+- Metabox title: `SMP WP Text To Speech`
 - Appears on all public post types.
 - AJAX content extraction action: `hexa_tts_extract_post_content`.
 - AJAX audio generation action: `hexa_tts_generate_audio`.
@@ -78,8 +78,8 @@ Frontend:
 ## Files
 
 ```text
-smp-wordpress-text-to-speech/
-  smp-wordpress-text-to-speech.php
+smp-wp-text-to-speech/
+  smp-wp-text-to-speech.php
   README.md
   HANDOFF.md
   assets/
@@ -122,9 +122,9 @@ Static tests can verify syntax and JavaScript parsing locally. Full A-Z browser 
 
 Recommended live test path:
 
-1. Upload folder to `wp-content/plugins/smp-wordpress-text-to-speech`.
+1. Upload folder to `wp-content/plugins/smp-wp-text-to-speech`.
 2. Activate plugin.
-3. Open Settings -> HexaTextToSpeech.
+3. Open Settings -> SMP WP Text To Speech.
 4. Save defaults once.
 5. Validate Kokoro/Piper local service if available.
 6. Validate cloud provider keys one by one.
