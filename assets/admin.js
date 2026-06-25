@@ -156,3 +156,39 @@
       });
   });
 })(jQuery);
+
+(function ($) {
+  'use strict';
+  function initDisplayControls(scope) {
+    var $scope = scope ? $(scope) : $(document);
+    if ($.fn.wpColorPicker) {
+      $scope.find('.hexa-tts-color-picker').each(function () {
+        var $input = $(this);
+        if (!$input.data('wp-color-picker')) {
+          $input.wpColorPicker();
+        }
+      });
+    }
+    $scope.find('.hexa-tts-template-grid').each(function () {
+      var $grid = $(this);
+      $grid.find('.hexa-tts-template-card').removeClass('is-selected');
+      $grid.find('input:checked').closest('.hexa-tts-template-card').addClass('is-selected');
+    });
+  }
+  $(document).on('click change', '.hexa-tts-template-card, .hexa-tts-template-card input', function () {
+    var $card = $(this).closest('.hexa-tts-template-card');
+    var $input = $card.find('input[type="radio"]');
+    if ($input.length) {
+      $input.prop('checked', true).triggerHandler('change');
+    }
+    $card.closest('.hexa-tts-template-grid').find('.hexa-tts-template-card').removeClass('is-selected');
+    $card.addClass('is-selected');
+  });
+  $(function () { initDisplayControls(document); });
+  document.addEventListener('hexa-core-host-tab-loaded', function (event) {
+    if (event && event.detail && event.detail.panel) {
+      initDisplayControls(event.detail.panel);
+    }
+  });
+})(jQuery);
+
