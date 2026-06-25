@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.2.9
+ * Version: 1.2.10
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -53,7 +53,7 @@ function register_hexa_plugin_core_autoloader(): void {
 register_hexa_plugin_core_autoloader();
 
 final class Plugin {
-    const VERSION = "1.2.9";
+    const VERSION = "1.2.10";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -1303,6 +1303,9 @@ JS;
 
 
     public static function render_post_metabox( $post ) {
+        if ( class_exists( "\\Hexa\\PluginCore\\WpAdminComponents\\CoreUi" ) ) {
+            \Hexa\PluginCore\WpAdminComponents\CoreUi::render_assets();
+        }
         $settings = self::get_settings();
         $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
         $acf_value = get_post_meta( $post->ID, $acf_field, true );
@@ -1318,7 +1321,7 @@ JS;
         $api_ready = "" !== self::api_key();
         $provider_label = trim( implode( " / ", array_filter( [ $settings["default_provider"] ?? "", $settings["default_voice"] ?? "" ] ) ) );
         ?>
-        <div class="hexa-tts-postbox hexa-tts-postbox-simple" data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-acf-field="<?php echo esc_attr( $acf_field ); ?>" data-has-audio="<?php echo $audio_url ? "1" : "0"; ?>" data-existing-attachment-id="<?php echo esc_attr( absint( $attachment_id ) ); ?>">
+        <div class="hexa-tts-postbox hexa-tts-postbox-simple hpc-ui" data-post-id="<?php echo esc_attr( $post->ID ); ?>" data-acf-field="<?php echo esc_attr( $acf_field ); ?>" data-has-audio="<?php echo $audio_url ? "1" : "0"; ?>" data-existing-attachment-id="<?php echo esc_attr( absint( $attachment_id ) ); ?>">
             <input type="hidden" class="hexa-tts-post-provider" value="<?php echo esc_attr( $settings["default_provider"] ); ?>">
             <input type="hidden" class="hexa-tts-post-profile" value="<?php echo esc_attr( $settings["default_profile"] ); ?>">
             <input type="hidden" class="hexa-tts-post-voice" value="<?php echo esc_attr( $settings["default_voice"] ); ?>">
@@ -1336,7 +1339,7 @@ JS;
                     <p>This uses the post title and body automatically. No copy, paste, or extra fields are required for the normal workflow.</p>
                     <?php if ( $provider_label ) : ?><p class="hexa-tts-muted">Default voice: <?php echo esc_html( $provider_label ); ?></p><?php endif; ?>
                 </div>
-                <button type="button" class="button button-primary button-hero hexa-tts-generate-post">Generate audio from article</button>
+                <button type="button" class="hpc-button hexa-tts-generate-post">Generate audio from article</button>
             </div>
 
             <div class="hexa-tts-acf-card">

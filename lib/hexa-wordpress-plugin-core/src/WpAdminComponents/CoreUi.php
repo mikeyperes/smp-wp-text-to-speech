@@ -105,6 +105,28 @@ final class CoreUi {
         (function(){
             if (window.hexaPluginCoreUiReady) return;
             window.hexaPluginCoreUiReady = true;
+            function initPersistentDetails(scope) {
+                scope = scope || document;
+                var items = scope.querySelectorAll ? scope.querySelectorAll('details[data-hpc-persist-key]') : [];
+                items.forEach(function(item) {
+                    if (item.dataset.hpcPersistentReady === '1') return;
+                    item.dataset.hpcPersistentReady = '1';
+                    try {
+                        var stored = window.localStorage ? window.localStorage.getItem('hpc-details-' + item.dataset.hpcPersistKey) : null;
+                        if (stored === '1') item.open = true;
+                        if (stored === '0') item.open = false;
+                    } catch (e) {}
+                });
+            }
+            window.hexaPluginCoreInitPersistentDetails = initPersistentDetails;
+            initPersistentDetails(document);
+            document.addEventListener('toggle', function(event) {
+                var details = event.target;
+                if (!details || !details.matches || !details.matches('details[data-hpc-persist-key]')) return;
+                try {
+                    if (window.localStorage) window.localStorage.setItem('hpc-details-' + details.dataset.hpcPersistKey, details.open ? '1' : '0');
+                } catch (e) {}
+            }, true);
             document.addEventListener('click', function(event) {
                 var trigger = event.target.closest('[data-hpc-copy]');
                 if (!trigger || !navigator.clipboard) return;
@@ -177,10 +199,12 @@ final class CoreUi {
     public static function collapsible( array $args ): string {
         $title = isset( $args['title'] ) ? (string) $args['title'] : '';
         $body  = isset( $args['body_html'] ) ? (string) $args['body_html'] : '';
-        $open  = ! empty( $args['open'] ) ? ' open' : '';
-        $meta  = isset( $args['meta_html'] ) ? (string) $args['meta_html'] : '';
+        $open        = ! empty( $args['open'] ) ? ' open' : '';
+        $meta        = isset( $args['meta_html'] ) ? (string) $args['meta_html'] : '';
+        $persist_key = isset( $args['persist_key'] ) ? (string) $args['persist_key'] : '';
+        $persist     = '' !== $persist_key ? ' data-hpc-persist-key="' . esc_attr( $persist_key ) . '"' : '';
 
-        return '<details class="hpc-section"' . $open . '><summary><span>' . esc_html( $title ) . '</span>' . $meta . '</summary><div class="hpc-section-body">' . $body . '</div></details>';
+        return '<details class="hpc-section"' . $open . $persist . '><summary><span>' . esc_html( $title ) . '</span>' . $meta . '</summary><div class="hpc-section-body">' . $body . '</div></details>';
     }
 
     public static function copy_button( string $value, string $label = 'Copy' ): string {

@@ -716,6 +716,25 @@ public GitHub VERSION from mikeyperes/hexa-wordpress-plugin-core
 
 Do not use the WordPress plugin header updater for the core library.
 
+The host plugin updater and vendored core updater must use the same report shape:
+
+```text
+Git repo
+Git URL
+Git branch
+Git version
+current installed version
+current-vs-Git comparison
+green Current flag
+red Outdated flag
+Check for Updates button
+Pull from GitHub button
+normalized ZIP download without the GitHub -main folder suffix
+live activity log for update work
+```
+
+Wrap each updater in one default-open `CoreUi` expandable section with browser-persistent collapse memory.
+
 ### Updater Input Terms
 
 Use these terms consistently:

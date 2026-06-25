@@ -582,6 +582,27 @@
   justify-content: center;
   gap: 8px;
 }
+.hexa-tts-postbox .hpc-button.hexa-tts-generate-post {
+  min-height: 58px;
+  min-width: 280px;
+  padding: 18px 26px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.15;
+  box-shadow: none;
+}
+.hexa-tts-postbox .hpc-button.hexa-tts-generate-post:hover,
+.hexa-tts-postbox .hpc-button.hexa-tts-generate-post:focus {
+  color: #fff;
+  filter: brightness(.96);
+  outline: none;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(49, 87, 213, .32);
+}
+.hexa-tts-postbox .hpc-button.hexa-tts-generate-post:disabled {
+  cursor: wait;
+  opacity: .78;
+}
 .hexa-tts-button-spinner {
   width: 16px;
   height: 16px;

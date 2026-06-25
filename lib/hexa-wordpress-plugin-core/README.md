@@ -179,7 +179,7 @@ $core_config = CorePackageConfig::from_core_root(
 ( new CorePackagePanelRenderer( $core_config ) )->render();
 ```
 
-This panel compares the vendored `VERSION` in the host plugin with the public GitHub repository `VERSION`.
+This panel compares the vendored `VERSION` in the host plugin with the public GitHub repository `VERSION`. The host plugin updater and the vendored core updater both render as default-open persistent collapse cards. Each card reports the Git repo, Git URL, Git branch, Git version, current version, current-vs-Git comparison, green/red status flag, check-for-updates action, normalized ZIP download, and live update activity log.
 
 ## Brand Color Controls
 

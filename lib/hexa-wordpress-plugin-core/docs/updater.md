@@ -160,6 +160,8 @@ $core_config = CorePackageConfig::from_core_root(
 https://raw.githubusercontent.com/mikeyperes/hexa-wordpress-plugin-core/main/VERSION
 ```
 
+Both updater panels use the shared Hexa Core expandable section styling. Panels are open by default and remember expand/collapse state in the browser. The report must show Git repo, Git URL, Git branch, Git version, installed version, comparison status, a green current flag, a red outdated flag, check-for-updates, GitHub pull/update, normalized ZIP download, and an activity log for long-running update work.
+
 ## Required Terms
 
 Use these names consistently:
