@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.2.3
+ * Version: 1.2.4
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -53,7 +53,7 @@ function register_hexa_plugin_core_autoloader(): void {
 register_hexa_plugin_core_autoloader();
 
 final class Plugin {
-    const VERSION = "1.2.3";
+    const VERSION = "1.2.4";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -76,6 +76,7 @@ final class Plugin {
         add_action( "wp_ajax_hexa_tts_extract_post_content", [ __CLASS__, "ajax_extract_post_content" ] );
         add_action( "wp_ajax_hexa_tts_generate_audio", [ __CLASS__, "ajax_generate_audio" ] );
         add_action( "wp_ajax_hexa_tts_save_manual_audio", [ __CLASS__, "ajax_save_manual_audio" ] );
+        add_action( "wp_ajax_hexa_tts_preview_display", [ __CLASS__, "ajax_preview_display" ] );
         add_filter( "plugin_action_links_" . plugin_basename( __FILE__ ), [ __CLASS__, "plugin_action_links" ] );
         add_filter( "the_content", [ __CLASS__, "maybe_insert_player" ], 12 );
         add_filter( "post_thumbnail_html", [ __CLASS__, "maybe_insert_player_around_featured_image" ], 20, 5 );
@@ -225,9 +226,12 @@ final class Plugin {
             }
         }
         wp_enqueue_style( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.css", [], self::VERSION );
+        wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend.css", [ "hexa-tts-admin" ], self::VERSION );
         wp_enqueue_script( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.js", [ "jquery", "wp-color-picker" ], self::VERSION, true );
         wp_localize_script( "hexa-tts-admin", "hexaTts", [ "ajaxUrl" => admin_url( "admin-ajax.php" ), "nonce" => wp_create_nonce( self::NONCE_ACTION ) ] );
+        wp_add_inline_style( "hexa-tts-admin", self::admin_live_display_css() );
         wp_add_inline_script( "hexa-tts-admin", self::admin_inline_script(), "after" );
+        wp_add_inline_script( "hexa-tts-admin", self::admin_live_display_script(), "after" );
     }
 
     public static function enqueue_frontend_assets() {
@@ -405,6 +409,75 @@ final class Plugin {
     frame.open();
   });
 })();
+JS;
+    }
+
+    private static function admin_live_display_css() {
+        return <<<CSS
+.hexa-tts-feature-control-card{border:1px solid #dcdcde;border-radius:14px;background:#fff;padding:20px;margin:18px 0}.hexa-tts-feature-control-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;border-bottom:1px solid #dcdcde;padding-bottom:16px;margin-bottom:18px}.hexa-tts-feature-control-head h2{margin:0 0 6px}.hexa-tts-feature-control-head p{margin:0;color:#50575e}.hexa-tts-feature-control-grid{display:grid;gap:22px}.hexa-tts-switch{display:flex;align-items:center;gap:10px;cursor:pointer}.hexa-tts-switch input{position:absolute;opacity:0}.hexa-tts-switch span{width:48px;height:26px;border-radius:999px;background:#c3c4c7;position:relative}.hexa-tts-switch span:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;border-radius:50%;background:#fff;transition:.15s}.hexa-tts-switch input:checked+span{background:#3657e3}.hexa-tts-switch input:checked+span:before{transform:translateX(22px)}.hexa-tts-choice-grid{display:grid;gap:14px}.hexa-tts-placement-map.hexa-tts-choice-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.hexa-tts-choice-card{position:relative;display:flex;gap:12px;align-items:flex-start;border:2px solid #dcdcde;border-radius:12px;background:#fff;padding:14px;cursor:pointer}.hexa-tts-choice-card input{margin-top:3px}.hexa-tts-choice-card.is-selected{border-color:#3657e3;box-shadow:0 0 0 2px rgba(54,87,227,.14)}.hexa-tts-choice-body strong,.hexa-tts-choice-body small{display:block}.hexa-tts-choice-body small{color:#646970;margin-top:5px}.hexa-tts-selected-pill,.hexa-tts-template-live-choice em{display:none;margin-left:auto;border-radius:999px;background:#eef2ff;color:#3657e3;font-style:normal;font-size:12px;font-weight:800;padding:3px 8px}.hexa-tts-choice-card.is-selected .hexa-tts-selected-pill,.hexa-tts-template-live-row.is-selected .hexa-tts-template-live-choice em{display:inline-flex}.hexa-tts-template-live-list{display:grid;grid-template-columns:1fr;gap:16px;margin-top:14px}.hexa-tts-template-live-row{border:2px solid #dcdcde;border-radius:14px;background:#fff;padding:16px}.hexa-tts-template-live-row.is-selected{border-color:#3657e3;box-shadow:0 0 0 2px rgba(54,87,227,.14)}.hexa-tts-template-live-choice{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;cursor:pointer}.hexa-tts-template-live-choice input{margin-top:4px}.hexa-tts-template-live-choice strong,.hexa-tts-template-live-choice small{display:block}.hexa-tts-template-live-choice small{color:#646970;margin-top:4px}.hexa-tts-template-live-preview{padding:12px;border-radius:12px;background:#f6f7f7}.hexa-tts-template-live-preview .hexa-tts-player{margin:0}.hexa-tts-live-save-state{min-height:22px;margin-top:12px;font-weight:700}.hexa-tts-live-save-state.is-loading{color:#646970}.hexa-tts-live-save-state.is-success{color:#008a20}.hexa-tts-live-save-state.is-error{color:#b32d2e}.hexa-tts-feature-proof{display:grid;gap:8px;margin-top:12px}.hexa-tts-feature-proof>div{display:flex;gap:10px;align-items:center;border:1px solid #dcdcde;border-radius:8px;background:#f6f7f7;padding:9px 10px}.hexa-tts-feature-proof span{font-weight:800;color:#646970}@media(max-width:1180px){.hexa-tts-placement-map.hexa-tts-choice-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:760px){.hexa-tts-feature-control-head,.hexa-tts-placement-map.hexa-tts-choice-grid{display:grid;grid-template-columns:1fr}}
+CSS;
+    }
+
+    private static function admin_live_display_script() {
+        return <<<JS
+(function ($) {
+  "use strict";
+  function initLiveChoices(scope) {
+    var root = scope ? $(scope) : $(document);
+    root.find(".hexa-tts-placement-map").each(function () {
+      var group = $(this);
+      group.find(".hexa-tts-placement-card").removeClass("is-selected");
+      group.find("input:checked").closest(".hexa-tts-placement-card").addClass("is-selected");
+    });
+    root.find(".hexa-tts-template-live-list").each(function () {
+      var group = $(this);
+      group.find(".hexa-tts-template-live-row").removeClass("is-selected");
+      group.find("input:checked").closest(".hexa-tts-template-live-row").addClass("is-selected");
+    });
+  }
+  function ajaxPreview(form) {
+    window.clearTimeout(form.data("hexaTtsLiveTimer"));
+    var timer = window.setTimeout(function () {
+      var state = form.find(".hexa-tts-live-save-state");
+      var data = form.serializeArray().filter(function (item) { return item.name !== "action"; });
+      data.push({ name: "action", value: "hexa_tts_preview_display" });
+      data.push({ name: "nonce", value: hexaTts.nonce });
+      state.removeClass("is-error is-success").addClass("is-loading").text("Saving and refreshing preview...");
+      $.ajax({ url: hexaTts.ajaxUrl, method: "POST", data: data })
+        .done(function (response) {
+          if (response && response.success) {
+            if (response.data.preview_html) {
+              form.find(".hexa-tts-live-preview-target").html(response.data.preview_html);
+            }
+            if (response.data.shortcode) {
+              form.find(".hexa-tts-dynamic-shortcode code").text(response.data.shortcode);
+              form.find(".hexa-tts-dynamic-shortcode .hexa-tts-copy").attr("data-copy-text", response.data.shortcode).data("copy-text", response.data.shortcode);
+            }
+            initLiveChoices(form);
+            state.removeClass("is-loading is-error").addClass("is-success").text(response.data.message || "Saved.");
+            return;
+          }
+          state.removeClass("is-loading is-success").addClass("is-error").text(response && response.data ? response.data.message : "Preview update failed.");
+        })
+        .fail(function (xhr) {
+          state.removeClass("is-loading is-success").addClass("is-error").text(xhr.responseText || xhr.statusText);
+        });
+    }, 350);
+    form.data("hexaTtsLiveTimer", timer);
+  }
+  $(document).on("click", ".hexa-tts-placement-card, .hexa-tts-template-live-row", function (event) {
+    if ($(event.target).is("input, audio, button, a") || $(event.target).closest("audio, button, a").length) { return; }
+    var input = $(this).find("input[type=radio]");
+    if (input.length && !input.prop("checked")) { input.prop("checked", true).trigger("change"); }
+  });
+  $(document).on("input change", ".hexa-tts-display-live-form .hexa-tts-live-control", function () {
+    var form = $(this).closest(".hexa-tts-display-live-form");
+    initLiveChoices(form);
+    ajaxPreview(form);
+  });
+  $(function () { initLiveChoices(document); });
+  document.addEventListener("hexa-core-host-tab-loaded", function (event) { if (event && event.detail && event.detail.panel) { initLiveChoices(event.detail.panel); } });
+})(jQuery);
 JS;
     }
 
@@ -671,64 +744,110 @@ JS;
     }
 
     private static function render_features_tab(): void {
-        $features = [
-            [ "One-click article text", "Uses the title and article body automatically for the normal flow; no copy/paste required." ],
-            [ "ACF audio file field", "Embeds the real ACF file uploader inside the plugin card and syncs generated or manual audio." ],
-            [ "Server-side API proxy", "The browser never receives the Publish Scale API base; WordPress performs upstream calls server-side." ],
-            [ "Media Library archive", "Generated MP3 files are inserted as WordPress attachments with attachment IDs and URLs tracked in post meta." ],
-            [ "Shortcode player", "Manual placement remains available with [smp_tts_player] and per-shortcode display parameters." ],
-            [ "Hexa WP Core updater", "This backend includes the Hexa core plugin updater and vendored-core reporting panels." ],
-        ];
+        $settings = self::get_settings();
+        $templates = self::template_options();
+        $placements = self::placement_options();
+        $shortcode = self::display_shortcode( $settings );
+        $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
         ?>
-        <section class="hexa-tts-panel">
-            <div class="hexa-tts-panel-head"><div><h2>Features</h2><p>Focused feature set for this plugin. Kept narrow: article narration, storage, ACF, and front-end playback.</p></div></div>
-            <div class="hexa-tts-feature-grid">
-                <?php foreach ( $features as $feature ) : ?>
-                    <article class="hexa-tts-feature-card"><span class="dashicons dashicons-yes-alt"></span><h3><?php echo esc_html( $feature[0] ); ?></h3><p><?php echo esc_html( $feature[1] ); ?></p></article>
-                <?php endforeach; ?>
-            </div>
-        </section>
-        <section class="hexa-tts-panel">
-            <h2>Automatic placement options</h2>
-            <div class="hexa-tts-placement-map">
-                <div><strong>Above article</strong><span>Prepends player to the article body through <code>the_content</code>.</span></div>
-                <div><strong>Before featured image</strong><span>Injects before the theme featured image output when the theme uses WordPress thumbnail rendering.</span></div>
-                <div><strong>After featured image</strong><span>Injects after the theme featured image output when available.</span></div>
-                <div><strong>Manual shortcode</strong><span>Disables automatic output; paste the shortcode wherever needed.</span></div>
-            </div>
-        </section>
+        <form method="post" action="<?php echo esc_url( admin_url( "admin-post.php" ) ); ?>" class="hexa-tts-settings-form hexa-tts-features-form hexa-tts-display-live-form">
+            <?php wp_nonce_field( self::NONCE_ACTION, "hexa_tts_nonce" ); ?>
+            <input type="hidden" name="action" value="hexa_tts_save_settings">
+            <input type="hidden" name="hexa_tts_tab" value="features">
+
+            <section class="hexa-tts-hero hexa-tts-feature-hero">
+                <p class="hexa-tts-kicker">Features</p>
+                <h2>Feature controls for article audio.</h2>
+                <p>Enable the player, choose where it renders, choose the live front-end design, configure the ACF audio file field, and copy the shortcode from the same control surface.</p>
+            </section>
+
+            <article class="hexa-tts-feature-control-card">
+                <div class="hexa-tts-feature-control-head">
+                    <div>
+                        <p class="hexa-tts-kicker">Feature</p>
+                        <h2>Text-to-speech article player</h2>
+                        <p>Generated or manually uploaded audio is stored in the Media Library and synced to <code><?php echo esc_html( $acf_field ); ?></code>.</p>
+                    </div>
+                    <label class="hexa-tts-switch">
+                        <input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[auto_insert_player]" value="1" <?php checked( ! empty( $settings["auto_insert_player"] ) ); ?>>
+                        <span></span>
+                        <strong><?php echo ! empty( $settings["auto_insert_player"] ) ? esc_html__( "Enabled", "smp-wp-text-to-speech" ) : esc_html__( "Disabled", "smp-wp-text-to-speech" ); ?></strong>
+                    </label>
+                </div>
+
+                <div class="hexa-tts-feature-control-grid">
+                    <section>
+                        <h3>Core controls</h3>
+                        <div class="hexa-tts-grid hexa-tts-grid-4">
+                            <label><span>ACF audio file field</span><input class="hexa-tts-live-control" type="text" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( $acf_field ); ?>"><small>Used by generated storage and the editor upload field.</small></label>
+                            <label><span>Player label</span><input class="hexa-tts-live-control" type="text" name="hexa_tts[player_label]" value="<?php echo esc_attr( $settings["player_label"] ); ?>"></label>
+                            <label><span>Player size</span><select class="hexa-tts-live-control" name="hexa_tts[player_size]"><?php self::render_options( self::size_options(), $settings["player_size"] ); ?></select></label>
+                            <label><span>Primary color</span><input class="hexa-tts-color-picker hexa-tts-live-control" type="text" name="hexa_tts[primary_color]" value="<?php echo esc_attr( self::sanitize_color( $settings["primary_color"] ) ); ?>" data-default-color="#3657e3"></label>
+                            <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[include_title]" value="1" <?php checked( ! empty( $settings["include_title"] ) ); ?>><span>Include post title in narration</span></label>
+                            <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[show_player_meta]" value="1" <?php checked( ! empty( $settings["show_player_meta"] ) ); ?>><span>Show provider/date metadata</span></label>
+                        </div>
+                    </section>
+
+                    <section>
+                        <h3>Automatic placement</h3>
+                        <p class="description">Select the actual automatic output location. Manual shortcode disables automatic output.</p>
+                        <?php echo self::placement_cards_html( $settings ); ?>
+                    </section>
+
+                    <section>
+                        <h3>Template design</h3>
+                        <p class="description">Each option below is rendered with the same player markup and CSS used on the live single article page.</p>
+                        <div class="hexa-tts-live-preview-target"><?php echo self::template_preview_rows_html( $settings ); ?></div>
+                    </section>
+
+                    <section>
+                        <h3>Shortcode</h3>
+                        <p class="description">Use this for Elementor or exact manual placement.</p>
+                        <div class="hexa-tts-shortcode-card hexa-tts-dynamic-shortcode"><code><?php echo esc_html( $shortcode ); ?></code><button type="button" class="button hexa-tts-copy" data-copy-text="<?php echo esc_attr( $shortcode ); ?>">Copy shortcode</button></div>
+                        <div class="hexa-tts-feature-proof">
+                            <div><span>ACF field</span><code><?php echo esc_html( $acf_field ); ?></code></div>
+                            <div><span>Current placement</span><strong><?php echo esc_html( $placements[ $settings["auto_player_placement"] ] ?? "Above article" ); ?></strong></div>
+                            <div><span>Current template</span><strong><?php echo esc_html( $templates[ $settings["player_template"] ]["label"] ?? "Clean Card" ); ?></strong></div>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="hexa-tts-live-save-state" aria-live="polite"></div>
+                <p class="submit hexa-tts-submit"><button type="submit" class="button button-primary button-hero">Save feature controls</button></p>
+            </article>
+        </form>
         <?php
     }
 
     private static function render_display_tab(): void {
         $settings = self::get_settings();
-        $templates = self::template_options();
+        $shortcode = self::display_shortcode( $settings );
         ?>
         <section class="hexa-tts-panel">
-            <div class="hexa-tts-panel-head"><div><h2>Display Settings</h2><p>Control the front-end player style, primary color, size, and automatic location.</p></div><a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( "admin-post.php?action=hexa_tts_import_elementor_color" ), self::NONCE_ACTION, "hexa_tts_nonce" ) ); ?>">Import Elementor primary color</a></div>
-            <form method="post" action="<?php echo esc_url( admin_url( "admin-post.php" ) ); ?>" class="hexa-tts-settings-form hexa-tts-display-form">
+            <div class="hexa-tts-panel-head"><div><h2>Display Settings</h2><p>Choose the exact live player design and automatic placement. Previews below use the same renderer and CSS as the frontend.</p></div><a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( "admin-post.php?action=hexa_tts_import_elementor_color" ), self::NONCE_ACTION, "hexa_tts_nonce" ) ); ?>">Import Elementor primary color</a></div>
+            <form method="post" action="<?php echo esc_url( admin_url( "admin-post.php" ) ); ?>" class="hexa-tts-settings-form hexa-tts-display-form hexa-tts-display-live-form">
                 <?php wp_nonce_field( self::NONCE_ACTION, "hexa_tts_nonce" ); ?>
                 <input type="hidden" name="action" value="hexa_tts_save_settings">
                 <input type="hidden" name="hexa_tts_tab" value="display">
                 <div class="hexa-tts-grid hexa-tts-grid-4">
-                    <label><span>Primary color</span><input type="text" class="hexa-tts-color-picker" name="hexa_tts[primary_color]" value="<?php echo esc_attr( self::sanitize_color( $settings["primary_color"] ) ); ?>" data-default-color="#3657e3"><small>Used by the player accent border, label, and template highlights.</small></label>
-                    <label><span>Player label</span><input type="text" name="hexa_tts[player_label]" value="<?php echo esc_attr( $settings["player_label"] ); ?>"></label>
-                    <label><span>Player size</span><select name="hexa_tts[player_size]"><?php self::render_options( self::size_options(), $settings["player_size"] ); ?></select></label>
-                    <label><span>Automatic placement</span><select name="hexa_tts[auto_player_placement]"><?php self::render_options( self::placement_options(), $settings["auto_player_placement"] ); ?></select><small>Choose Manual shortcode to prevent automatic insertion.</small></label>
-                    <label class="hexa-tts-check-row"><input type="checkbox" name="hexa_tts[auto_insert_player]" value="1" <?php checked( ! empty( $settings["auto_insert_player"] ) ); ?>><span>Enable automatic player placement</span></label>
-                    <label class="hexa-tts-check-row"><input type="checkbox" name="hexa_tts[show_player_meta]" value="1" <?php checked( ! empty( $settings["show_player_meta"] ) ); ?>><span>Show player metadata</span></label>
+                    <label><span>Primary color</span><input type="text" class="hexa-tts-color-picker hexa-tts-live-control" name="hexa_tts[primary_color]" value="<?php echo esc_attr( self::sanitize_color( $settings["primary_color"] ) ); ?>" data-default-color="#3657e3"><small>Used directly by the live player CSS variable.</small></label>
+                    <label><span>Player label</span><input type="text" class="hexa-tts-live-control" name="hexa_tts[player_label]" value="<?php echo esc_attr( $settings["player_label"] ); ?>"></label>
+                    <label><span>Player size</span><select class="hexa-tts-live-control" name="hexa_tts[player_size]"><?php self::render_options( self::size_options(), $settings["player_size"] ); ?></select></label>
+                    <label><span>ACF audio file field</span><input type="text" class="hexa-tts-live-control" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( sanitize_key( $settings["acf_audio_field"] ?: "article_audio" ) ); ?>"></label>
+                    <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[auto_insert_player]" value="1" <?php checked( ! empty( $settings["auto_insert_player"] ) ); ?>><span>Enable automatic player placement</span></label>
+                    <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[show_player_meta]" value="1" <?php checked( ! empty( $settings["show_player_meta"] ) ); ?>><span>Show player metadata</span></label>
                 </div>
+
+                <h3>Automatic placement</h3>
+                <?php echo self::placement_cards_html( $settings ); ?>
+
                 <h3>Template design</h3>
-                <div class="hexa-tts-template-grid">
-                    <?php foreach ( $templates as $key => $template ) : ?>
-                        <label class="hexa-tts-template-card <?php echo esc_attr( $settings["player_template"] === $key ? "is-selected" : "" ); ?>">
-                            <input type="radio" name="hexa_tts[player_template]" value="<?php echo esc_attr( $key ); ?>" <?php checked( $settings["player_template"], $key ); ?>>
-                            <span class="hexa-tts-template-preview hexa-tts-template-preview--<?php echo esc_attr( $key ); ?>"><span></span><em></em><i></i></span>
-                            <strong><?php echo esc_html( $template["label"] ); ?></strong>
-                            <small><?php echo esc_html( $template["description"] ); ?></small>
-                        </label>
-                    <?php endforeach; ?>
-                </div>
+                <p class="description">One design per row. Each preview includes the current MP3 and is rendered with the same player markup used by <code>[smp_tts_player]</code>.</p>
+                <div class="hexa-tts-live-preview-target"><?php echo self::template_preview_rows_html( $settings ); ?></div>
+
+                <h3>Shortcode</h3>
+                <div class="hexa-tts-shortcode-card hexa-tts-dynamic-shortcode"><code><?php echo esc_html( $shortcode ); ?></code><button type="button" class="button hexa-tts-copy" data-copy-text="<?php echo esc_attr( $shortcode ); ?>">Copy shortcode</button></div>
+                <div class="hexa-tts-live-save-state" aria-live="polite"></div>
                 <p class="submit hexa-tts-submit"><button type="submit" class="button button-primary button-hero">Save display settings</button></p>
             </form>
         </section>
@@ -770,9 +889,9 @@ JS;
         $clean["default_voice"] = sanitize_text_field( $incoming["default_voice"] ?? $existing["default_voice"] );
         $clean["default_speed"] = (string) floatval( $incoming["default_speed"] ?? $existing["default_speed"] );
         $clean["acf_audio_field"] = sanitize_key( $incoming["acf_audio_field"] ?? $existing["acf_audio_field"] );
-        $clean["auto_insert_player"] = array_key_exists( "auto_insert_player", $incoming ) ? 1 : ( "display" === $tab ? 0 : (int) ( $existing["auto_insert_player"] ?? 1 ) );
-        $clean["include_title"] = array_key_exists( "include_title", $incoming ) ? 1 : ( "api" === $tab ? 0 : (int) ( $existing["include_title"] ?? 1 ) );
-        $clean["show_player_meta"] = array_key_exists( "show_player_meta", $incoming ) ? 1 : ( "display" === $tab ? 0 : (int) ( $existing["show_player_meta"] ?? 1 ) );
+        $clean["auto_insert_player"] = array_key_exists( "auto_insert_player", $incoming ) ? 1 : ( in_array( $tab, [ "display", "features" ], true ) ? 0 : (int) ( $existing["auto_insert_player"] ?? 1 ) );
+        $clean["include_title"] = array_key_exists( "include_title", $incoming ) ? 1 : ( in_array( $tab, [ "api", "features" ], true ) ? 0 : (int) ( $existing["include_title"] ?? 1 ) );
+        $clean["show_player_meta"] = array_key_exists( "show_player_meta", $incoming ) ? 1 : ( in_array( $tab, [ "display", "features" ], true ) ? 0 : (int) ( $existing["show_player_meta"] ?? 1 ) );
         $clean["max_characters"] = max( 500, absint( $incoming["max_characters"] ?? $existing["max_characters"] ) );
         $clean["primary_color"] = self::sanitize_color( $incoming["primary_color"] ?? $existing["primary_color"] );
         $clean["player_label"] = sanitize_text_field( $incoming["player_label"] ?? $existing["player_label"] );
@@ -871,6 +990,86 @@ JS;
         ];
     }
 
+    private static function display_shortcode( array $settings, int $post_id = 560368 ): string {
+        return "[smp_tts_player post_id=\"" . absint( $post_id ) . "\" label=\"" . sanitize_text_field( $settings["player_label"] ?? "Listen to this article" ) . "\" template=\"" . sanitize_key( $settings["player_template"] ?? "clean_card" ) . "\" size=\"" . sanitize_key( $settings["player_size"] ?? "default" ) . "\" show_meta=\"" . ( ! empty( $settings["show_player_meta"] ) ? "1" : "0" ) . "\" preload=\"metadata\"]";
+    }
+
+    private static function sample_audio_url(): string {
+        global $wpdb;
+        $url = $wpdb instanceof \wpdb ? (string) $wpdb->get_var( $wpdb->prepare( "SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value LIKE %s ORDER BY meta_id DESC LIMIT 1", "_hexa_tts_audio_url", "http%" ) ) : "";
+        if ( $url ) {
+            return esc_url_raw( $url );
+        }
+        $settings = self::get_settings();
+        $field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
+        $value = $wpdb instanceof \wpdb ? $wpdb->get_var( $wpdb->prepare( "SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s ORDER BY meta_id DESC LIMIT 1", $field ) ) : "";
+        $resolved = self::resolve_audio_url( $value );
+        return $resolved ? esc_url_raw( $resolved ) : "";
+    }
+
+    private static function placement_cards_html( array $settings ): string {
+        $placements = self::placement_options();
+        $descriptions = [
+            "above_article" => "Prepends the player to the article body through the_content.",
+            "before_featured_image" => "Injects before the theme featured image when WordPress thumbnail rendering is available.",
+            "after_featured_image" => "Injects after the theme featured image when available.",
+            "manual" => "Disables automatic output. Paste the shortcode wherever needed.",
+        ];
+        ob_start();
+        ?>
+        <div class="hexa-tts-placement-map hexa-tts-choice-grid" role="radiogroup" aria-label="Automatic player placement">
+            <?php foreach ( $placements as $value => $label ) : ?>
+                <?php $selected = ( $settings["auto_player_placement"] ?? "above_article" ) === $value; ?>
+                <label class="hexa-tts-choice-card hexa-tts-placement-card <?php echo esc_attr( $selected ? "is-selected" : "" ); ?>">
+                    <input class="hexa-tts-live-control" type="radio" name="hexa_tts[auto_player_placement]" value="<?php echo esc_attr( $value ); ?>" <?php checked( $selected ); ?>>
+                    <span class="hexa-tts-choice-body"><strong><?php echo esc_html( $label ); ?></strong><small><?php echo esc_html( $descriptions[ $value ] ?? "" ); ?></small></span>
+                    <span class="hexa-tts-selected-pill">Selected</span>
+                </label>
+            <?php endforeach; ?>
+        </div>
+        <?php
+        return (string) ob_get_clean();
+    }
+
+    private static function template_preview_rows_html( array $settings ): string {
+        $templates = self::template_options();
+        $audio_url = self::sample_audio_url();
+        ob_start();
+        ?>
+        <div class="hexa-tts-template-live-list" role="radiogroup" aria-label="Player template design">
+            <?php if ( ! $audio_url ) : ?>
+                <div class="notice notice-warning inline"><p>No generated article audio was found yet. Generate or upload an MP3 to preview the actual audio player.</p></div>
+            <?php endif; ?>
+            <?php foreach ( $templates as $key => $template ) : ?>
+                <?php $selected = ( $settings["player_template"] ?? "clean_card" ) === $key; ?>
+                <article class="hexa-tts-template-live-row <?php echo esc_attr( $selected ? "is-selected" : "" ); ?>">
+                    <label class="hexa-tts-template-live-choice">
+                        <input class="hexa-tts-live-control" type="radio" name="hexa_tts[player_template]" value="<?php echo esc_attr( $key ); ?>" <?php checked( $selected ); ?>>
+                        <span><strong><?php echo esc_html( $template["label"] ); ?></strong><small><?php echo esc_html( $template["description"] ); ?></small></span>
+                        <em>Selected</em>
+                    </label>
+                    <div class="hexa-tts-template-live-preview">
+                        <?php
+                        if ( $audio_url ) {
+                            echo self::player_markup( $audio_url, [
+                                "template" => $key,
+                                "size" => $settings["player_size"] ?? "default",
+                                "label" => $settings["player_label"] ?? "Listen to this article",
+                                "show_meta" => ! empty( $settings["show_player_meta"] ) ? "1" : "0",
+                                "preload" => "metadata",
+                                "class" => "hexa-tts-preview-player",
+                                "color" => $settings["primary_color"] ?? "#3657e3",
+                            ], "UnrealSpeech preview", current_time( "mysql" ) );
+                        }
+                        ?>
+                    </div>
+                </article>
+            <?php endforeach; ?>
+        </div>
+        <?php
+        return (string) ob_get_clean();
+    }
+
     private static function sanitize_color( $value ): string {
         $color = function_exists( "sanitize_hex_color" ) ? sanitize_hex_color( (string) $value ) : "";
         return $color ?: "#3657e3";
@@ -889,6 +1088,35 @@ JS;
         $settings["last_status"] = $result;
         update_option( self::OPTION, $settings, false );
         wp_send_json_success( $result );
+    }
+
+    public static function ajax_preview_display() {
+        if ( ! current_user_can( "manage_options" ) ) {
+            wp_send_json_error( [ "message" => "Unauthorized." ], 403 );
+        }
+        check_ajax_referer( self::NONCE_ACTION, "nonce" );
+        $incoming = isset( $_POST["hexa_tts"] ) && is_array( $_POST["hexa_tts"] ) ? wp_unslash( $_POST["hexa_tts"] ) : [];
+        $settings = self::sanitize_display_settings( $incoming, self::get_settings(), true );
+        update_option( self::OPTION, $settings, false );
+        wp_send_json_success( [
+            "preview_html" => self::template_preview_rows_html( $settings ),
+            "shortcode" => self::display_shortcode( $settings ),
+            "message" => "Display settings saved and preview refreshed.",
+        ] );
+    }
+
+    private static function sanitize_display_settings( array $incoming, array $existing, bool $checkbox_context = false ): array {
+        $clean = $existing;
+        $clean["acf_audio_field"] = sanitize_key( $incoming["acf_audio_field"] ?? $existing["acf_audio_field"] ?? "article_audio" );
+        $clean["primary_color"] = self::sanitize_color( $incoming["primary_color"] ?? $existing["primary_color"] ?? "#3657e3" );
+        $clean["player_label"] = sanitize_text_field( $incoming["player_label"] ?? $existing["player_label"] ?? "Listen to this article" );
+        $clean["player_size"] = array_key_exists( sanitize_key( $incoming["player_size"] ?? "" ), self::size_options() ) ? sanitize_key( $incoming["player_size"] ) : ( $existing["player_size"] ?? "default" );
+        $clean["player_template"] = array_key_exists( sanitize_key( $incoming["player_template"] ?? "" ), self::template_options() ) ? sanitize_key( $incoming["player_template"] ) : ( $existing["player_template"] ?? "clean_card" );
+        $clean["auto_player_placement"] = array_key_exists( sanitize_key( $incoming["auto_player_placement"] ?? "" ), self::placement_options() ) ? sanitize_key( $incoming["auto_player_placement"] ) : ( $existing["auto_player_placement"] ?? "above_article" );
+        $clean["auto_insert_player"] = array_key_exists( "auto_insert_player", $incoming ) ? 1 : ( $checkbox_context ? 0 : (int) ( $existing["auto_insert_player"] ?? 1 ) );
+        $clean["include_title"] = array_key_exists( "include_title", $incoming ) ? 1 : ( $checkbox_context ? 0 : (int) ( $existing["include_title"] ?? 1 ) );
+        $clean["show_player_meta"] = array_key_exists( "show_player_meta", $incoming ) ? 1 : ( $checkbox_context ? 0 : (int) ( $existing["show_player_meta"] ?? 1 ) );
+        return $clean;
     }
 
     public static function register_post_metabox() {
@@ -1094,12 +1322,21 @@ JS;
         update_post_meta( $post_id, "_hexa_tts_status", "Waiting" );
         $log[] = "Sending server-side request to Publish Scale API.";
         $current_user = wp_get_current_user();
+        $wordpress_user_id = get_current_user_id();
+        if ( $wordpress_user_id < 1 ) {
+            $wordpress_user_id = max( 1, (int) get_post_field( "post_author", $post_id ) );
+        }
+        $wordpress_user_login = $current_user ? (string) $current_user->user_login : "";
+        if ( "" === $wordpress_user_login && $wordpress_user_id > 0 ) {
+            $author = get_user_by( "id", $wordpress_user_id );
+            $wordpress_user_login = $author ? (string) $author->user_login : "";
+        }
         $result = self::api_request( "/synthesize", [
             "content" => $content,
             "article_url" => get_permalink( $post_id ),
             "post_id" => $post_id,
-            "wordpress_user_id" => get_current_user_id(),
-            "wordpress_user_login" => $current_user ? $current_user->user_login : "",
+            "wordpress_user_id" => $wordpress_user_id,
+            "wordpress_user_login" => $wordpress_user_login,
             "provider" => sanitize_key( $_POST["provider"] ?? $settings["default_provider"] ),
             "profile" => sanitize_key( $_POST["profile"] ?? $settings["default_profile"] ),
             "runtime" => [ "voice" => sanitize_text_field( wp_unslash( $_POST["voice"] ?? $settings["default_voice"] ) ), "speed" => sanitize_text_field( wp_unslash( $_POST["speed"] ?? $settings["default_speed"] ) ) ],
@@ -1121,6 +1358,131 @@ JS;
         $log[] = "Attachment stored and ACF/meta field synced.";
         update_post_meta( $post_id, "_hexa_tts_status", "Ready" );
         wp_send_json_success( array_merge( $stored, [ "message" => "Audio generated, stored in Media Library, and synced to ACF/meta.", "request_id" => $result["request_id"] ?? "", "archive_url" => $result["archive_url"] ?? "", "cost_usd" => $result["cost_usd"] ?? null, "log" => $log ] ) );
+    }
+
+    public static function generate_for_post( $post_id, array $args = [] ) {
+        $post_id = absint( $post_id );
+        if ( ! $post_id ) {
+            return new WP_Error( "hexa_tts_missing_post_id", "A WordPress post ID is required." );
+        }
+
+        $post = get_post( $post_id );
+        if ( ! $post || ! in_array( $post->post_type, [ "post", "press-release" ], true ) ) {
+            return new WP_Error( "hexa_tts_invalid_post", "Post not found or unsupported for article audio." );
+        }
+
+        $settings = self::get_settings();
+        $content = trim( (string) ( $args["content"] ?? "" ) );
+        if ( "" === $content ) {
+            $extract = self::extract_post_text( $post_id );
+            if ( is_wp_error( $extract ) ) {
+                update_post_meta( $post_id, "_hexa_tts_status", "Extraction failed" );
+                update_post_meta( $post_id, "_hexa_tts_error", $extract->get_error_message() );
+                return $extract;
+            }
+            $content = (string) ( $extract["text"] ?? "" );
+        }
+
+        $prepend = trim( (string) ( $args["prepend"] ?? "" ) );
+        $append  = trim( (string) ( $args["append"] ?? "" ) );
+        $content = trim( implode( "\n\n", array_filter( [ $prepend, $content, $append ] ) ) );
+        if ( "" === $content ) {
+            update_post_meta( $post_id, "_hexa_tts_status", "Empty" );
+            return new WP_Error( "hexa_tts_empty_text", "No usable text was available for this post." );
+        }
+
+        $max = absint( $settings["max_characters"] ?? 0 );
+        if ( $max > 0 && strlen( $content ) > $max ) {
+            if ( ! empty( $args["shorten"] ) ) {
+                $content = substr( $content, 0, max( 100, $max - 20 ) ) . "...";
+            } else {
+                update_post_meta( $post_id, "_hexa_tts_status", "Too long" );
+                return new WP_Error( "hexa_tts_too_long", "Content is " . strlen( $content ) . " characters, above the limit of " . $max . "." );
+            }
+        }
+
+        $hash = hash( "sha256", $content );
+        $force = ! empty( $args["force"] );
+        $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
+        $existing_url = (string) get_post_meta( $post_id, "_hexa_tts_audio_url", true );
+        $existing_attachment_id = absint( get_post_meta( $post_id, "_hexa_tts_attachment_id", true ) );
+        if ( "" === $existing_url && $existing_attachment_id ) {
+            $existing_url = (string) wp_get_attachment_url( $existing_attachment_id );
+        }
+        if ( "" === $existing_url ) {
+            $existing_url = self::resolve_audio_url( get_post_meta( $post_id, $acf_field, true ) );
+        }
+        $existing_hash = (string) get_post_meta( $post_id, "_hexa_tts_text_hash", true );
+        if ( ! $force && "" !== $existing_url && $existing_hash === $hash ) {
+            return [
+                "audio_url" => esc_url_raw( $existing_url ),
+                "attachment_id" => $existing_attachment_id,
+                "acf_field" => $acf_field,
+                "acf_value" => $existing_attachment_id ?: get_post_meta( $post_id, $acf_field, true ),
+                "bytes" => 0,
+                "message" => "Existing article audio is current.",
+                "request_id" => (string) get_post_meta( $post_id, "_hexa_tts_request_id", true ),
+                "archive_url" => (string) get_post_meta( $post_id, "_hexa_tts_archive_url", true ),
+                "cost_usd" => get_post_meta( $post_id, "_hexa_tts_cost_usd", true ),
+                "provider" => (string) get_post_meta( $post_id, "_hexa_tts_provider", true ),
+                "status" => "synced",
+                "reused" => true,
+            ];
+        }
+
+        update_post_meta( $post_id, "_hexa_tts_status", "Waiting" );
+        delete_post_meta( $post_id, "_hexa_tts_error" );
+
+        $current_user = wp_get_current_user();
+        $wordpress_user_id = get_current_user_id();
+        if ( $wordpress_user_id < 1 ) {
+            $wordpress_user_id = max( 1, (int) get_post_field( "post_author", $post_id ) );
+        }
+        $wordpress_user_login = $current_user ? (string) $current_user->user_login : "";
+        if ( "" === $wordpress_user_login && $wordpress_user_id > 0 ) {
+            $author = get_user_by( "id", $wordpress_user_id );
+            $wordpress_user_login = $author ? (string) $author->user_login : "";
+        }
+        $result = self::api_request( "/synthesize", [
+            "content" => $content,
+            "article_url" => get_permalink( $post_id ),
+            "post_id" => $post_id,
+            "wordpress_user_id" => $wordpress_user_id,
+            "wordpress_user_login" => $wordpress_user_login,
+            "provider" => sanitize_key( $args["provider"] ?? $settings["default_provider"] ),
+            "profile" => sanitize_key( $args["profile"] ?? $settings["default_profile"] ),
+            "runtime" => [
+                "voice" => sanitize_text_field( $args["voice"] ?? $settings["default_voice"] ),
+                "speed" => sanitize_text_field( $args["speed"] ?? $settings["default_speed"] ),
+            ],
+        ], 240 );
+
+        if ( is_wp_error( $result ) ) {
+            update_post_meta( $post_id, "_hexa_tts_status", "Failed" );
+            update_post_meta( $post_id, "_hexa_tts_error", $result->get_error_message() );
+            return $result;
+        }
+
+        $stored = self::store_api_audio( $post_id, $result, $content );
+        if ( is_wp_error( $stored ) ) {
+            update_post_meta( $post_id, "_hexa_tts_status", "Storage failed" );
+            update_post_meta( $post_id, "_hexa_tts_error", $stored->get_error_message() );
+            return $stored;
+        }
+
+        update_post_meta( $post_id, "_hexa_tts_status", "Ready" );
+        update_post_meta( $post_id, "_hexa_tts_text_hash", $hash );
+        update_post_meta( $post_id, "_hexa_tts_character_count", strlen( $content ) );
+
+        return array_merge( $stored, [
+            "message" => "Audio generated, stored in Media Library, and synced to ACF/meta.",
+            "request_id" => $result["request_id"] ?? "",
+            "archive_url" => $result["archive_url"] ?? "",
+            "cost_usd" => $result["cost_usd"] ?? null,
+            "provider" => sanitize_key( $args["provider"] ?? $settings["default_provider"] ),
+            "status" => "synced",
+            "reused" => false,
+        ] );
     }
 
     private static function extract_post_text( $post_id ) {
@@ -1311,6 +1673,11 @@ JS;
         if ( ! $url ) {
             return "";
         }
+        return self::player_markup( $url, $args, get_post_meta( $post_id, "_hexa_tts_provider", true ), get_post_meta( $post_id, "_hexa_tts_generated_at", true ) );
+    }
+
+    private static function player_markup( string $url, array $args = [], string $provider = "", string $generated = "" ): string {
+        $settings = self::get_settings();
         $templates = self::template_options();
         $sizes = self::size_options();
         $template = sanitize_key( $args["template"] ?? ( $settings["player_template"] ?? "clean_card" ) );
@@ -1319,11 +1686,10 @@ JS;
         $size = isset( $sizes[ $size ] ) ? $size : "default";
         $label = isset( $args["label"] ) ? (string) $args["label"] : ( $settings["player_label"] ?? "Listen to this article" );
         $show_meta = ! isset( $args["show_meta"] ) || "0" !== (string) $args["show_meta"];
-        $preload = in_array( (string) ( $args["preload"] ?? "metadata" ), [ "none", "metadata", "auto" ], true ) ? (string) $args["preload"] : "metadata";
+        $raw_preload = isset( $args["preload"] ) && "" !== (string) $args["preload"] ? (string) $args["preload"] : "metadata";
+        $preload = in_array( $raw_preload, [ "none", "metadata", "auto" ], true ) ? $raw_preload : "metadata";
         $extra_class = sanitize_html_class( (string) ( $args["class"] ?? "" ) );
         $color = self::sanitize_color( $args["color"] ?? ( $settings["primary_color"] ?? "#3657e3" ) );
-        $provider = get_post_meta( $post_id, "_hexa_tts_provider", true );
-        $generated = get_post_meta( $post_id, "_hexa_tts_generated_at", true );
         $classes = trim( "hexa-tts-player hexa-tts-player--" . $template . " hexa-tts-player--size-" . $size . " " . $extra_class );
         ob_start();
         ?>
