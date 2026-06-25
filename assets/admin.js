@@ -111,50 +111,6 @@
       });
   });
 
-  $(document).on('click', '.hexa-tts-generate-post', function () {
-    var $button = $(this);
-    var $box = $button.closest('.hexa-tts-postbox');
-    var $feedback = $box.find('.hexa-tts-post-feedback');
-    var payload = postBoxPayload($box);
-
-    payload.action = 'hexa_tts_generate_audio';
-    payload.nonce = hexaTts.nonce;
-
-    $button.prop('disabled', true);
-    $feedback.removeClass('is-error is-success').addClass('is-loading').text('Generating audio. Keep this editor tab open...');
-    $box.find('.hexa-tts-post-status').text('Generating');
-
-    $.ajax({
-      url: hexaTts.ajaxUrl,
-      method: 'POST',
-      data: payload
-    })
-      .done(function (response) {
-        $feedback.removeClass('is-loading');
-        if (response && response.success) {
-          $box.find('.hexa-tts-post-status').text('Ready');
-          $feedback.addClass('is-success').html(
-            escapeHtml(response.data.message) +
-              ' <a href="' + encodeURI(response.data.audio_url) + '" target="_blank" rel="noopener noreferrer">Open audio</a>'
-          );
-          var $audio = $box.find('audio');
-          if (!$audio.length) {
-            $audio = $('<audio controls preload="none"></audio>').appendTo($box);
-          }
-          $audio.attr('src', response.data.audio_url);
-          return;
-        }
-        $box.find('.hexa-tts-post-status').text('Failed');
-        $feedback.addClass('is-error').text(response && response.data ? response.data.message : 'Generation failed.');
-      })
-      .fail(function (xhr) {
-        $box.find('.hexa-tts-post-status').text('Failed');
-        $feedback.removeClass('is-loading').addClass('is-error').text(xhr.responseText || xhr.statusText);
-      })
-      .always(function () {
-        $button.prop('disabled', false);
-      });
-  });
 })(jQuery);
 
 (function ($) {
@@ -191,4 +147,3 @@
     }
   });
 })(jQuery);
-

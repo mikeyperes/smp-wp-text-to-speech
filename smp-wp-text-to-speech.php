@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.2.6
+ * Version: 1.2.8
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -53,7 +53,7 @@ function register_hexa_plugin_core_autoloader(): void {
 register_hexa_plugin_core_autoloader();
 
 final class Plugin {
-    const VERSION = "1.2.6";
+    const VERSION = "1.2.8";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -75,6 +75,7 @@ final class Plugin {
         add_action( "wp_ajax_hexa_tts_validate_provider", [ __CLASS__, "ajax_validate_central_api" ] );
         add_action( "wp_ajax_hexa_tts_extract_post_content", [ __CLASS__, "ajax_extract_post_content" ] );
         add_action( "wp_ajax_hexa_tts_generate_audio", [ __CLASS__, "ajax_generate_audio" ] );
+        add_action( "wp_ajax_hexa_tts_generation_status", [ __CLASS__, "ajax_generation_status" ] );
         add_action( "wp_ajax_hexa_tts_save_manual_audio", [ __CLASS__, "ajax_save_manual_audio" ] );
         add_action( "wp_ajax_hexa_tts_preview_display", [ __CLASS__, "ajax_preview_display" ] );
         add_filter( "plugin_action_links_" . plugin_basename( __FILE__ ), [ __CLASS__, "plugin_action_links" ] );
@@ -289,6 +290,114 @@ final class Plugin {
     audio.attr("src", audioUrl);
   }
 
+  function renderActivityLog(box, entries, apiStatus) {
+    var log = box.find(".hexa-tts-activity-log");
+    if (!log.length) { return; }
+    log.empty();
+    log.attr("aria-live", "polite");
+    entries = entries || [];
+    if (!entries.length) {
+      return;
+    }
+    entries.forEach(function (entry) {
+      var line = typeof entry === "string" ? { message: entry, state: "info" } : (entry || {});
+      var row = jq(document.createElement("div"));
+      var dot = jq(document.createElement("span"));
+      var body = jq(document.createElement("p"));
+      row.addClass("hexa-tts-log-line is-" + (line.state || "info"));
+      if (line.time) {
+        var time = jq(document.createElement("time"));
+        time.text(line.time);
+        body.append(time);
+      }
+      body.append(document.createTextNode(line.message || "Working..."));
+      row.append(dot).append(body);
+      log.append(row);
+    });
+    if (apiStatus && apiStatus.status) {
+      var apiRow = jq(document.createElement("div"));
+      var apiDot = jq(document.createElement("span"));
+      var apiBody = jq(document.createElement("p"));
+      apiRow.addClass("hexa-tts-log-line is-api");
+      apiBody.text("Publish Scale API: " + apiStatus.status + (apiStatus.message ? " — " + apiStatus.message : ""));
+      apiRow.append(apiDot).append(apiBody);
+      log.append(apiRow);
+    }
+  }
+
+  function addClientActivity(box, message, state) {
+    var current = box.data("hexaTtsClientLog") || [];
+    current.push({ time: new Date().toLocaleTimeString(), state: state || "info", message: message });
+    box.data("hexaTtsClientLog", current);
+    renderActivityLog(box, current, null);
+  }
+
+  function buttonState(button, state, text) {
+    var original = button.data("hexaTtsOriginalText") || button.text();
+    if (!button.data("hexaTtsOriginalText")) {
+      button.data("hexaTtsOriginalText", original);
+    }
+    button.removeClass("hexa-tts-button-working hexa-tts-button-ok hexa-tts-button-error");
+    if (state === "working") {
+      button.addClass("hexa-tts-button-working").prop("disabled", true).html('<span class="hexa-tts-button-spinner" aria-hidden="true"></span><span>' + escapeHtml(text || "Generating audio...") + '</span>');
+      return;
+    }
+    if (state === "ok") {
+      button.addClass("hexa-tts-button-ok").prop("disabled", false).html('<span class="hexa-tts-button-mark" aria-hidden="true">✓</span><span>' + escapeHtml(text || "Audio generated") + '</span>');
+      window.setTimeout(function () { button.removeClass("hexa-tts-button-ok").text(original); }, 4000);
+      return;
+    }
+    if (state === "error") {
+      button.addClass("hexa-tts-button-error").prop("disabled", false).html('<span class="hexa-tts-button-mark" aria-hidden="true">×</span><span>' + escapeHtml(text || "Generation failed") + '</span>');
+      window.setTimeout(function () { button.removeClass("hexa-tts-button-error").text(original); }, 5000);
+      return;
+    }
+    button.prop("disabled", false).text(original);
+  }
+
+  function clientRequestId() {
+    return "tts_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2, 14);
+  }
+
+  function stopGenerationPoll(box) {
+    var timer = box.data("hexaTtsGenerationPoll");
+    if (timer) {
+      window.clearInterval(timer);
+      box.removeData("hexaTtsGenerationPoll");
+    }
+  }
+
+  function pollGenerationStatus(box, requestId) {
+    stopGenerationPoll(box);
+    var postId = box.data("post-id") || box.attr("data-post-id");
+    var timer = window.setInterval(function () {
+      jq.ajax({
+        url: hexaTts.ajaxUrl,
+        method: "POST",
+        data: { action: "hexa_tts_generation_status", nonce: hexaTts.nonce, post_id: postId, client_request_id: requestId }
+      }).done(function (response) {
+        if (response && response.success && response.data) {
+          renderActivityLog(box, response.data.log || [], response.data.api_status || null);
+          if (response.data.status) {
+            box.find(".hexa-tts-post-status").text(response.data.status);
+          }
+        }
+      });
+    }, 1500);
+    box.data("hexaTtsGenerationPoll", timer);
+  }
+
+  function ensureAudio(box, audioUrl) {
+    var audio = box.find("audio");
+    if (!audio.length) {
+      audio = jq(document.createElement("audio"));
+      audio.attr("controls", "controls");
+      audio.attr("preload", "metadata");
+      audio.insertAfter(box.find(".hexa-tts-post-feedback"));
+    }
+    audio.attr("src", audioUrl);
+  }
+
   function showSuccess(box, data, message) {
     var feedback = box.find(".hexa-tts-post-feedback");
     var link = jq(document.createElement("a"));
@@ -316,34 +425,56 @@ final class Plugin {
   }
 
   jq(document).off("click", ".hexa-tts-generate-post");
-  jq(document).on("click", ".hexa-tts-generate-post", function () {
+  jq(document).on("click", ".hexa-tts-generate-post", function (event) {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
     var button = jq(this);
     var box = button.closest(".hexa-tts-postbox");
     var feedback = box.find(".hexa-tts-post-feedback");
     var payload = postPayload(box);
+    var requestId = clientRequestId();
 
     payload.action = "hexa_tts_generate_audio";
     payload.nonce = hexaTts.nonce;
+    payload.client_request_id = requestId;
 
-    button.prop("disabled", true);
-    feedback.removeClass("is-error is-success").addClass("is-loading").text("Generating audio from the article text. Keep this editor tab open...");
-    box.find(".hexa-tts-post-status").text("Generating");
+    box.data("hexaTtsClientLog", []);
+    addClientActivity(box, "Generate clicked. WordPress request ID created: " + requestId + ".", "working");
+    addClientActivity(box, "Collecting article text and current voice settings.", "working");
+    addClientActivity(box, "Sending AJAX request to WordPress.", "working");
+    buttonState(button, "working", "Generating audio...");
+    feedback.removeClass("is-error is-success").addClass("is-loading").text("Generation started. Activity log is updating below.");
+    box.find(".hexa-tts-post-status").text("Starting");
+    pollGenerationStatus(box, requestId);
 
     jq.ajax({ url: hexaTts.ajaxUrl, method: "POST", data: payload })
       .done(function (response) {
+        stopGenerationPoll(box);
         if (response && response.success) {
+          renderActivityLog(box, response.data.log || [], { status: "complete", message: response.data.request_id ? "Request " + response.data.request_id + " completed." : "Central API completed." });
           showSuccess(box, response.data, response.data.message || "Audio generated and saved to ACF.");
+          buttonState(button, "ok", "Audio generated");
           return;
         }
+        var message = response && response.data ? response.data.message : "Generation failed.";
         box.find(".hexa-tts-post-status").text("Failed");
-        feedback.removeClass("is-loading is-success").addClass("is-error").text(response && response.data ? response.data.message : "Generation failed.");
+        if (response && response.data && response.data.log) {
+          renderActivityLog(box, response.data.log, { status: "failed", message: message });
+        } else {
+          addClientActivity(box, message, "error");
+        }
+        feedback.removeClass("is-loading is-success").addClass("is-error").text(message);
+        buttonState(button, "error", "Generation failed");
       })
       .fail(function (xhr) {
+        stopGenerationPoll(box);
+        var message = xhr.responseText || xhr.statusText || "Generation request failed.";
         box.find(".hexa-tts-post-status").text("Failed");
-        feedback.removeClass("is-loading is-success").addClass("is-error").text(xhr.responseText || xhr.statusText);
-      })
-      .always(function () {
-        button.prop("disabled", false);
+        addClientActivity(box, message, "error");
+        feedback.removeClass("is-loading is-success").addClass("is-error").text(message);
+        buttonState(button, "error", "Generation failed");
       });
   });
 
@@ -1007,6 +1138,12 @@ JS;
             "editorial_thin" => [ "label" => "Editorial Thin", "description" => "Refined thin left rule on a soft ground." ],
             "caption" => [ "label" => "Caption", "description" => "Player first, small caption label beneath — like a figure caption." ],
             "eyebrow" => [ "label" => "Eyebrow", "description" => "Uppercase letter-spaced label with a short accent tick." ],
+            "framed" => [ "label" => "Framed", "description" => "Thin full border, no shadow, metadata aligned right. Quiet box." ],
+            "rule_between" => [ "label" => "Divider", "description" => "Label, a hairline divider, then the player below." ],
+            "corner" => [ "label" => "Corner Tick", "description" => "Small accent square beside the label, no container." ],
+            "mini" => [ "label" => "Mini", "description" => "Ultra-compact one-row player, smallest footprint." ],
+            "soft_tint" => [ "label" => "Soft Tint", "description" => "Barely-there accent-tinted ground, no border." ],
+            "what_to_know" => [ "label" => "What to Know Match", "description" => "Identical to the What to Know summary block: left blue rule, faint tint, bold label." ],
         ];
     }
 
@@ -1309,6 +1446,24 @@ JS;
         wp_send_json_success( $extract );
     }
 
+    public static function ajax_generation_status() {
+        check_ajax_referer( self::NONCE_ACTION, "nonce" );
+        $post_id = absint( $_POST["post_id"] ?? 0 );
+        if ( ! $post_id || ! current_user_can( "edit_post", $post_id ) ) {
+            wp_send_json_error( [ "message" => "You do not have permission to view generation status for this post." ], 403 );
+        }
+
+        $client_request_id = self::sanitize_client_request_id( wp_unslash( (string) ( $_POST["client_request_id"] ?? "" ) ) );
+        $api_status = $client_request_id ? self::api_request_status( $client_request_id ) : null;
+
+        wp_send_json_success( [
+            "status" => (string) get_post_meta( $post_id, "_hexa_tts_status", true ),
+            "log" => self::generation_log( $post_id ),
+            "api_status" => $api_status,
+            "client_request_id" => $client_request_id,
+        ] );
+    }
+
     public static function ajax_generate_audio() {
         check_ajax_referer( self::NONCE_ACTION, "nonce" );
         $post_id = absint( $_POST["post_id"] ?? 0 );
@@ -1316,15 +1471,21 @@ JS;
             wp_send_json_error( [ "message" => "You do not have permission to generate audio for this post." ], 403 );
         }
         $settings = self::get_settings();
-        $log = [ "Request received by WordPress.", "Preparing article content." ];
+        $client_request_id = self::sanitize_client_request_id( wp_unslash( (string) ( $_POST["client_request_id"] ?? "" ) ) );
+        self::reset_generation_log( $post_id, $client_request_id );
+        delete_post_meta( $post_id, "_hexa_tts_error" );
+        self::add_generation_log( $post_id, "Preparing article content.", "working" );
+        $log = self::generation_log( $post_id );
         $content = trim( wp_unslash( (string) ( $_POST["content"] ?? "" ) ) );
         if ( "" === $content ) {
             $extract = self::extract_post_text( $post_id );
             if ( is_wp_error( $extract ) ) {
                 update_post_meta( $post_id, "_hexa_tts_status", "Extraction failed" );
-                wp_send_json_error( [ "message" => $extract->get_error_message(), "log" => $log ] );
+                self::add_generation_log( $post_id, "Article text extraction failed: " . $extract->get_error_message(), "error" );
+                wp_send_json_error( [ "message" => $extract->get_error_message(), "log" => self::generation_log( $post_id ) ] );
             }
             $content = $extract["text"];
+            self::add_generation_log( $post_id, "Article text extracted from the post editor: " . strlen( $content ) . " characters.", "success" );
         }
         $prepend = trim( wp_unslash( (string) ( $_POST["prepend"] ?? "" ) ) );
         $append = trim( wp_unslash( (string) ( $_POST["append"] ?? "" ) ) );
@@ -1334,12 +1495,15 @@ JS;
             if ( ! empty( $_POST["shorten"] ) ) {
                 $content = substr( $content, 0, max( 100, $max - 20 ) ) . "...";
                 $log[] = "Content exceeded max length and was shortened locally.";
+                self::add_generation_log( $post_id, "Content exceeded max length and was shortened locally.", "info" );
             } else {
                 update_post_meta( $post_id, "_hexa_tts_status", "Too long" );
-                wp_send_json_error( [ "message" => "Content is " . strlen( $content ) . " characters, above the limit of " . $max . ".", "log" => $log ] );
+                self::add_generation_log( $post_id, "Content is " . strlen( $content ) . " characters, above the limit of " . $max . ".", "error" );
+                wp_send_json_error( [ "message" => "Content is " . strlen( $content ) . " characters, above the limit of " . $max . ".", "log" => self::generation_log( $post_id ) ] );
             }
         }
         update_post_meta( $post_id, "_hexa_tts_status", "Waiting" );
+        self::add_generation_log( $post_id, "WordPress payload prepared. Sending server-side request to Publish Scale API.", "working", [ "client_request_id" => $client_request_id ] );
         $log[] = "Sending server-side request to Publish Scale API.";
         $current_user = wp_get_current_user();
         $wordpress_user_id = get_current_user_id();
@@ -1360,24 +1524,31 @@ JS;
             "provider" => sanitize_key( $_POST["provider"] ?? $settings["default_provider"] ),
             "profile" => sanitize_key( $_POST["profile"] ?? $settings["default_profile"] ),
             "runtime" => [ "voice" => sanitize_text_field( wp_unslash( $_POST["voice"] ?? $settings["default_voice"] ) ), "speed" => sanitize_text_field( wp_unslash( $_POST["speed"] ?? $settings["default_speed"] ) ) ],
+            "client_request_id" => $client_request_id,
         ], 240 );
         if ( is_wp_error( $result ) ) {
             update_post_meta( $post_id, "_hexa_tts_status", "Failed" );
             update_post_meta( $post_id, "_hexa_tts_error", $result->get_error_message() );
             $log[] = "Publish Scale API failed: " . $result->get_error_message();
-            wp_send_json_error( [ "message" => $result->get_error_message(), "log" => $log ] );
+            self::add_generation_log( $post_id, "Publish Scale API failed: " . $result->get_error_message(), "error" );
+            wp_send_json_error( [ "message" => $result->get_error_message(), "log" => self::generation_log( $post_id ) ] );
         }
         $log[] = "Audio returned by API. Saving to WordPress Media Library.";
+        self::add_generation_log( $post_id, "Publish Scale API returned audio bytes. Request " . ( $result["request_id"] ?? $client_request_id ) . " is ready for WordPress storage.", "success", [ "request_id" => $result["request_id"] ?? $client_request_id, "bytes" => $result["bytes"] ?? null, "cost_usd" => $result["cost_usd"] ?? null ] );
+        self::add_generation_log( $post_id, "Saving returned MP3 to the WordPress Media Library.", "working" );
         $stored = self::store_api_audio( $post_id, $result, $content );
         if ( is_wp_error( $stored ) ) {
             update_post_meta( $post_id, "_hexa_tts_status", "Storage failed" );
             update_post_meta( $post_id, "_hexa_tts_error", $stored->get_error_message() );
             $log[] = "Storage failed: " . $stored->get_error_message();
-            wp_send_json_error( [ "message" => $stored->get_error_message(), "log" => $log ] );
+            self::add_generation_log( $post_id, "Storage failed: " . $stored->get_error_message(), "error" );
+            wp_send_json_error( [ "message" => $stored->get_error_message(), "log" => self::generation_log( $post_id ) ] );
         }
         $log[] = "Attachment stored and ACF/meta field synced.";
+        self::add_generation_log( $post_id, "Attachment stored and ACF/meta field synced.", "success", [ "attachment_id" => $stored["attachment_id"] ?? null, "acf_field" => $stored["acf_field"] ?? null ] );
+        delete_post_meta( $post_id, "_hexa_tts_error" );
         update_post_meta( $post_id, "_hexa_tts_status", "Ready" );
-        wp_send_json_success( array_merge( $stored, [ "message" => "Audio generated, stored in Media Library, and synced to ACF/meta.", "request_id" => $result["request_id"] ?? "", "archive_url" => $result["archive_url"] ?? "", "cost_usd" => $result["cost_usd"] ?? null, "log" => $log ] ) );
+        wp_send_json_success( array_merge( $stored, [ "message" => "Audio generated, stored in Media Library, and synced to ACF/meta.", "request_id" => $result["request_id"] ?? "", "archive_url" => $result["archive_url"] ?? "", "cost_usd" => $result["cost_usd"] ?? null, "log" => self::generation_log( $post_id ) ] ) );
     }
 
     public static function generate_for_post( $post_id, array $args = [] ) {
@@ -1535,6 +1706,71 @@ JS;
             return new WP_Error( "hexa_tts_empty_text", "No usable text was extracted from this post." );
         }
         return [ "text" => $final, "characters" => strlen( $final ), "words" => str_word_count( wp_strip_all_tags( $final ) ), "hash" => hash( "sha256", $final ), "preview" => function_exists( "mb_substr" ) ? mb_substr( $final, 0, 5000 ) : substr( $final, 0, 5000 ) ];
+    }
+
+    private static function sanitize_client_request_id( $value ): string {
+        $value = strtolower( preg_replace( "/[^a-z0-9_\\-]/", "", (string) $value ) );
+        if ( preg_match( "/^tts_[a-z0-9_\\-]{12,76}$/", $value ) ) {
+            return $value;
+        }
+
+        return "tts_wp_" . strtolower( wp_generate_password( 20, false, false ) );
+    }
+
+    private static function reset_generation_log( int $post_id, string $client_request_id ): void {
+        update_post_meta( $post_id, "_hexa_tts_generation_client_id", $client_request_id );
+        update_post_meta( $post_id, "_hexa_tts_activity_log", wp_json_encode( [] ) );
+        self::add_generation_log( $post_id, "WordPress accepted the generation request.", "working", [ "client_request_id" => $client_request_id ] );
+    }
+
+    private static function add_generation_log( int $post_id, string $message, string $state = "info", array $context = [] ): array {
+        $log = self::generation_log( $post_id );
+        $log[] = [
+            "time" => current_time( "H:i:s" ),
+            "state" => sanitize_key( $state ?: "info" ),
+            "message" => sanitize_text_field( $message ),
+            "context" => $context,
+        ];
+        update_post_meta( $post_id, "_hexa_tts_activity_log", wp_json_encode( $log ) );
+        return $log;
+    }
+
+    private static function generation_log( int $post_id ): array {
+        $raw = get_post_meta( $post_id, "_hexa_tts_activity_log", true );
+        if ( is_array( $raw ) ) {
+            return $raw;
+        }
+        $decoded = is_string( $raw ) && "" !== $raw ? json_decode( $raw, true ) : [];
+        return is_array( $decoded ) ? $decoded : [];
+    }
+
+    private static function api_request_status( string $public_id ): ?array {
+        $public_id = self::sanitize_client_request_id( $public_id );
+        if ( "" === $public_id ) {
+            return null;
+        }
+
+        $response = wp_remote_get( self::API_BASE . "/requests/" . rawurlencode( $public_id ), [
+            "timeout" => 8,
+            "headers" => [ "Accept" => "application/json" ],
+        ] );
+        if ( is_wp_error( $response ) ) {
+            return [ "status" => "unavailable", "message" => $response->get_error_message() ];
+        }
+
+        $code = wp_remote_retrieve_response_code( $response );
+        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        if ( 200 !== (int) $code || ! is_array( $body ) || empty( $body["success"] ) || empty( $body["request"] ) || ! is_array( $body["request"] ) ) {
+            return null;
+        }
+
+        return [
+            "status" => sanitize_text_field( (string) ( $body["request"]["status"] ?? "" ) ),
+            "message" => sanitize_text_field( (string) ( $body["request"]["message"] ?? "" ) ),
+            "provider" => sanitize_text_field( (string) ( $body["request"]["provider"] ?? "" ) ),
+            "audio_bytes" => absint( $body["request"]["audio_bytes"] ?? 0 ),
+            "cost_usd" => isset( $body["request"]["cost_usd"] ) ? (float) $body["request"]["cost_usd"] : null,
+        ];
     }
 
     private static function api_request( $path, array $payload, $timeout = 30 ) {

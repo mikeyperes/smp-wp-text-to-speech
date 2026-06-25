@@ -574,3 +574,53 @@
 @media (max-width: 1180px) { .hexa-tts-template-grid, .hexa-tts-placement-map, .hexa-tts-feature-grid, .hexa-tts-system-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) { .hexa-tts-template-grid, .hexa-tts-placement-map, .hexa-tts-feature-grid, .hexa-tts-system-grid, .hexa-tts-shortcode-card { grid-template-columns: 1fr; } }
 
+
+
+.hexa-tts-generate-post {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.hexa-tts-button-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,.45);
+  border-top-color: #fff;
+  animation: hexa-tts-spin .75s linear infinite;
+  flex: 0 0 auto;
+}
+.hexa-tts-button-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.22);
+  font-weight: 900;
+  line-height: 1;
+}
+.hexa-tts-generate-post.hexa-tts-button-ok {
+  background: #008a20 !important;
+  border-color: #008a20 !important;
+}
+.hexa-tts-generate-post.hexa-tts-button-error {
+  background: #b32d2e !important;
+  border-color: #b32d2e !important;
+}
+@keyframes hexa-tts-spin { to { transform: rotate(360deg); } }
+.hexa-tts-log-line.is-success span { background: #008a20; }
+.hexa-tts-log-line.is-error span { background: #b32d2e; }
+.hexa-tts-log-line.is-working span { background: #3657e3; }
+.hexa-tts-log-line.is-info span { background: #64748b; }
+.hexa-tts-log-line.is-api span { background: #7c3aed; }
+.hexa-tts-log-line time {
+  display: block;
+  margin-bottom: 2px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
