@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.2.4
+ * Version: 1.2.6
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -53,7 +53,7 @@ function register_hexa_plugin_core_autoloader(): void {
 register_hexa_plugin_core_autoloader();
 
 final class Plugin {
-    const VERSION = "1.2.4";
+    const VERSION = "1.2.6";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -227,6 +227,7 @@ final class Plugin {
         }
         wp_enqueue_style( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.css", [], self::VERSION );
         wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend.css", [ "hexa-tts-admin" ], self::VERSION );
+        wp_add_inline_style( "smp-tts-frontend", self::frontend_player_css() );
         wp_enqueue_script( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.js", [ "jquery", "wp-color-picker" ], self::VERSION, true );
         wp_localize_script( "hexa-tts-admin", "hexaTts", [ "ajaxUrl" => admin_url( "admin-ajax.php" ), "nonce" => wp_create_nonce( self::NONCE_ACTION ) ] );
         wp_add_inline_style( "hexa-tts-admin", self::admin_live_display_css() );
@@ -239,9 +240,18 @@ final class Plugin {
             return;
         }
         wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend.css", [], self::VERSION );
+        wp_add_inline_style( "smp-tts-frontend", self::frontend_player_css() );
     }
 
+    private static function frontend_player_css(): string {
+        $path = __DIR__ . "/assets/frontend.css";
+        if ( ! is_readable( $path ) ) {
+            return "";
+        }
 
+        $css = file_get_contents( $path );
+        return is_string( $css ) ? $css : "";
+    }
 
     private static function admin_inline_script() {
         return <<<JS
@@ -987,6 +997,16 @@ JS;
             "compact_pill" => [ "label" => "Compact Pill", "description" => "Small lightweight pill for tight article headers." ],
             "media_panel" => [ "label" => "Media Panel", "description" => "Larger audio-first module with stronger visual weight." ],
             "minimal_audio" => [ "label" => "Minimal Audio", "description" => "Bare player with minimal border and metadata." ],
+            "quiet_card" => [ "label" => "Quiet Card", "description" => "Soft 1px card, no shadow, neutral label. The sleek default." ],
+            "slim_line" => [ "label" => "Slim Line", "description" => "Borderless player under a thin accent rule. Maximum restraint." ],
+            "ghost" => [ "label" => "Ghost", "description" => "Fully transparent — just a small label and the player." ],
+            "inline_label" => [ "label" => "Inline Label", "description" => "Label and player on one row for tight article headers." ],
+            "dot" => [ "label" => "Dot", "description" => "Small accent dot beside a neutral label, no container." ],
+            "underline" => [ "label" => "Underline", "description" => "Label with an accent underline over a hairline divider." ],
+            "tag" => [ "label" => "Listen Tag", "description" => "Small tinted pill label beside the player." ],
+            "editorial_thin" => [ "label" => "Editorial Thin", "description" => "Refined thin left rule on a soft ground." ],
+            "caption" => [ "label" => "Caption", "description" => "Player first, small caption label beneath — like a figure caption." ],
+            "eyebrow" => [ "label" => "Eyebrow", "description" => "Uppercase letter-spaced label with a short accent tick." ],
         ];
     }
 
