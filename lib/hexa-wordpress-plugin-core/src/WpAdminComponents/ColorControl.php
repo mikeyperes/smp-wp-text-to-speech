@@ -22,6 +22,12 @@ final class ColorControl {
         $status_html = (string) ( $args["status_html"] ?? "" );
         $name = (string) ( $args["name"] ?? $key );
         $id = self::clean_id( (string) ( $args["id"] ?? "hpc-color-" . $key ) );
+        $show_picker = array_key_exists( "show_picker", $args ) ? ! empty( $args["show_picker"] ) : true;
+        $show_hex_input = array_key_exists( "show_hex_input", $args ) ? ! empty( $args["show_hex_input"] ) : true;
+        $show_rgb = array_key_exists( "show_rgb", $args ) ? ! empty( $args["show_rgb"] ) : true;
+        $show_hex_code = array_key_exists( "show_hex_code", $args ) ? ! empty( $args["show_hex_code"] ) : true;
+        $show_swatch = array_key_exists( "show_swatch", $args ) ? ! empty( $args["show_swatch"] ) : true;
+        $show_copy = array_key_exists( "show_copy", $args ) ? ! empty( $args["show_copy"] ) : true;
 
         ob_start();
         CoreUi::render_assets();
@@ -35,21 +41,33 @@ final class ColorControl {
                 <?php endif; ?>
             </div>
             <div class="hpc-color-row">
-                <label class="hpc-color-picker-shell" for="<?php echo esc_attr( $id ); ?>">
-                    <span>Picker</span>
-                    <input id="<?php echo esc_attr( $id ); ?>" class="<?php echo esc_attr( $picker_class ); ?>" type="color" value="<?php echo esc_attr( $value ); ?>" data-hpc-color-picker<?php echo $disabled; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
-                </label>
-                <label class="hpc-color-hex-shell">
-                    <span>Hex</span>
-                    <input class="<?php echo esc_attr( $hex_input_class ); ?>" type="text" name="<?php echo esc_attr( $name ); ?>" data-key="<?php echo esc_attr( $key ); ?>" data-hpc-color-hex-input value="<?php echo esc_attr( $value ); ?>" inputmode="text" maxlength="7" autocomplete="off" spellcheck="false" pattern="#?[0-9a-fA-F]{6}"<?php echo $disabled; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
-                </label>
-                <div class="hpc-color-value">
-                    <span>RGB</span>
-                    <code data-hpc-color-rgb data-smpi-color-rgb><?php echo esc_html( BrandColorProvider::rgb_string( $value ) ); ?></code>
-                </div>
-                <code class="hpc-color-hex-code" data-hpc-color-hex data-smpi-color-hex><?php echo esc_html( $value ); ?></code>
-                <span class="hpc-color-swatch smpi-color-swatch" data-hpc-color-swatch style="background:<?php echo esc_attr( $value ); ?>"></span>
-                <?php echo CoreUi::copy_button( $value, "Copy hex" ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                <?php if ( $show_picker ) : ?>
+                    <label class="hpc-color-picker-shell" for="<?php echo esc_attr( $id ); ?>">
+                        <span>Picker</span>
+                        <input id="<?php echo esc_attr( $id ); ?>" class="<?php echo esc_attr( $picker_class ); ?>" type="color" value="<?php echo esc_attr( $value ); ?>" data-hpc-color-picker<?php echo $disabled; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+                    </label>
+                <?php endif; ?>
+                <?php if ( $show_hex_input ) : ?>
+                    <label class="hpc-color-hex-shell">
+                        <span>Hex</span>
+                        <input class="<?php echo esc_attr( $hex_input_class ); ?>" type="text" name="<?php echo esc_attr( $name ); ?>" data-key="<?php echo esc_attr( $key ); ?>" data-hpc-color-hex-input value="<?php echo esc_attr( $value ); ?>" inputmode="text" maxlength="7" autocomplete="off" spellcheck="false" pattern="#?[0-9a-fA-F]{6}"<?php echo $disabled; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
+                    </label>
+                <?php endif; ?>
+                <?php if ( $show_rgb ) : ?>
+                    <div class="hpc-color-value">
+                        <span>RGB</span>
+                        <code data-hpc-color-rgb data-smpi-color-rgb><?php echo esc_html( BrandColorProvider::rgb_string( $value ) ); ?></code>
+                    </div>
+                <?php endif; ?>
+                <?php if ( $show_hex_code ) : ?>
+                    <code class="hpc-color-hex-code" data-hpc-color-hex data-smpi-color-hex><?php echo esc_html( $value ); ?></code>
+                <?php endif; ?>
+                <?php if ( $show_swatch ) : ?>
+                    <span class="hpc-color-swatch smpi-color-swatch" data-hpc-color-swatch style="background:<?php echo esc_attr( $value ); ?>"></span>
+                <?php endif; ?>
+                <?php if ( $show_copy ) : ?>
+                    <?php echo CoreUi::copy_button( $value, "Copy hex" ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                <?php endif; ?>
                 <?php if ( $import_brand ) : ?>
                     <button type="button" class="<?php echo esc_attr( $import_class ); ?>" data-hpc-brand-color-import data-smpi-import-brand-color data-key="<?php echo esc_attr( $key ); ?>" data-brand-color="<?php echo esc_attr( $brand ); ?>"><?php echo esc_html( $import_label ); ?></button>
                 <?php endif; ?>

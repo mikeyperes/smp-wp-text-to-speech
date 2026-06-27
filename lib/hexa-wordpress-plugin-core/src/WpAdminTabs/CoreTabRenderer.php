@@ -13,6 +13,7 @@ use Hexa\PluginCore\BrandColors\BrandColorProvider;
 use Hexa\PluginCore\CoreRuntime\CoreVersion;
 use Hexa\PluginCore\WpAdminComponents\ColorControl;
 use Hexa\PluginCore\WpAdminComponents\CoreUi;
+use Hexa\PluginCore\WpAdminComponents\DetailedColorPicker;
 
 final class CoreTabRenderer {
     private CoreTabConfig $config;
@@ -198,31 +199,62 @@ README;
 
     private function render_brand_colors_section(): string {
         $payload = BrandColorProvider::payload( '#2d5277' );
-        $example = ColorControl::render(
+        $example = DetailedColorPicker::render(
             [
-                'key'                 => 'example_accent_color',
-                'label'               => 'Reusable brand-aware color control',
-                'description'         => 'Core renders picker, editable hex, RGB, swatch, copy, and HWS primary import hooks.',
-                'value'               => (string) $payload['primary_color'],
-                'default'             => '#2d5277',
-                'hex_input_class'     => 'hpc-demo-color-input',
-                'picker_class'        => 'hpc-demo-color-picker',
-                'import_brand'        => true,
-                'import_button_class' => 'hpc-demo-brand-import',
+                'id'          => 'hpc-demo-detailed-color-picker',
+                'title'       => 'Detailed Color Picker',
+                'description' => 'Primary and secondary colors use the same picker, editable hex, RGB, swatch, copy, and Elementor import behavior.',
+                'primary'     => [
+                    'key'             => 'example_primary_color',
+                    'label'           => 'Primary color',
+                    'value'           => (string) $payload['primary_color'],
+                    'default'         => '#2d5277',
+                    'hex_input_class' => 'hpc-demo-primary-color',
+                ],
+                'secondary'   => [
+                    'key'             => 'example_secondary_color',
+                    'label'           => 'Secondary color',
+                    'value'           => (string) $payload['secondary_color'],
+                    'default'         => '#111827',
+                    'hex_input_class' => 'hpc-demo-secondary-color',
+                ],
+                'show_fonts'  => true,
+                'fonts'       => [
+                    [
+                        'key'   => 'primary_font_family',
+                        'token' => 'primary_font_family',
+                        'label' => 'Primary font family',
+                        'value' => '',
+                    ],
+                    [
+                        'key'   => 'secondary_font_family',
+                        'token' => 'secondary_font_family',
+                        'label' => 'Secondary font family',
+                        'value' => '',
+                    ],
+                ],
             ]
         );
         $code = <<<'CODE'
 use Hexa\PluginCore\BrandColors\BrandColorProvider;
-use Hexa\PluginCore\WpAdminComponents\ColorControl;
+use Hexa\PluginCore\WpAdminComponents\DetailedColorPicker;
 
 $brand = BrandColorProvider::payload('#2d5277');
 
-echo ColorControl::render([
-    'key' => 'accent_color',
-    'label' => 'Accent color',
-    'value' => $settings['accent_color'] ?? $brand['primary_color'],
-    'default' => $brand['primary_color'],
-    'import_brand' => true,
+echo DetailedColorPicker::render([
+    'title' => 'Brand card colors',
+    'primary' => [
+        'key' => 'primary_color',
+        'value' => $settings['primary_color'] ?? $brand['primary_color'],
+        'hex_input_class' => 'plugin-primary-color',
+    ],
+    'secondary' => [
+        'key' => 'secondary_color',
+        'value' => $settings['secondary_color'] ?? $brand['secondary_color'],
+        'hex_input_class' => 'plugin-secondary-color',
+    ],
+    'show_elementor_import' => true,
+    'show_fonts' => false,
 ]);
 CODE;
 
@@ -237,7 +269,7 @@ CODE;
             . CoreUi::card(
                 [
                     'title'     => 'Host plugin contract',
-                    'body_html' => '<p>Core owns the visual color-control structure. Host plugins own the save/import AJAX action and pass plugin-specific setting keys.</p>',
+                    'body_html' => '<p>Core owns the detailed color/font control structure and Elementor token parsing. Host plugins own persistence and pass plugin-specific setting keys/classes.</p>',
                 ]
             )
             . '</div><div style="height:14px"></div>'

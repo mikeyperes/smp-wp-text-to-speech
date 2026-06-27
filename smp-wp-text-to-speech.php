@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.2.13
+ * Version: 1.2.14
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -53,7 +53,7 @@ function register_hexa_plugin_core_autoloader(): void {
 register_hexa_plugin_core_autoloader();
 
 final class Plugin {
-    const VERSION = "1.2.13";
+    const VERSION = "1.2.14";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -216,10 +216,6 @@ final class Plugin {
         if ( ! $is_settings && ! $is_post ) {
             return;
         }
-        if ( $is_settings ) {
-            wp_enqueue_style( "wp-color-picker" );
-            wp_enqueue_script( "wp-color-picker" );
-        }
         if ( $is_post ) {
             wp_enqueue_media();
             if ( function_exists( "acf_enqueue_scripts" ) ) {
@@ -229,7 +225,7 @@ final class Plugin {
         wp_enqueue_style( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.css", [], self::VERSION );
         wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend.css", [ "hexa-tts-admin" ], self::VERSION );
         wp_add_inline_style( "smp-tts-frontend", self::frontend_player_css() );
-        wp_enqueue_script( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.js", [ "jquery", "wp-color-picker" ], self::VERSION, true );
+        wp_enqueue_script( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.js", [ "jquery" ], self::VERSION, true );
         wp_localize_script( "hexa-tts-admin", "hexaTts", [ "ajaxUrl" => admin_url( "admin-ajax.php" ), "nonce" => wp_create_nonce( self::NONCE_ACTION ) ] );
         wp_add_inline_style( "hexa-tts-admin", self::admin_live_display_css() );
         wp_add_inline_script( "hexa-tts-admin", self::admin_inline_script(), "after" );
@@ -901,6 +897,46 @@ JS;
         <?php
     }
 
+    private static function primary_color_control_html( array $settings, string $id ): string {
+        $value = self::sanitize_color( $settings["primary_color"] ?? "#3657e3" );
+
+        if ( class_exists( "\\Hexa\\PluginCore\\WpAdminComponents\\ColorControl" ) ) {
+            return \Hexa\PluginCore\WpAdminComponents\ColorControl::render(
+                [
+                    "id"              => $id,
+                    "key"             => "primary_color",
+                    "name"            => "hexa_tts[primary_color]",
+                    "label"           => "Primary color",
+                    "description"     => "Used directly by the live player CSS variable.",
+                    "value"           => $value,
+                    "default"         => "#3657e3",
+                    "control_class"   => "hexa-tts-color-field",
+                    "hex_input_class" => "hexa-tts-live-control hexa-tts-primary-color",
+                    "picker_class"    => "hexa-tts-primary-color-picker",
+                    "show_hex_code"   => false,
+                ]
+            );
+        }
+
+        return '<label class="hexa-tts-color-field"><span>Primary color</span><input type="text" class="hexa-tts-live-control hexa-tts-primary-color" name="hexa_tts[primary_color]" value="' . esc_attr( $value ) . '"><small>Used directly by the live player CSS variable.</small></label>';
+    }
+
+    private static function elementor_palette_detector_html( string $id ): string {
+        if ( ! class_exists( "\\Hexa\\PluginCore\\WpAdminComponents\\ElementorPaletteDetector" ) ) {
+            return "";
+        }
+
+        return \Hexa\PluginCore\WpAdminComponents\ElementorPaletteDetector::render(
+            [
+                "id"           => $id,
+                "title"        => "Elementor palette",
+                "button_label" => "Load Elementor colors",
+                "description"  => "Reference only. Load the Elementor palette, then copy a hex value into the primary color field above.",
+                "empty_label"  => "Click \"Load Elementor colors\" to show your Elementor palette.",
+            ]
+        );
+    }
+
     private static function render_features_tab(): void {
         $settings = self::get_settings();
         $templates = self::template_options();
@@ -924,10 +960,9 @@ JS;
         .httf-field>span{font-size:12px;font-weight:600;color:#344054}
         .httf-field input[type=text],.httf-field select{width:100%;box-sizing:border-box;height:36px;min-height:36px;max-width:100%;padding:0 11px;border:1px solid #cfd3da;border-radius:8px;font-size:13px;background:#fff;margin:0}
         .httf-field small{font-size:11px;color:#98a2b3;line-height:1.4}
-        .httf-color{margin-top:18px;max-width:340px}
-        .httf-color .wp-picker-container{margin-top:2px;display:block}
-        .httf-color-label{display:block;font-size:12px;font-weight:600;color:#344054;margin:0 0 6px}
-        .httf-color .wp-color-result.button{margin:0}
+        .httf-color{margin-top:18px;max-width:460px}
+        .httf-color .hpc-color-head h3{font-size:12px;text-transform:none;letter-spacing:0}
+        .httf-color .hpc-color-row{gap:8px}
         .httf-checks{display:flex;gap:14px 28px;flex-wrap:wrap;margin-top:18px}
         .httf-check{display:flex !important;align-items:center;gap:8px;font-size:13px;color:#344054;font-weight:500;margin:0;grid-template-columns:none !important}
         .httf-check input{width:auto !important;margin:0}
@@ -967,7 +1002,8 @@ JS;
                         <label class="httf-field"><span>Player label</span><input class="hexa-tts-live-control" type="text" name="hexa_tts[player_label]" value="<?php echo esc_attr( $settings["player_label"] ); ?>"></label>
                         <label class="httf-field"><span>Player size</span><select class="hexa-tts-live-control" name="hexa_tts[player_size]"><?php self::render_options( self::size_options(), $settings["player_size"] ); ?></select></label>
                     </div>
-                    <div class="httf-color"><span class="httf-color-label">Primary color</span><input class="hexa-tts-color-picker hexa-tts-live-control" type="text" name="hexa_tts[primary_color]" value="<?php echo esc_attr( self::sanitize_color( $settings["primary_color"] ) ); ?>" data-default-color="#3657e3"></div>
+                    <div class="httf-color"><?php echo self::primary_color_control_html( $settings, "hexa-tts-features-primary-color" ); ?></div>
+                    <?php echo self::elementor_palette_detector_html( "hexa-tts-features-elementor-palette" ); ?>
                     <div class="httf-checks">
                         <label class="httf-check"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[include_title]" value="1" <?php checked( ! empty( $settings["include_title"] ) ); ?>><span>Include post title in narration</span></label>
                         <label class="httf-check"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[show_player_meta]" value="1" <?php checked( ! empty( $settings["show_player_meta"] ) ); ?>><span>Show provider and date metadata</span></label>
@@ -1008,19 +1044,20 @@ JS;
         $shortcode = self::display_shortcode( $settings );
         ?>
         <section class="hexa-tts-panel">
-            <div class="hexa-tts-panel-head"><div><h2>Display Settings</h2><p>Choose the exact live player design and automatic placement. Previews below use the same renderer and CSS as the frontend.</p></div><a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( "admin-post.php?action=hexa_tts_import_elementor_color" ), self::NONCE_ACTION, "hexa_tts_nonce" ) ); ?>">Import Elementor primary color</a></div>
+            <div class="hexa-tts-panel-head"><div><h2>Display Settings</h2><p>Choose the exact live player design and automatic placement. Previews below use the same renderer and CSS as the frontend.</p></div></div>
             <form method="post" action="<?php echo esc_url( admin_url( "admin-post.php" ) ); ?>" class="hexa-tts-settings-form hexa-tts-display-form hexa-tts-display-live-form">
                 <?php wp_nonce_field( self::NONCE_ACTION, "hexa_tts_nonce" ); ?>
                 <input type="hidden" name="action" value="hexa_tts_save_settings">
                 <input type="hidden" name="hexa_tts_tab" value="display">
                 <div class="hexa-tts-grid hexa-tts-grid-4">
-                    <label><span>Primary color</span><input type="text" class="hexa-tts-color-picker hexa-tts-live-control" name="hexa_tts[primary_color]" value="<?php echo esc_attr( self::sanitize_color( $settings["primary_color"] ) ); ?>" data-default-color="#3657e3"><small>Used directly by the live player CSS variable.</small></label>
+                    <?php echo self::primary_color_control_html( $settings, "hexa-tts-display-primary-color" ); ?>
                     <label><span>Player label</span><input type="text" class="hexa-tts-live-control" name="hexa_tts[player_label]" value="<?php echo esc_attr( $settings["player_label"] ); ?>"></label>
                     <label><span>Player size</span><select class="hexa-tts-live-control" name="hexa_tts[player_size]"><?php self::render_options( self::size_options(), $settings["player_size"] ); ?></select></label>
                     <label><span>ACF audio file field</span><input type="text" class="hexa-tts-live-control" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( sanitize_key( $settings["acf_audio_field"] ?: "article_audio" ) ); ?>"></label>
                     <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[auto_insert_player]" value="1" <?php checked( ! empty( $settings["auto_insert_player"] ) ); ?>><span>Enable automatic player placement</span></label>
                     <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[show_player_meta]" value="1" <?php checked( ! empty( $settings["show_player_meta"] ) ); ?>><span>Show player metadata</span></label>
                 </div>
+                <?php echo self::elementor_palette_detector_html( "hexa-tts-display-elementor-palette" ); ?>
 
                 <h3>Automatic placement</h3>
                 <?php echo self::placement_cards_html( $settings ); ?>

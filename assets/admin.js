@@ -117,14 +117,6 @@
   'use strict';
   function initDisplayControls(scope) {
     var $scope = scope ? $(scope) : $(document);
-    if ($.fn.wpColorPicker) {
-      $scope.find('.hexa-tts-color-picker').each(function () {
-        var $input = $(this);
-        if (!$input.data('wp-color-picker')) {
-          $input.wpColorPicker();
-        }
-      });
-    }
     $scope.find('.hexa-tts-template-grid').each(function () {
       var $grid = $(this);
       $grid.find('.hexa-tts-template-card').removeClass('is-selected');

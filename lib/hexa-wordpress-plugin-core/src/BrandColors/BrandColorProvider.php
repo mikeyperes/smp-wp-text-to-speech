@@ -29,6 +29,26 @@ final class BrandColorProvider {
         ];
     }
 
+    public static function elementor_payload( string $fallback_primary = "#2d5277", string $fallback_secondary = "#111827" ): array {
+        $colors = self::elementor_colors( $fallback_primary, $fallback_secondary );
+        $fonts = self::elementor_fonts();
+
+        return [
+            "source" => "elementor",
+            "source_label" => "Elementor Site Settings",
+            "primary_color" => $colors["primary_color"] ?? "",
+            "primary_rgb" => ! empty( $colors["primary_color"] ) ? self::rgb_string( $colors["primary_color"] ) : "",
+            "secondary_color" => $colors["secondary_color"] ?? "",
+            "secondary_rgb" => ! empty( $colors["secondary_color"] ) ? self::rgb_string( $colors["secondary_color"] ) : "",
+            "text_color" => $colors["text_color"] ?? "",
+            "accent_color" => $colors["accent_color"] ?? "",
+            "primary_font_family" => $fonts["primary_font_family"] ?? "",
+            "secondary_font_family" => $fonts["secondary_font_family"] ?? "",
+            "text_font_family" => $fonts["text_font_family"] ?? "",
+            "accent_font_family" => $fonts["accent_font_family"] ?? "",
+        ];
+    }
+
     public static function normalize_hex( string $value, string $fallback = "#000000" ): string {
         $value = trim( strtolower( $value ) );
         if ( "" !== $value && "#" !== $value[0] ) {
@@ -72,6 +92,105 @@ final class BrandColorProvider {
         return "rgb(" . $rgb["r"] . ", " . $rgb["g"] . ", " . $rgb["b"] . ")";
     }
 
+    public static function elementor_colors( string $fallback_primary = "#2d5277", string $fallback_secondary = "#111827" ): array {
+        $settings = self::elementor_settings();
+        if ( empty( $settings ) ) {
+            return [];
+        }
+
+        $flat = [];
+        foreach ( [ "system_colors", "custom_colors" ] as $group ) {
+            foreach ( (array) ( $settings[ $group ] ?? [] ) as $color ) {
+                if ( ! is_array( $color ) || empty( $color["_id"] ) || empty( $color["color"] ) ) {
+                    continue;
+                }
+                $hex = self::normalize_hex( (string) $color["color"], "" );
+                if ( "#000000" === $hex && ! preg_match( "/^#?0{6}$/", (string) $color["color"] ) ) {
+                    continue;
+                }
+                $flat[ sanitize_key( (string) $color["_id"] ) ] = $hex;
+            }
+        }
+
+        return array_filter(
+            [
+                "primary_color" => $flat["primary"] ?? $flat["accent"] ?? self::normalize_hex( $fallback_primary ),
+                "secondary_color" => $flat["secondary"] ?? $flat["text"] ?? self::normalize_hex( $fallback_secondary ),
+                "text_color" => $flat["text"] ?? "",
+                "accent_color" => $flat["accent"] ?? "",
+            ]
+        );
+    }
+
+    /**
+     * Return every Elementor site color as a normalized, display-ready palette.
+     *
+     * @return array<int,array{id:string,label:string,hex:string,source:string}>
+     */
+    public static function elementor_palette(): array {
+        $settings = self::elementor_settings();
+        if ( empty( $settings ) ) {
+            return [];
+        }
+
+        $palette = [];
+        foreach ( [ "system_colors" => "System", "custom_colors" => "Custom" ] as $group => $source ) {
+            foreach ( (array) ( $settings[ $group ] ?? [] ) as $color ) {
+                if ( ! is_array( $color ) || empty( $color["_id"] ) || empty( $color["color"] ) ) {
+                    continue;
+                }
+
+                $hex = self::normalize_hex( (string) $color["color"], "" );
+                if ( "#000000" === $hex && ! preg_match( "/^#?0{6}$/", (string) $color["color"] ) ) {
+                    continue;
+                }
+
+                $label = isset( $color["title"] ) && is_scalar( $color["title"] ) && "" !== trim( (string) $color["title"] )
+                    ? sanitize_text_field( (string) $color["title"] )
+                    : ucwords( str_replace( [ "_", "-" ], " ", (string) $color["_id"] ) );
+
+                $palette[] = [
+                    "id"     => sanitize_key( (string) $color["_id"] ),
+                    "label"  => $label,
+                    "hex"    => $hex,
+                    "source" => $source,
+                ];
+            }
+        }
+
+        return $palette;
+    }
+
+    public static function elementor_fonts(): array {
+        $settings = self::elementor_settings();
+        if ( empty( $settings ) ) {
+            return [];
+        }
+
+        $flat = [];
+        foreach ( [ "system_typography", "custom_typography" ] as $group ) {
+            foreach ( (array) ( $settings[ $group ] ?? [] ) as $font ) {
+                if ( ! is_array( $font ) || empty( $font["_id"] ) ) {
+                    continue;
+                }
+                $family = self::elementor_font_family( $font );
+                if ( "" === $family ) {
+                    continue;
+                }
+                $flat[ sanitize_key( (string) $font["_id"] ) ] = $family;
+            }
+        }
+
+        return array_filter(
+            [
+                "primary_font_family" => $flat["primary"] ?? "",
+                "secondary_font_family" => $flat["secondary"] ?? "",
+                "text_font_family" => $flat["text"] ?? "",
+                "accent_font_family" => $flat["accent"] ?? "",
+            ]
+        );
+    }
+
     private static function hws_color( string $option, string $fallback ): string {
         if ( function_exists( "hws_get_brand_colors_payload" ) ) {
             $payload = hws_get_brand_colors_payload();
@@ -89,6 +208,41 @@ final class BrandColorProvider {
         }
 
         return self::normalize_hex( $fallback );
+    }
+
+    private static function elementor_settings(): array {
+        if ( ! function_exists( "get_option" ) || ! function_exists( "get_post_meta" ) ) {
+            return [];
+        }
+
+        $kit = absint( get_option( "elementor_active_kit" ) );
+        if ( ! $kit ) {
+            return [];
+        }
+
+        $settings = get_post_meta( $kit, "_elementor_page_settings", true );
+        return is_array( $settings ) ? $settings : [];
+    }
+
+    private static function elementor_font_family( array $font ): string {
+        foreach ( [ "typography_font_family", "font_family", "family" ] as $key ) {
+            if ( isset( $font[ $key ] ) && is_scalar( $font[ $key ] ) && "" !== trim( (string) $font[ $key ] ) ) {
+                return sanitize_text_field( (string) $font[ $key ] );
+            }
+        }
+
+        foreach ( $font as $value ) {
+            if ( ! is_array( $value ) ) {
+                continue;
+            }
+            foreach ( [ "typography_font_family", "font_family", "family" ] as $key ) {
+                if ( isset( $value[ $key ] ) && is_scalar( $value[ $key ] ) && "" !== trim( (string) $value[ $key ] ) ) {
+                    return sanitize_text_field( (string) $value[ $key ] );
+                }
+            }
+        }
+
+        return "";
     }
 
     private static function brand_assets_admin_url(): string {

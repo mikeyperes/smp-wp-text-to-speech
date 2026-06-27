@@ -29,6 +29,7 @@ src/CredentialVault/    Hexa\PluginCore\CredentialVault
 src/FieldStructures/    Hexa\PluginCore\FieldStructures
 src/FaqSets/            Hexa\PluginCore\FaqSets
 src/LogFiles/           Hexa\PluginCore\LogFiles
+src/PluginChecks/       Hexa\PluginCore\PluginChecks
 src/PluginProvisioning/ Hexa\PluginCore\PluginProvisioning
 src/PluginUpdates/      Hexa\PluginCore\PluginUpdates
 src/SnippetRegistry/    Hexa\PluginCore\SnippetRegistry
