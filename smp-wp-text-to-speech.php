@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.2.11
+ * Version: 1.2.13
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -53,7 +53,7 @@ function register_hexa_plugin_core_autoloader(): void {
 register_hexa_plugin_core_autoloader();
 
 final class Plugin {
-    const VERSION = "1.2.11";
+    const VERSION = "1.2.13";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -919,13 +919,15 @@ JS;
         .httf-section{padding:18px 22px;border-top:1px solid #f0f1f3}
         .httf-section h3{margin:0 0 3px;font-size:13px;font-weight:700;color:#1d2327;text-transform:none}
         .httf-hint{margin:0 0 14px;font-size:12px;color:#667085;line-height:1.5;max-width:78ch}
-        .httf-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;align-items:start}
+        .httf-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
         .httf-field{display:grid !important;gap:6px;align-content:start;margin:0;font-weight:400}
         .httf-field>span{font-size:12px;font-weight:600;color:#344054}
         .httf-field input[type=text],.httf-field select{width:100%;box-sizing:border-box;height:36px;min-height:36px;max-width:100%;padding:0 11px;border:1px solid #cfd3da;border-radius:8px;font-size:13px;background:#fff;margin:0}
         .httf-field small{font-size:11px;color:#98a2b3;line-height:1.4}
-        .httf-field--color .wp-picker-container{display:inline-block}
-        .httf-field--color .wp-color-result.button{height:36px;margin:0}
+        .httf-color{margin-top:18px;max-width:340px}
+        .httf-color .wp-picker-container{margin-top:2px;display:block}
+        .httf-color-label{display:block;font-size:12px;font-weight:600;color:#344054;margin:0 0 6px}
+        .httf-color .wp-color-result.button{margin:0}
         .httf-checks{display:flex;gap:14px 28px;flex-wrap:wrap;margin-top:18px}
         .httf-check{display:flex !important;align-items:center;gap:8px;font-size:13px;color:#344054;font-weight:500;margin:0;grid-template-columns:none !important}
         .httf-check input{width:auto !important;margin:0}
@@ -964,8 +966,8 @@ JS;
                         <label class="httf-field"><span>ACF audio file field</span><input class="hexa-tts-live-control" type="text" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( $acf_field ); ?>"><small>Used by generated storage and the editor upload field.</small></label>
                         <label class="httf-field"><span>Player label</span><input class="hexa-tts-live-control" type="text" name="hexa_tts[player_label]" value="<?php echo esc_attr( $settings["player_label"] ); ?>"></label>
                         <label class="httf-field"><span>Player size</span><select class="hexa-tts-live-control" name="hexa_tts[player_size]"><?php self::render_options( self::size_options(), $settings["player_size"] ); ?></select></label>
-                        <label class="httf-field httf-field--color"><span>Primary color</span><input class="hexa-tts-color-picker hexa-tts-live-control" type="text" name="hexa_tts[primary_color]" value="<?php echo esc_attr( self::sanitize_color( $settings["primary_color"] ) ); ?>" data-default-color="#3657e3"></label>
                     </div>
+                    <div class="httf-color"><span class="httf-color-label">Primary color</span><input class="hexa-tts-color-picker hexa-tts-live-control" type="text" name="hexa_tts[primary_color]" value="<?php echo esc_attr( self::sanitize_color( $settings["primary_color"] ) ); ?>" data-default-color="#3657e3"></div>
                     <div class="httf-checks">
                         <label class="httf-check"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[include_title]" value="1" <?php checked( ! empty( $settings["include_title"] ) ); ?>><span>Include post title in narration</span></label>
                         <label class="httf-check"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[show_player_meta]" value="1" <?php checked( ! empty( $settings["show_player_meta"] ) ); ?>><span>Show provider and date metadata</span></label>
