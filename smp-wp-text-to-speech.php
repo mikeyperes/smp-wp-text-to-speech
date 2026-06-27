@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.2.10
+ * Version: 1.2.11
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -53,7 +53,7 @@ function register_hexa_plugin_core_autoloader(): void {
 register_hexa_plugin_core_autoloader();
 
 final class Plugin {
-    const VERSION = "1.2.10";
+    const VERSION = "1.2.11";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -907,72 +907,96 @@ JS;
         $placements = self::placement_options();
         $shortcode = self::display_shortcode( $settings );
         $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
+        $enabled = ! empty( $settings["auto_insert_player"] );
         ?>
-        <form method="post" action="<?php echo esc_url( admin_url( "admin-post.php" ) ); ?>" class="hexa-tts-settings-form hexa-tts-features-form hexa-tts-display-live-form">
+        <style>
+        .httf{max-width:1000px}
+        .httf-card{border:1px solid #e3e5e9;border-radius:14px;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.05);overflow:hidden}
+        .httf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:18px 22px;background:#f8f9fb;border-bottom:1px solid #e7e9ee}
+        .httf-head h2{margin:0 0 4px;font-size:18px;color:#101828}
+        .httf-head p{margin:0;font-size:12.5px;color:#667085;max-width:64ch;line-height:1.5}
+        .httf-head code{background:#eef0f3;border-radius:4px;padding:1px 6px;font-size:12px}
+        .httf-section{padding:18px 22px;border-top:1px solid #f0f1f3}
+        .httf-section h3{margin:0 0 3px;font-size:13px;font-weight:700;color:#1d2327;text-transform:none}
+        .httf-hint{margin:0 0 14px;font-size:12px;color:#667085;line-height:1.5;max-width:78ch}
+        .httf-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;align-items:start}
+        .httf-field{display:grid !important;gap:6px;align-content:start;margin:0;font-weight:400}
+        .httf-field>span{font-size:12px;font-weight:600;color:#344054}
+        .httf-field input[type=text],.httf-field select{width:100%;box-sizing:border-box;height:36px;min-height:36px;max-width:100%;padding:0 11px;border:1px solid #cfd3da;border-radius:8px;font-size:13px;background:#fff;margin:0}
+        .httf-field small{font-size:11px;color:#98a2b3;line-height:1.4}
+        .httf-field--color .wp-picker-container{display:inline-block}
+        .httf-field--color .wp-color-result.button{height:36px;margin:0}
+        .httf-checks{display:flex;gap:14px 28px;flex-wrap:wrap;margin-top:18px}
+        .httf-check{display:flex !important;align-items:center;gap:8px;font-size:13px;color:#344054;font-weight:500;margin:0;grid-template-columns:none !important}
+        .httf-check input{width:auto !important;margin:0}
+        .httf-proof{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+        .httf-proof>div{flex:1 1 180px;border:1px solid #eaecf0;border-radius:9px;background:#f8f9fb;padding:9px 12px}
+        .httf-proof small{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#98a2b3;margin:0 0 3px;font-weight:700}
+        .httf-proof strong,.httf-proof code{font-size:13px;color:#1d2327}
+        .httf-save{margin:0 !important;padding:16px 22px;border-top:1px solid #f0f1f3;background:#fafbfc;display:flex;align-items:center;gap:14px}
+        .httf .hexa-tts-shortcode-card{margin:0}
+        .httf .hexa-tts-selected-pill,.httf .hexa-tts-template-live-choice em{display:none}
+        .httf .hexa-tts-choice-card.is-selected .hexa-tts-selected-pill,.httf .hexa-tts-template-live-row.is-selected .hexa-tts-template-live-choice em{display:inline-flex}
+        @media(max-width:980px){.httf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:600px){.httf-grid{grid-template-columns:1fr}}
+        </style>
+        <form method="post" action="<?php echo esc_url( admin_url( "admin-post.php" ) ); ?>" class="hexa-tts-settings-form hexa-tts-features-form hexa-tts-display-live-form httf">
             <?php wp_nonce_field( self::NONCE_ACTION, "hexa_tts_nonce" ); ?>
             <input type="hidden" name="action" value="hexa_tts_save_settings">
             <input type="hidden" name="hexa_tts_tab" value="features">
 
-            <section class="hexa-tts-hero hexa-tts-feature-hero">
-                <p class="hexa-tts-kicker">Features</p>
-                <h2>Feature controls for article audio.</h2>
-                <p>Enable the player, choose where it renders, choose the live front-end design, configure the ACF audio file field, and copy the shortcode from the same control surface.</p>
-            </section>
-
-            <article class="hexa-tts-feature-control-card">
-                <div class="hexa-tts-feature-control-head">
+            <div class="httf-card">
+                <header class="httf-head">
                     <div>
-                        <p class="hexa-tts-kicker">Feature</p>
-                        <h2>Text-to-speech article player</h2>
-                        <p>Generated or manually uploaded audio is stored in the Media Library and synced to <code><?php echo esc_html( $acf_field ); ?></code>.</p>
+                        <h2>Article audio player</h2>
+                        <p>Generated or uploaded audio is stored in the Media Library and synced to <code><?php echo esc_html( $acf_field ); ?></code>. Configure the player, choose where it renders, pick a design, and copy the shortcode.</p>
                     </div>
                     <label class="hexa-tts-switch">
-                        <input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[auto_insert_player]" value="1" <?php checked( ! empty( $settings["auto_insert_player"] ) ); ?>>
+                        <input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[auto_insert_player]" value="1" <?php checked( $enabled ); ?>>
                         <span></span>
-                        <strong><?php echo ! empty( $settings["auto_insert_player"] ) ? esc_html__( "Enabled", "smp-wp-text-to-speech" ) : esc_html__( "Disabled", "smp-wp-text-to-speech" ); ?></strong>
+                        <strong><?php echo $enabled ? esc_html__( "Enabled", "smp-wp-text-to-speech" ) : esc_html__( "Disabled", "smp-wp-text-to-speech" ); ?></strong>
                     </label>
-                </div>
+                </header>
 
-                <div class="hexa-tts-feature-control-grid">
-                    <section>
-                        <h3>Core controls</h3>
-                        <div class="hexa-tts-grid hexa-tts-grid-4">
-                            <label><span>ACF audio file field</span><input class="hexa-tts-live-control" type="text" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( $acf_field ); ?>"><small>Used by generated storage and the editor upload field.</small></label>
-                            <label><span>Player label</span><input class="hexa-tts-live-control" type="text" name="hexa_tts[player_label]" value="<?php echo esc_attr( $settings["player_label"] ); ?>"></label>
-                            <label><span>Player size</span><select class="hexa-tts-live-control" name="hexa_tts[player_size]"><?php self::render_options( self::size_options(), $settings["player_size"] ); ?></select></label>
-                            <label><span>Primary color</span><input class="hexa-tts-color-picker hexa-tts-live-control" type="text" name="hexa_tts[primary_color]" value="<?php echo esc_attr( self::sanitize_color( $settings["primary_color"] ) ); ?>" data-default-color="#3657e3"></label>
-                            <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[include_title]" value="1" <?php checked( ! empty( $settings["include_title"] ) ); ?>><span>Include post title in narration</span></label>
-                            <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[show_player_meta]" value="1" <?php checked( ! empty( $settings["show_player_meta"] ) ); ?>><span>Show provider/date metadata</span></label>
-                        </div>
-                    </section>
+                <section class="httf-section">
+                    <h3>Core controls</h3>
+                    <div class="httf-grid">
+                        <label class="httf-field"><span>ACF audio file field</span><input class="hexa-tts-live-control" type="text" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( $acf_field ); ?>"><small>Used by generated storage and the editor upload field.</small></label>
+                        <label class="httf-field"><span>Player label</span><input class="hexa-tts-live-control" type="text" name="hexa_tts[player_label]" value="<?php echo esc_attr( $settings["player_label"] ); ?>"></label>
+                        <label class="httf-field"><span>Player size</span><select class="hexa-tts-live-control" name="hexa_tts[player_size]"><?php self::render_options( self::size_options(), $settings["player_size"] ); ?></select></label>
+                        <label class="httf-field httf-field--color"><span>Primary color</span><input class="hexa-tts-color-picker hexa-tts-live-control" type="text" name="hexa_tts[primary_color]" value="<?php echo esc_attr( self::sanitize_color( $settings["primary_color"] ) ); ?>" data-default-color="#3657e3"></label>
+                    </div>
+                    <div class="httf-checks">
+                        <label class="httf-check"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[include_title]" value="1" <?php checked( ! empty( $settings["include_title"] ) ); ?>><span>Include post title in narration</span></label>
+                        <label class="httf-check"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[show_player_meta]" value="1" <?php checked( ! empty( $settings["show_player_meta"] ) ); ?>><span>Show provider and date metadata</span></label>
+                    </div>
+                </section>
 
-                    <section>
-                        <h3>Automatic placement</h3>
-                        <p class="description">Select the actual automatic output location. Manual shortcode disables automatic output.</p>
-                        <?php echo self::placement_cards_html( $settings ); ?>
-                    </section>
+                <section class="httf-section">
+                    <h3>Automatic placement</h3>
+                    <p class="httf-hint">Where the player renders automatically. Choosing Manual shortcode disables automatic output.</p>
+                    <?php echo self::placement_cards_html( $settings ); ?>
+                </section>
 
-                    <section>
-                        <h3>Template design</h3>
-                        <p class="description">Each option below is rendered with the same player markup and CSS used on the live single article page.</p>
-                        <div class="hexa-tts-live-preview-target"><?php echo self::template_preview_rows_html( $settings ); ?></div>
-                    </section>
+                <section class="httf-section">
+                    <h3>Template design</h3>
+                    <p class="httf-hint">Each preview uses the same markup and CSS as the live single-article player.</p>
+                    <div class="hexa-tts-live-preview-target"><?php echo self::template_preview_rows_html( $settings ); ?></div>
+                </section>
 
-                    <section>
-                        <h3>Shortcode</h3>
-                        <p class="description">Use this for Elementor or exact manual placement.</p>
-                        <div class="hexa-tts-shortcode-card hexa-tts-dynamic-shortcode"><code><?php echo esc_html( $shortcode ); ?></code><button type="button" class="button hexa-tts-copy" data-copy-text="<?php echo esc_attr( $shortcode ); ?>">Copy shortcode</button></div>
-                        <div class="hexa-tts-feature-proof">
-                            <div><span>ACF field</span><code><?php echo esc_html( $acf_field ); ?></code></div>
-                            <div><span>Current placement</span><strong><?php echo esc_html( $placements[ $settings["auto_player_placement"] ] ?? "Above article" ); ?></strong></div>
-                            <div><span>Current template</span><strong><?php echo esc_html( $templates[ $settings["player_template"] ]["label"] ?? "Clean Card" ); ?></strong></div>
-                        </div>
-                    </section>
-                </div>
+                <section class="httf-section">
+                    <h3>Shortcode</h3>
+                    <p class="httf-hint">For Elementor or exact manual placement.</p>
+                    <div class="hexa-tts-shortcode-card hexa-tts-dynamic-shortcode"><code><?php echo esc_html( $shortcode ); ?></code><button type="button" class="button hexa-tts-copy" data-copy-text="<?php echo esc_attr( $shortcode ); ?>">Copy shortcode</button></div>
+                    <div class="httf-proof">
+                        <div><small>ACF field</small><code><?php echo esc_html( $acf_field ); ?></code></div>
+                        <div><small>Current placement</small><strong><?php echo esc_html( $placements[ $settings["auto_player_placement"] ] ?? "Above article" ); ?></strong></div>
+                        <div><small>Current template</small><strong><?php echo esc_html( $templates[ $settings["player_template"] ]["label"] ?? "Clean Card" ); ?></strong></div>
+                    </div>
+                </section>
 
-                <div class="hexa-tts-live-save-state" aria-live="polite"></div>
-                <p class="submit hexa-tts-submit"><button type="submit" class="button button-primary button-hero">Save feature controls</button></p>
-            </article>
+                <p class="submit httf-save"><button type="submit" class="button button-primary button-hero">Save feature controls</button><span class="hexa-tts-live-save-state" aria-live="polite"></span></p>
+            </div>
         </form>
         <?php
     }
