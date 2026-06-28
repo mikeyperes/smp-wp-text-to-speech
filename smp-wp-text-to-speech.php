@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.3.0
+ * Version: 1.3.1
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -53,7 +53,7 @@ function register_hexa_plugin_core_autoloader(): void {
 register_hexa_plugin_core_autoloader();
 
 final class Plugin {
-    const VERSION = "1.3.0";
+    const VERSION = "1.3.1";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -228,6 +228,7 @@ final class Plugin {
         wp_enqueue_style( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.css", [], self::VERSION );
         wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend.css", [ "hexa-tts-admin" ], self::VERSION );
         wp_add_inline_style( "smp-tts-frontend", self::frontend_player_css() );
+        wp_enqueue_script( "smp-tts-frontend-player", plugin_dir_url( __FILE__ ) . "assets/frontend.js", [], self::VERSION, true );
         wp_enqueue_script( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.js", [ "jquery" ], self::VERSION, true );
         wp_localize_script( "hexa-tts-admin", "hexaTts", [ "ajaxUrl" => admin_url( "admin-ajax.php" ), "nonce" => wp_create_nonce( self::NONCE_ACTION ) ] );
         wp_add_inline_style( "hexa-tts-admin", self::admin_live_display_css() );
@@ -241,6 +242,7 @@ final class Plugin {
         }
         wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend.css", [], self::VERSION );
         wp_add_inline_style( "smp-tts-frontend", self::frontend_player_css() );
+        wp_enqueue_script( "smp-tts-frontend-player", plugin_dir_url( __FILE__ ) . "assets/frontend.js", [], self::VERSION, true );
     }
 
     public static function register_rest_routes(): void {
@@ -667,6 +669,7 @@ CSS;
           if (response && response.success) {
             if (response.data.preview_html) {
               form.find(".hexa-tts-live-preview-target").html(response.data.preview_html);
+              document.dispatchEvent(new CustomEvent("hexa-tts-preview-updated"));
             }
             if (response.data.shortcode) {
               form.find(".hexa-tts-dynamic-shortcode code").text(response.data.shortcode);
@@ -779,6 +782,7 @@ JS;
             "player_template" => "clean_card",
             "player_label" => "Listen to this article",
             "show_player_meta" => 1,
+            "enable_player_controls" => 1,
             "last_status" => [],
         ];
     }
@@ -956,7 +960,7 @@ JS;
                     <label><span>Max characters</span><input type="number" name="hexa_tts[max_characters]" value="<?php echo esc_attr( $settings["max_characters"] ); ?>" min="500" step="500"></label>
                     <label class="hexa-tts-check-row"><input type="checkbox" name="hexa_tts[auto_insert_player]" value="1" <?php checked( ! empty( $settings["auto_insert_player"] ) ); ?>><span>Auto-insert player</span></label>
                     <label class="hexa-tts-check-row"><input type="checkbox" name="hexa_tts[include_title]" value="1" <?php checked( ! empty( $settings["include_title"] ) ); ?>><span>Include post title in generated narration</span></label>
-                    <label class="hexa-tts-check-row"><input type="checkbox" name="hexa_tts[show_player_meta]" value="1" <?php checked( ! empty( $settings["show_player_meta"] ) ); ?>><span>Show player metadata</span></label>
+                    <label class="hexa-tts-check-row"><input type="checkbox" name="hexa_tts[enable_player_controls]" value="1" <?php checked( ! empty( $settings["enable_player_controls"] ) ); ?>><span>Show enhanced frontend controls</span></label>
                 </div>
             </section>
             <p class="submit hexa-tts-submit"><button type="submit" class="button button-primary button-hero">Save API settings</button></p>
@@ -1073,7 +1077,7 @@ JS;
                     <?php echo self::elementor_palette_detector_html( "hexa-tts-features-elementor-palette" ); ?>
                     <div class="httf-checks">
                         <label class="httf-check"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[include_title]" value="1" <?php checked( ! empty( $settings["include_title"] ) ); ?>><span>Include post title in narration</span></label>
-                        <label class="httf-check"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[show_player_meta]" value="1" <?php checked( ! empty( $settings["show_player_meta"] ) ); ?>><span>Show provider and date metadata</span></label>
+                        <label class="httf-check"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[enable_player_controls]" value="1" <?php checked( ! empty( $settings["enable_player_controls"] ) ); ?>><span>Show speed, skip, transcript, and resume controls</span></label>
                     </div>
                 </section>
 
@@ -1122,7 +1126,7 @@ JS;
                     <label><span>Player size</span><select class="hexa-tts-live-control" name="hexa_tts[player_size]"><?php self::render_options( self::size_options(), $settings["player_size"] ); ?></select></label>
                     <label><span>ACF audio file field</span><input type="text" class="hexa-tts-live-control" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( sanitize_key( $settings["acf_audio_field"] ?: "article_audio" ) ); ?>"></label>
                     <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[auto_insert_player]" value="1" <?php checked( ! empty( $settings["auto_insert_player"] ) ); ?>><span>Enable automatic player placement</span></label>
-                    <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[show_player_meta]" value="1" <?php checked( ! empty( $settings["show_player_meta"] ) ); ?>><span>Show player metadata</span></label>
+                    <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[enable_player_controls]" value="1" <?php checked( ! empty( $settings["enable_player_controls"] ) ); ?>><span>Show enhanced frontend controls</span></label>
                 </div>
                 <?php echo self::elementor_palette_detector_html( "hexa-tts-display-elementor-palette" ); ?>
 
@@ -1144,7 +1148,7 @@ JS;
 
     private static function render_shortcodes_tab(): void {
         $settings = self::get_settings();
-        $shortcode = '[smp_tts_player post_id="560368" label="' . sanitize_text_field( $settings["player_label"] ) . '" template="' . sanitize_key( $settings["player_template"] ) . '" size="' . sanitize_key( $settings["player_size"] ) . '" show_meta="1" preload="metadata"]';
+        $shortcode = '[smp_tts_player post_id="560368" label="' . sanitize_text_field( $settings["player_label"] ) . '" template="' . sanitize_key( $settings["player_template"] ) . '" size="' . sanitize_key( $settings["player_size"] ) . '" enhanced_controls="' . ( ! empty( $settings["enable_player_controls"] ) ? "1" : "0" ) . '" preload="metadata"]';
         ?>
         <section class="hexa-tts-panel">
             <div class="hexa-tts-panel-head"><div><h2>Shortcodes</h2><p>Manual placement remains available when automatic placement is set to Manual shortcode.</p></div></div>
@@ -1154,7 +1158,8 @@ JS;
                 <tr><th>label</th><td>Overrides the configured player label.</td></tr>
                 <tr><th>template</th><td><?php echo esc_html( implode( ", ", array_keys( self::template_options() ) ) ); ?></td></tr>
                 <tr><th>size</th><td><?php echo esc_html( implode( ", ", array_keys( self::size_options() ) ) ); ?></td></tr>
-                <tr><th>show_meta</th><td>Use <code>0</code> to hide provider/date metadata.</td></tr>
+                <tr><th>enhanced_controls</th><td>Use <code>0</code> to disable speed buttons, skip buttons, transcript toggle, and resume storage for this shortcode/template placement. Alias: <code>controls</code>.</td></tr>
+                <tr><th>show_meta</th><td>Legacy flag accepted for old shortcodes. Provider/date text is no longer displayed in the player templates.</td></tr>
                 <tr><th>preload</th><td><code>none</code>, <code>metadata</code>, or <code>auto</code>.</td></tr>
             </tbody></table>
         </section>
@@ -1277,6 +1282,7 @@ JS;
         $clean["auto_insert_player"] = array_key_exists( "auto_insert_player", $incoming ) ? 1 : ( in_array( $tab, [ "display", "features" ], true ) ? 0 : (int) ( $existing["auto_insert_player"] ?? 1 ) );
         $clean["include_title"] = array_key_exists( "include_title", $incoming ) ? 1 : ( in_array( $tab, [ "api", "features" ], true ) ? 0 : (int) ( $existing["include_title"] ?? 1 ) );
         $clean["show_player_meta"] = array_key_exists( "show_player_meta", $incoming ) ? 1 : ( in_array( $tab, [ "display", "features" ], true ) ? 0 : (int) ( $existing["show_player_meta"] ?? 1 ) );
+        $clean["enable_player_controls"] = array_key_exists( "enable_player_controls", $incoming ) ? 1 : ( in_array( $tab, [ "display", "features" ], true ) ? 0 : (int) ( $existing["enable_player_controls"] ?? 1 ) );
         $clean["max_characters"] = max( 500, absint( $incoming["max_characters"] ?? $existing["max_characters"] ) );
         $clean["primary_color"] = self::sanitize_color( $incoming["primary_color"] ?? $existing["primary_color"] );
         $clean["player_label"] = sanitize_text_field( $incoming["player_label"] ?? $existing["player_label"] );
@@ -1392,7 +1398,7 @@ JS;
     }
 
     private static function display_shortcode( array $settings, int $post_id = 560368 ): string {
-        return "[smp_tts_player post_id=\"" . absint( $post_id ) . "\" label=\"" . sanitize_text_field( $settings["player_label"] ?? "Listen to this article" ) . "\" template=\"" . sanitize_key( $settings["player_template"] ?? "clean_card" ) . "\" size=\"" . sanitize_key( $settings["player_size"] ?? "default" ) . "\" show_meta=\"" . ( ! empty( $settings["show_player_meta"] ) ? "1" : "0" ) . "\" preload=\"metadata\"]";
+        return "[smp_tts_player post_id=\"" . absint( $post_id ) . "\" label=\"" . sanitize_text_field( $settings["player_label"] ?? "Listen to this article" ) . "\" template=\"" . sanitize_key( $settings["player_template"] ?? "clean_card" ) . "\" size=\"" . sanitize_key( $settings["player_size"] ?? "default" ) . "\" enhanced_controls=\"" . ( ! empty( $settings["enable_player_controls"] ) ? "1" : "0" ) . "\" preload=\"metadata\"]";
     }
 
     private static function latest_audio_post_id(): int {
@@ -1634,11 +1640,11 @@ JS;
                                 "template" => $key,
                                 "size" => $settings["player_size"] ?? "default",
                                 "label" => $settings["player_label"] ?? "Listen to this article",
-                                "show_meta" => ! empty( $settings["show_player_meta"] ) ? "1" : "0",
+                                "enhanced_controls" => ! empty( $settings["enable_player_controls"] ) ? "1" : "0",
                                 "preload" => "metadata",
                                 "class" => "hexa-tts-preview-player",
                                 "color" => $settings["primary_color"] ?? "#3657e3",
-                            ], "UnrealSpeech preview", current_time( "mysql" ) );
+                            ] );
                         }
                         ?>
                     </div>
@@ -1695,6 +1701,7 @@ JS;
         $clean["auto_insert_player"] = array_key_exists( "auto_insert_player", $incoming ) ? 1 : ( $checkbox_context ? 0 : (int) ( $existing["auto_insert_player"] ?? 1 ) );
         $clean["include_title"] = array_key_exists( "include_title", $incoming ) ? 1 : ( $checkbox_context ? 0 : (int) ( $existing["include_title"] ?? 1 ) );
         $clean["show_player_meta"] = array_key_exists( "show_player_meta", $incoming ) ? 1 : ( $checkbox_context ? 0 : (int) ( $existing["show_player_meta"] ?? 1 ) );
+        $clean["enable_player_controls"] = array_key_exists( "enable_player_controls", $incoming ) ? 1 : ( $checkbox_context ? 0 : (int) ( $existing["enable_player_controls"] ?? 1 ) );
         return $clean;
     }
 
@@ -1791,7 +1798,7 @@ JS;
             <details class="hexa-tts-technical-box">
                 <summary>Technical details</summary>
                 <div class="hexa-tts-tech-grid">
-                    <div><span>Shortcode</span><code>[smp_tts_player post_id="<?php echo esc_attr( $post->ID ); ?>" label="Listen to this article" show_meta="1" preload="metadata"]</code><button type="button" class="button hexa-tts-copy" data-copy-text="<?php echo esc_attr( '[smp_tts_player post_id="' . $post->ID . '" label="Listen to this article" show_meta="1" preload="metadata"]' ); ?>">Copy shortcode</button></div>
+                    <div><span>Shortcode</span><code>[smp_tts_player post_id="<?php echo esc_attr( $post->ID ); ?>" label="Listen to this article" enhanced_controls="1" preload="metadata"]</code><button type="button" class="button hexa-tts-copy" data-copy-text="<?php echo esc_attr( '[smp_tts_player post_id="' . $post->ID . '" label="Listen to this article" enhanced_controls="1" preload="metadata"]' ); ?>">Copy shortcode</button></div>
                     <div><span>Legacy shortcode</span><code>[hexa_tts_player post_id="<?php echo esc_attr( $post->ID ); ?>"]</code><button type="button" class="button hexa-tts-copy" data-copy-text="<?php echo esc_attr( '[hexa_tts_player post_id="' . $post->ID . '"]' ); ?>">Copy legacy</button></div>
                     <div><span>ACF field</span><code><?php echo esc_html( $acf_field ); ?></code></div>
                     <div><span>Attachment ID</span><code><?php echo esc_html( $attachment_id ?: 'none' ); ?></code></div>
@@ -2393,6 +2400,8 @@ JS;
             "template" => $settings["player_template"] ?? "clean_card",
             "size" => $settings["player_size"] ?? "default",
             "color" => $settings["primary_color"] ?? "#3657e3",
+            "controls" => "",
+            "enhanced_controls" => ! empty( $settings["enable_player_controls"] ) ? "1" : "0",
         ], $atts, "smp_tts_player" );
         return self::player_html( absint( $atts["post_id"] ), $atts );
     }
@@ -2406,10 +2415,10 @@ JS;
         if ( ! $url ) {
             return "";
         }
-        return self::player_markup( $url, $args, get_post_meta( $post_id, "_hexa_tts_provider", true ), get_post_meta( $post_id, "_hexa_tts_generated_at", true ) );
+        return self::player_markup( $url, $args, $post_id );
     }
 
-    private static function player_markup( string $url, array $args = [], string $provider = "", string $generated = "" ): string {
+    private static function player_markup( string $url, array $args = [], int $post_id = 0 ): string {
         $settings = self::get_settings();
         $templates = self::template_options();
         $sizes = self::size_options();
@@ -2418,17 +2427,47 @@ JS;
         $size = sanitize_key( $args["size"] ?? ( $settings["player_size"] ?? "default" ) );
         $size = isset( $sizes[ $size ] ) ? $size : "default";
         $label = isset( $args["label"] ) ? (string) $args["label"] : ( $settings["player_label"] ?? "Listen to this article" );
-        $show_meta = ! isset( $args["show_meta"] ) || "0" !== (string) $args["show_meta"];
         $raw_preload = isset( $args["preload"] ) && "" !== (string) $args["preload"] ? (string) $args["preload"] : "metadata";
         $preload = in_array( $raw_preload, [ "none", "metadata", "auto" ], true ) ? $raw_preload : "metadata";
         $extra_class = sanitize_html_class( (string) ( $args["class"] ?? "" ) );
         $color = self::sanitize_color( $args["color"] ?? ( $settings["primary_color"] ?? "#3657e3" ) );
-        $classes = trim( "hexa-tts-player hexa-tts-player--" . $template . " hexa-tts-player--size-" . $size . " " . $extra_class );
+        $enhanced_arg = "" !== (string) ( $args["controls"] ?? "" ) ? $args["controls"] : ( $args["enhanced_controls"] ?? ( $settings["enable_player_controls"] ?? 1 ) );
+        $enhanced = self::truthy_setting( $enhanced_arg );
+        $transcript = $post_id > 0 ? self::audio_transcript_for_post( $post_id ) : "";
+        $player_key = $post_id > 0 ? "post-" . absint( $post_id ) : substr( hash( "sha256", $url ), 0, 16 );
+        $classes = trim( "hexa-tts-player hexa-tts-player--" . $template . " hexa-tts-player--size-" . $size . ( $enhanced ? " hexa-tts-player--enhanced" : " hexa-tts-player--native" ) . " " . $extra_class );
         ob_start();
         ?>
-        <aside class="<?php echo esc_attr( $classes ); ?>" style="--smp-tts-primary: <?php echo esc_attr( $color ); ?>;" aria-label="Article audio narration"><div class="hexa-tts-player__label"><?php echo esc_html( $label ); ?></div><audio controls preload="<?php echo esc_attr( $preload ); ?>" src="<?php echo esc_url( $url ); ?>"></audio><?php if ( $show_meta ) : ?><div class="hexa-tts-player__meta"><?php if ( $provider ) : ?><span><?php echo esc_html( $provider ); ?></span><?php endif; ?><?php if ( $generated ) : ?><span><?php echo esc_html( mysql2date( "M j, Y g:i A", $generated ) ); ?></span><?php endif; ?></div><?php endif; ?></aside>
+        <aside class="<?php echo esc_attr( $classes ); ?>" data-hexa-tts-enhanced="<?php echo esc_attr( $enhanced ? "1" : "0" ); ?>" data-hexa-tts-key="<?php echo esc_attr( $player_key ); ?>" style="--smp-tts-primary: <?php echo esc_attr( $color ); ?>;" aria-label="Article audio narration">
+            <div class="hexa-tts-player__label"><?php echo esc_html( $label ); ?></div>
+            <audio controls preload="<?php echo esc_attr( $preload ); ?>" src="<?php echo esc_url( $url ); ?>"></audio>
+            <?php if ( $enhanced ) : ?>
+                <div class="hexa-tts-player__controls" aria-label="Audio playback controls">
+                    <div class="hexa-tts-player__skip">
+                        <button type="button" class="hexa-tts-player__button" data-hexa-tts-skip="-10">Back 10s</button>
+                        <button type="button" class="hexa-tts-player__button" data-hexa-tts-skip="30">Forward 30s</button>
+                    </div>
+                    <div class="hexa-tts-player__speed" aria-label="Playback speed">
+                        <?php foreach ( [ "0.75", "1", "1.25", "1.5", "2" ] as $speed ) : ?>
+                            <button type="button" class="hexa-tts-player__button <?php echo "1" === $speed ? "is-active" : ""; ?>" data-hexa-tts-speed="<?php echo esc_attr( $speed ); ?>"><?php echo esc_html( $speed . "x" ); ?></button>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php if ( "" !== $transcript ) : ?>
+                        <button type="button" class="hexa-tts-player__button hexa-tts-player__transcript-toggle" data-hexa-tts-transcript-toggle aria-expanded="false">Transcript</button>
+                    <?php endif; ?>
+                    <span class="hexa-tts-player__status" aria-live="polite"></span>
+                </div>
+                <?php if ( "" !== $transcript ) : ?>
+                    <div class="hexa-tts-player__transcript" data-hexa-tts-transcript hidden><?php echo wp_kses_post( nl2br( esc_html( $transcript ) ) ); ?></div>
+                <?php endif; ?>
+            <?php endif; ?>
+        </aside>
         <?php
         return ob_get_clean();
+    }
+
+    private static function truthy_setting( $value ): bool {
+        return ! in_array( strtolower( trim( (string) $value ) ), [ "0", "false", "no", "off" ], true );
     }
 
     private static function api_key() {
