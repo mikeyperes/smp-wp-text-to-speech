@@ -42,6 +42,7 @@ hexa-wordpress-plugin-core/
     ShortcodeRegistry/  -> Hexa\PluginCore\ShortcodeRegistry
     SiteStructure/      -> Hexa\PluginCore\SiteStructure
     SchemaDetection/    -> Hexa\PluginCore\SchemaDetection
+    SchemaTools/        -> Hexa\PluginCore\SchemaTools
     SmartSearch/        -> Hexa\PluginCore\SmartSearch
     SystemEnvironment/  -> Hexa\PluginCore\SystemEnvironment
     WpAdminUiCleanup/   -> Hexa\PluginCore\WpAdminUiCleanup
@@ -51,6 +52,10 @@ hexa-wordpress-plugin-core/
     WpConfigFile/       -> Hexa\PluginCore\WpConfigFile
     WpCronTasks/        -> Hexa\PluginCore\WpCronTasks
 ```
+
+## Schema Tools
+
+Version 0.19.x adds reusable schema graph helpers and a generic schema dashboard renderer. Host plugins can build their own schema objects, expose debug JSON, show ideal-vs-actual graph examples, provide validator links, render collapsed shortcode cards, and pass plugin-specific schema action panels through HexaWP Core instead of duplicating dashboard UI.
 
 Do not create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core`, or plugin-specific namespaces inside this package. Consuming plugins may have their own namespaces, but this shared package always stays under `Hexa\PluginCore`.
 

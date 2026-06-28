@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.2.14
+ * Version: 1.3.0
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -53,19 +53,22 @@ function register_hexa_plugin_core_autoloader(): void {
 register_hexa_plugin_core_autoloader();
 
 final class Plugin {
-    const VERSION = "1.2.14";
+    const VERSION = "1.3.0";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
     const API_BASE = "https://publish.scalemypublication.com/api/smp-text-to-speech/v1";
     const GITHUB_REPO = "mikeyperes/smp-wp-text-to-speech";
     const GITHUB_BRANCH = "main";
+    const REST_NS = "smp-tts/v1";
 
     public static function init() {
         self::boot_hexa_core();
         add_action( "admin_menu", [ __CLASS__, "register_admin_menu" ] );
         add_action( "admin_enqueue_scripts", [ __CLASS__, "enqueue_admin_assets" ] );
         add_action( "wp_enqueue_scripts", [ __CLASS__, "enqueue_frontend_assets" ] );
+        add_action( "wp_head", [ __CLASS__, "inject_schema" ], 2 );
+        add_action( "rest_api_init", [ __CLASS__, "register_rest_routes" ] );
         add_action( "admin_post_hexa_tts_save_settings", [ __CLASS__, "handle_save_settings" ] );
         add_action( "admin_post_hexa_tts_import_elementor_color", [ __CLASS__, "handle_import_elementor_color" ] );
         add_action( "add_meta_boxes", [ __CLASS__, "register_post_metabox" ] );
@@ -238,6 +241,68 @@ final class Plugin {
         }
         wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend.css", [], self::VERSION );
         wp_add_inline_style( "smp-tts-frontend", self::frontend_player_css() );
+    }
+
+    public static function register_rest_routes(): void {
+        register_rest_route(
+            self::REST_NS,
+            "/schema",
+            [
+                "methods" => "GET",
+                "callback" => [ __CLASS__, "rest_schema" ],
+                "permission_callback" => "__return_true",
+                "args" => [
+                    "post_id" => [ "sanitize_callback" => "absint" ],
+                    "url" => [ "sanitize_callback" => "esc_url_raw" ],
+                ],
+            ]
+        );
+    }
+
+    public static function rest_schema( \WP_REST_Request $request ): \WP_REST_Response {
+        $post_id = absint( $request->get_param( "post_id" ) );
+        $url = (string) $request->get_param( "url" );
+        $context = "none";
+
+        if ( $post_id <= 0 && "" !== $url ) {
+            $post_id = url_to_postid( $url );
+        }
+
+        $schema = [];
+        if ( $post_id > 0 && get_post( $post_id ) ) {
+            $context = "single";
+            $schema = self::generate_audio_schema_array( $post_id );
+        }
+
+        return new \WP_REST_Response(
+            [
+                "plugin" => "smp-wp-text-to-speech",
+                "context" => $context,
+                "requested_url" => $url,
+                "post_id" => $post_id,
+                "types" => self::schema_types( $schema ),
+                "integrity" => self::schema_integrity_report( $post_id ),
+                "schema" => $schema,
+            ]
+        );
+    }
+
+    public static function inject_schema(): void {
+        if ( is_admin() || ! is_singular( [ "post", "press-release" ] ) ) {
+            return;
+        }
+
+        $post_id = (int) get_queried_object_id();
+        if ( $post_id <= 0 ) {
+            return;
+        }
+
+        $schema = self::generate_audio_schema_array( $post_id );
+        if ( empty( $schema ) ) {
+            return;
+        }
+
+        echo "\n<script type=\"application/ld+json\" id=\"smp-tts-audio-schema-jsonld\">" . wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT ) . "</script>\n";
     }
 
     private static function frontend_player_css(): string {
@@ -789,6 +854,7 @@ JS;
             "features"   => "Features",
             "display"    => "Display",
             "shortcodes" => "Shortcodes",
+            "schema"     => "Schema",
         ] );
     }
 
@@ -818,6 +884,7 @@ JS;
         if ( "features" === $id ) { self::render_features_tab(); return; }
         if ( "display" === $id ) { self::render_display_tab(); return; }
         if ( "shortcodes" === $id ) { self::render_shortcodes_tab(); return; }
+        if ( "schema" === $id ) { self::render_schema_tab(); return; }
         self::render_overview_tab();
     }
 
@@ -1094,6 +1161,103 @@ JS;
         <?php
     }
 
+    private static function render_schema_tab(): void {
+        $post_id = self::latest_audio_post_id();
+        $schema = $post_id ? self::generate_audio_schema_array( $post_id ) : [];
+        $report = self::schema_integrity_report( $post_id );
+        $debug_url = rest_url( self::REST_NS . "/schema" );
+        $single_debug_url = $post_id ? add_query_arg( "post_id", $post_id, $debug_url ) : $debug_url;
+        $post_url = $post_id ? (string) get_permalink( $post_id ) : "";
+        $validator_url = class_exists( "\\Hexa\\PluginCore\\SchemaTools\\SchemaGraph" ) ? \Hexa\PluginCore\SchemaTools\SchemaGraph::validator_url( $post_url ) : ( $post_url ? "https://validator.schema.org/#url=" . rawurlencode( $post_url ) : "" );
+        $settings = self::get_settings();
+        $shortcode = $post_id ? self::display_shortcode( $settings, $post_id ) : self::display_shortcode( $settings );
+        $scan_html = "";
+
+        if ( $post_url && class_exists( "\\Hexa\\PluginCore\\SchemaDetection\\SchemaPageScanner" ) && class_exists( "\\Hexa\\PluginCore\\SchemaDetection\\SchemaScanRenderer" ) ) {
+            $scan = ( new \Hexa\PluginCore\SchemaDetection\SchemaPageScanner() )->scanUrl( $post_url, [ "title" => "Latest audio post frontend" ] );
+            $scan_html = ( new \Hexa\PluginCore\SchemaDetection\SchemaScanRenderer() )->renderReport(
+                [ $scan ],
+                [
+                    "title" => "Frontend schema scan",
+                    "subtitle" => "Checks the live article page for JSON-LD blocks. If Under Construction is active, this will correctly report no public schema.",
+                    "expected" => [ "AudioObject from SMP WP Text To Speech", "NewsArticle from SMP Publication Integration when the article page is public" ],
+                    "debug" => true,
+                ]
+            );
+        }
+
+        $ideal = [
+            "@context" => "https://schema.org",
+            "@graph" => [
+                [
+                    "@type" => "AudioObject",
+                    "@id" => $post_url ? $post_url . "#audio" : "#audio",
+                    "name" => "Audio version of article title",
+                    "contentUrl" => "https://example.com/article-audio.mp3",
+                    "encodingFormat" => "audio/mpeg",
+                    "duration" => "PT8M12S",
+                    "uploadDate" => current_time( DATE_W3C ),
+                    "associatedArticle" => [ "@id" => $post_url ? $post_url . "#article" : "#article" ],
+                ],
+            ],
+        ];
+
+        if ( class_exists( "\\Hexa\\PluginCore\\SchemaTools\\SchemaDashboardRenderer" ) ) {
+            echo ( new \Hexa\PluginCore\SchemaTools\SchemaDashboardRenderer() )->render(
+                [
+                    "kicker" => "Text-to-Speech Schema",
+                    "title" => "AudioObject schema and frontend verification",
+                    "description" => "The text-to-speech plugin owns only the AudioObject schema. It links to the existing article node generated by the publication schema plugin.",
+                    "status_cards" => [
+                        [
+                            "title" => "AudioObject graph",
+                            "ok" => in_array( "AudioObject", $report["types"], true ),
+                            "body" => $post_id ? "Audio post #" . $post_id . " types: " . implode( ", ", $report["types"] ) : "No post with generated audio was found.",
+                        ],
+                        [
+                            "title" => "Debug JSON URL",
+                            "ok" => true,
+                            "body" => $single_debug_url,
+                        ],
+                        [
+                            "title" => "Schema validator",
+                            "ok" => "" !== $validator_url,
+                            "body" => "" !== $validator_url ? $validator_url : "A published audio post is required for validator testing.",
+                        ],
+                    ],
+                    "actions" => array_values(
+                        array_filter(
+                            [
+                                [ "label" => "Open TTS schema JSON", "url" => $single_debug_url ],
+                                $validator_url ? [ "label" => "Open Schema Validator", "url" => $validator_url ] : null,
+                                $post_url ? [ "label" => "Open Latest Audio Post", "url" => $post_url ] : null,
+                            ]
+                        )
+                    ),
+                    "shortcode_card" => [
+                        "title" => "Collapsed shortcode card",
+                        "description" => "Use this shortcode in Elementor/manual placements. It stays collapsed by default through HexaWP Core.",
+                        "shortcode" => $shortcode,
+                        "open" => false,
+                    ],
+                    "integrity_sections" => [
+                        [ "title" => "Audio Schema Integrity", "checks" => $report["checks"] ],
+                    ],
+                    "graphs" => [
+                        [ "title" => "Ideal AudioObject Graph", "schema" => $ideal ],
+                        [ "title" => "Actual Latest Audio Graph", "schema" => $schema ],
+                    ],
+                    "scan_report_html" => $scan_html,
+                ]
+            );
+            return;
+        }
+
+        echo '<section class="hexa-tts-panel"><div class="hexa-tts-panel-head"><div><h2>AudioObject Schema</h2><p>HexaWP Core schema dashboard renderer is unavailable.</p></div></div><pre>';
+        echo esc_html( wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
+        echo '</pre></section>';
+    }
+
     public static function handle_save_settings() {
         if ( ! current_user_can( "manage_options" ) ) {
             wp_die( "Unauthorized." );
@@ -1229,6 +1393,184 @@ JS;
 
     private static function display_shortcode( array $settings, int $post_id = 560368 ): string {
         return "[smp_tts_player post_id=\"" . absint( $post_id ) . "\" label=\"" . sanitize_text_field( $settings["player_label"] ?? "Listen to this article" ) . "\" template=\"" . sanitize_key( $settings["player_template"] ?? "clean_card" ) . "\" size=\"" . sanitize_key( $settings["player_size"] ?? "default" ) . "\" show_meta=\"" . ( ! empty( $settings["show_player_meta"] ) ? "1" : "0" ) . "\" preload=\"metadata\"]";
+    }
+
+    private static function latest_audio_post_id(): int {
+        global $wpdb;
+
+        if ( ! $wpdb instanceof \wpdb ) {
+            return 0;
+        }
+
+        $post_id = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT pm.post_id FROM {$wpdb->postmeta} pm INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id WHERE pm.meta_key = %s AND pm.meta_value LIKE %s AND p.post_status = %s ORDER BY pm.meta_id DESC LIMIT 1",
+                "_hexa_tts_audio_url",
+                "http%",
+                "publish"
+            )
+        );
+
+        if ( $post_id > 0 ) {
+            return $post_id;
+        }
+
+        return (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT p.ID FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID WHERE pm.meta_key = %s AND p.post_status = %s ORDER BY p.post_date_gmt DESC LIMIT 1",
+                sanitize_key( self::get_settings()["acf_audio_field"] ?: "article_audio" ),
+                "publish"
+            )
+        );
+    }
+
+    public static function generate_audio_schema_array( int $post_id ): array {
+        $entity = self::audio_schema_entity( $post_id );
+        if ( empty( $entity ) ) {
+            return [];
+        }
+
+        return [ "@context" => "https://schema.org", "@graph" => [ $entity ] ];
+    }
+
+    private static function audio_schema_entity( int $post_id ): array {
+        $post = get_post( $post_id );
+        if ( ! $post || ! in_array( $post->post_type, [ "post", "press-release" ], true ) ) {
+            return [];
+        }
+
+        $settings = self::get_settings();
+        $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
+        $attachment_id = self::current_audio_attachment_id( $post_id, $settings );
+        $url = (string) get_post_meta( $post_id, "_hexa_tts_audio_url", true );
+        if ( "" === $url && $attachment_id ) {
+            $url = (string) wp_get_attachment_url( $attachment_id );
+        }
+        if ( "" === $url ) {
+            $url = self::resolve_audio_url( get_post_meta( $post_id, $acf_field, true ) );
+        }
+        if ( "" === $url ) {
+            return [];
+        }
+
+        $permalink = get_permalink( $post );
+        $metadata = $attachment_id ? wp_get_attachment_metadata( $attachment_id ) : [];
+        $metadata = is_array( $metadata ) ? $metadata : [];
+        $seconds = isset( $metadata["length"] ) ? absint( $metadata["length"] ) : 0;
+        $duration = self::schema_duration_from_seconds( $seconds );
+        $mime = $attachment_id ? (string) get_post_mime_type( $attachment_id ) : "";
+        if ( "" === $mime && preg_match( "/\\.mp3(?:\\?|$)/i", $url ) ) {
+            $mime = "audio/mpeg";
+        }
+
+        $generated = (string) get_post_meta( $post_id, "_hexa_tts_generated_at", true );
+        if ( "" === $generated && $attachment_id ) {
+            $generated = (string) get_post_field( "post_date", $attachment_id );
+        }
+        $upload_date = "" !== $generated ? mysql2date( DATE_W3C, $generated, false ) : "";
+        $transcript = self::audio_transcript_for_post( $post_id );
+
+        $entity = [
+            "@type" => "AudioObject",
+            "@id" => $permalink . "#audio",
+            "name" => "Audio version of " . get_the_title( $post ),
+            "description" => "Audio narration for " . get_the_title( $post ) . ".",
+            "url" => esc_url_raw( $url ),
+            "contentUrl" => esc_url_raw( $url ),
+            "encodingFormat" => $mime,
+            "duration" => $duration,
+            "uploadDate" => $upload_date,
+            "inLanguage" => get_bloginfo( "language" ) ?: "en-US",
+            "associatedArticle" => [ "@id" => $permalink . "#article" ],
+            "encodesCreativeWork" => [ "@id" => $permalink . "#article" ],
+            "isPartOf" => [ "@id" => $permalink . "#webpage" ],
+            "transcript" => $transcript,
+        ];
+
+        return self::clean_schema( $entity );
+    }
+
+    private static function audio_transcript_for_post( int $post_id ): string {
+        foreach ( [ "_hexa_tts_transcript", "_hexa_tts_narration_text" ] as $key ) {
+            $value = trim( (string) get_post_meta( $post_id, $key, true ) );
+            if ( "" !== $value ) {
+                return wp_strip_all_tags( $value );
+            }
+        }
+
+        return "";
+    }
+
+    private static function schema_duration_from_seconds( int $seconds ): string {
+        if ( class_exists( "\\Hexa\\PluginCore\\SchemaTools\\SchemaGraph" ) ) {
+            return \Hexa\PluginCore\SchemaTools\SchemaGraph::duration_from_seconds( $seconds );
+        }
+
+        if ( $seconds <= 0 ) {
+            return "";
+        }
+
+        $hours = intdiv( $seconds, HOUR_IN_SECONDS );
+        $seconds -= $hours * HOUR_IN_SECONDS;
+        $minutes = intdiv( $seconds, MINUTE_IN_SECONDS );
+        $seconds -= $minutes * MINUTE_IN_SECONDS;
+        return "PT" . ( $hours ? $hours . "H" : "" ) . ( $minutes ? $minutes . "M" : "" ) . ( $seconds ? $seconds . "S" : "" );
+    }
+
+    private static function schema_types( array $schema ): array {
+        if ( class_exists( "\\Hexa\\PluginCore\\SchemaTools\\SchemaGraph" ) ) {
+            return \Hexa\PluginCore\SchemaTools\SchemaGraph::types( $schema );
+        }
+
+        $nodes = isset( $schema["@graph"] ) && is_array( $schema["@graph"] ) ? $schema["@graph"] : [ $schema ];
+        $types = [];
+        foreach ( $nodes as $node ) {
+            if ( is_array( $node ) && isset( $node["@type"] ) ) {
+                $types[] = (string) $node["@type"];
+            }
+        }
+        return array_values( array_unique( array_filter( $types ) ) );
+    }
+
+    private static function schema_integrity_report( int $post_id ): array {
+        $schema = $post_id > 0 ? self::generate_audio_schema_array( $post_id ) : [];
+        $types = self::schema_types( $schema );
+        $entity = isset( $schema["@graph"][0] ) && is_array( $schema["@graph"][0] ) ? $schema["@graph"][0] : [];
+        $attachment_id = $post_id > 0 ? self::current_audio_attachment_id( $post_id, self::get_settings() ) : 0;
+        $metadata = $attachment_id ? wp_get_attachment_metadata( $attachment_id ) : [];
+        $metadata = is_array( $metadata ) ? $metadata : [];
+
+        return [
+            "types" => $types,
+            "checks" => [
+                [ "label" => "Published audio post found", "status" => $post_id > 0 ? "green" : "red" ],
+                [ "label" => "AudioObject schema generated", "status" => in_array( "AudioObject", $types, true ) ? "green" : "red" ],
+                [ "label" => "contentUrl points to an audio file", "status" => ! empty( $entity["contentUrl"] ) ? "green" : "red" ],
+                [ "label" => "encodingFormat is present", "status" => ! empty( $entity["encodingFormat"] ) ? "green" : "yellow" ],
+                [ "label" => "duration is present from attachment metadata", "status" => ! empty( $entity["duration"] ) ? "green" : ( ! empty( $metadata ) ? "yellow" : "red" ) ],
+                [ "label" => "AudioObject links to article #article node", "status" => ! empty( $entity["associatedArticle"]["@id"] ) ? "green" : "red" ],
+                [ "label" => "Schema validator URL can be opened", "status" => $post_id > 0 && get_permalink( $post_id ) ? "green" : "yellow" ],
+            ],
+        ];
+    }
+
+    private static function clean_schema( array $schema ): array {
+        if ( class_exists( "\\Hexa\\PluginCore\\SchemaTools\\SchemaGraph" ) ) {
+            return \Hexa\PluginCore\SchemaTools\SchemaGraph::clean( $schema );
+        }
+
+        foreach ( $schema as $key => $value ) {
+            if ( is_array( $value ) ) {
+                $value = self::clean_schema( $value );
+            }
+            if ( null === $value || false === $value || "" === $value || [] === $value ) {
+                unset( $schema[ $key ] );
+            } else {
+                $schema[ $key ] = $value;
+            }
+        }
+
+        return $schema;
     }
 
     private static function sample_audio_url(): string {
