@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.3.6
+ * Version: 1.3.8
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -53,7 +53,7 @@ function register_hexa_plugin_core_autoloader(): void {
 register_hexa_plugin_core_autoloader();
 
 final class Plugin {
-    const VERSION = "1.3.6";
+    const VERSION = "1.3.8";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -82,7 +82,6 @@ final class Plugin {
         add_action( "wp_ajax_hexa_tts_save_manual_audio", [ __CLASS__, "ajax_save_manual_audio" ] );
         add_action( "wp_ajax_hexa_tts_preview_display", [ __CLASS__, "ajax_preview_display" ] );
         add_filter( "plugin_action_links_" . plugin_basename( __FILE__ ), [ __CLASS__, "plugin_action_links" ] );
-        add_filter( "smpi_single_schema_array", [ __CLASS__, "link_audio_to_publication_schema" ], 10, 2 );
         add_filter( "the_content", [ __CLASS__, "maybe_insert_player" ], 12 );
         add_filter( "post_thumbnail_html", [ __CLASS__, "maybe_insert_player_around_featured_image" ], 20, 5 );
         add_shortcode( "hexa_tts_player", [ __CLASS__, "render_player_shortcode" ] );
@@ -1203,7 +1202,7 @@ JS;
                     "encodingFormat" => "audio/mpeg",
                     "duration" => "PT8M12S",
                     "uploadDate" => current_time( DATE_W3C ),
-                    "isPartOf" => [ "@id" => $post_url ? $post_url . "#webpage" : "#webpage" ],
+                    "isPartOf" => $post_url ?: "",
                 ],
             ],
         ];
@@ -1517,7 +1516,7 @@ JS;
             "duration" => $duration,
             "uploadDate" => $upload_date,
             "inLanguage" => get_bloginfo( "language" ) ?: "en-US",
-            "isPartOf" => [ "@id" => $permalink . "#webpage" ],
+            "isPartOf" => $permalink,
             "transcript" => $transcript,
         ];
 
@@ -1600,7 +1599,7 @@ JS;
                 [ "label" => "contentUrl points to an audio file", "status" => ! empty( $entity["contentUrl"] ) ? "green" : "red" ],
                 [ "label" => "encodingFormat is present", "status" => ! empty( $entity["encodingFormat"] ) ? "green" : "yellow" ],
                 [ "label" => "duration is present from attachment metadata", "status" => ! empty( $entity["duration"] ) ? "green" : ( ! empty( $metadata ) ? "yellow" : "red" ) ],
-                [ "label" => "AudioObject links to page #webpage node", "status" => ! empty( $entity["isPartOf"]["@id"] ) ? "green" : "red" ],
+                [ "label" => "AudioObject links to article page", "status" => ! empty( $entity["isPartOf"] ) ? "green" : "red" ],
                 [ "label" => "Schema validator URL can be opened", "status" => $post_id > 0 && get_permalink( $post_id ) ? "green" : "yellow" ],
             ],
         ];
