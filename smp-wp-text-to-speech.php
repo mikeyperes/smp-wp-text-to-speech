@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.3.4
+ * Version: 1.3.5
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -53,7 +53,7 @@ function register_hexa_plugin_core_autoloader(): void {
 register_hexa_plugin_core_autoloader();
 
 final class Plugin {
-    const VERSION = "1.3.4";
+    const VERSION = "1.3.5";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -82,6 +82,7 @@ final class Plugin {
         add_action( "wp_ajax_hexa_tts_save_manual_audio", [ __CLASS__, "ajax_save_manual_audio" ] );
         add_action( "wp_ajax_hexa_tts_preview_display", [ __CLASS__, "ajax_preview_display" ] );
         add_filter( "plugin_action_links_" . plugin_basename( __FILE__ ), [ __CLASS__, "plugin_action_links" ] );
+        add_filter( "smpi_single_schema_array", [ __CLASS__, "link_audio_to_publication_schema" ], 10, 2 );
         add_filter( "the_content", [ __CLASS__, "maybe_insert_player" ], 12 );
         add_filter( "post_thumbnail_html", [ __CLASS__, "maybe_insert_player_around_featured_image" ], 20, 5 );
         add_shortcode( "hexa_tts_player", [ __CLASS__, "render_player_shortcode" ] );
@@ -1439,6 +1440,39 @@ JS;
         return [ "@context" => "https://schema.org", "@graph" => [ $entity ] ];
     }
 
+    public static function link_audio_to_publication_schema( array $schema, int $post_id ): array {
+        $audio = self::audio_schema_entity( $post_id );
+        $audio_id = is_array( $audio ) ? (string) ( $audio["@id"] ?? "" ) : "";
+        if ( "" === $audio_id || empty( $schema["@graph"] ) || ! is_array( $schema["@graph"] ) ) {
+            return $schema;
+        }
+
+        $permalink = get_permalink( $post_id );
+        if ( ! $permalink ) {
+            return $schema;
+        }
+
+        $article_id = $permalink . "#article";
+        $webpage_id = $permalink . "#webpage";
+
+        foreach ( $schema["@graph"] as &$node ) {
+            if ( ! is_array( $node ) ) {
+                continue;
+            }
+
+            $node_id = (string) ( $node["@id"] ?? "" );
+            if ( $article_id === $node_id ) {
+                $node["audio"] = [ "@id" => $audio_id ];
+                $node["hasPart"] = self::append_schema_reference( $node["hasPart"] ?? [], $audio_id );
+            } elseif ( $webpage_id === $node_id ) {
+                $node["hasPart"] = self::append_schema_reference( $node["hasPart"] ?? [], $audio_id );
+            }
+        }
+        unset( $node );
+
+        return $schema;
+    }
+
     private static function audio_schema_entity( int $post_id ): array {
         $post = get_post( $post_id );
         if ( ! $post || ! in_array( $post->post_type, [ "post", "press-release" ], true ) ) {
@@ -1493,6 +1527,24 @@ JS;
         ];
 
         return self::clean_schema( $entity );
+    }
+
+    private static function append_schema_reference( $value, string $id ): array {
+        $items = [];
+        if ( is_array( $value ) && isset( $value["@id"] ) ) {
+            $items[] = $value;
+        } elseif ( is_array( $value ) ) {
+            $items = $value;
+        }
+
+        foreach ( $items as $item ) {
+            if ( is_array( $item ) && (string) ( $item["@id"] ?? "" ) === $id ) {
+                return $items;
+            }
+        }
+
+        $items[] = [ "@id" => $id ];
+        return array_values( $items );
     }
 
     private static function audio_transcript_for_post( int $post_id ): string {
