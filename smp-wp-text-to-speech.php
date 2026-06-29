@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.3.3
+ * Version: 1.3.4
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -53,7 +53,7 @@ function register_hexa_plugin_core_autoloader(): void {
 register_hexa_plugin_core_autoloader();
 
 final class Plugin {
-    const VERSION = "1.3.3";
+    const VERSION = "1.3.4";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -1202,7 +1202,7 @@ JS;
                     "encodingFormat" => "audio/mpeg",
                     "duration" => "PT8M12S",
                     "uploadDate" => current_time( DATE_W3C ),
-                    "associatedArticle" => [ "@id" => $post_url ? $post_url . "#article" : "#article" ],
+                    "encodesCreativeWork" => [ "@id" => $post_url ? $post_url . "#article" : "#article" ],
                 ],
             ],
         ];
@@ -1487,7 +1487,6 @@ JS;
             "duration" => $duration,
             "uploadDate" => $upload_date,
             "inLanguage" => get_bloginfo( "language" ) ?: "en-US",
-            "associatedArticle" => [ "@id" => $permalink . "#article" ],
             "encodesCreativeWork" => [ "@id" => $permalink . "#article" ],
             "isPartOf" => [ "@id" => $permalink . "#webpage" ],
             "transcript" => $transcript,
@@ -1554,7 +1553,7 @@ JS;
                 [ "label" => "contentUrl points to an audio file", "status" => ! empty( $entity["contentUrl"] ) ? "green" : "red" ],
                 [ "label" => "encodingFormat is present", "status" => ! empty( $entity["encodingFormat"] ) ? "green" : "yellow" ],
                 [ "label" => "duration is present from attachment metadata", "status" => ! empty( $entity["duration"] ) ? "green" : ( ! empty( $metadata ) ? "yellow" : "red" ) ],
-                [ "label" => "AudioObject links to article #article node", "status" => ! empty( $entity["associatedArticle"]["@id"] ) ? "green" : "red" ],
+                [ "label" => "AudioObject links to article #article node", "status" => ! empty( $entity["encodesCreativeWork"]["@id"] ) ? "green" : "red" ],
                 [ "label" => "Schema validator URL can be opened", "status" => $post_id > 0 && get_permalink( $post_id ) ? "green" : "yellow" ],
             ],
         ];
