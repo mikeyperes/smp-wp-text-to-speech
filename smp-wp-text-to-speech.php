@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.3.8
+ * Version: 1.3.9
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -14,6 +14,10 @@
 
 namespace smp_text_to_speech;
 
+use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
+use Smp\TextToSpeech\Support\AudioAttachmentGuard;
+use Smp\TextToSpeech\Support\PostVisibility;
+use Smp\TextToSpeech\Support\Text;
 use WP_Error;
 
 if ( ! defined( "ABSPATH" ) ) {
@@ -52,8 +56,40 @@ function register_hexa_plugin_core_autoloader(): void {
 
 register_hexa_plugin_core_autoloader();
 
+function register_smp_tts_autoloader(): void {
+    static $registered = false;
+
+    if ( $registered ) {
+        return;
+    }
+
+    $base_dir = __DIR__ . "/src/";
+    $prefix   = "Smp\\TextToSpeech\\";
+
+    spl_autoload_register(
+        static function( string $class_name ) use ( $base_dir, $prefix ): void {
+            if ( strncmp( $class_name, $prefix, strlen( $prefix ) ) !== 0 ) {
+                return;
+            }
+
+            $relative_class = substr( $class_name, strlen( $prefix ) );
+            $file = $base_dir . str_replace( "\\", DIRECTORY_SEPARATOR, $relative_class ) . ".php";
+
+            if ( is_readable( $file ) ) {
+                require_once $file;
+            }
+        },
+        true,
+        true
+    );
+
+    $registered = true;
+}
+
+register_smp_tts_autoloader();
+
 final class Plugin {
-    const VERSION = "1.3.8";
+    const VERSION = "1.3.9";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -227,7 +263,6 @@ final class Plugin {
         }
         wp_enqueue_style( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.css", [], self::VERSION );
         wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend.css", [ "hexa-tts-admin" ], self::VERSION );
-        wp_add_inline_style( "smp-tts-frontend", self::frontend_player_css() );
         wp_enqueue_script( "smp-tts-frontend-player", plugin_dir_url( __FILE__ ) . "assets/frontend.js", [], self::VERSION, true );
         wp_enqueue_script( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.js", [ "jquery" ], self::VERSION, true );
         wp_localize_script( "hexa-tts-admin", "hexaTts", [ "ajaxUrl" => admin_url( "admin-ajax.php" ), "nonce" => wp_create_nonce( self::NONCE_ACTION ) ] );
@@ -241,7 +276,6 @@ final class Plugin {
             return;
         }
         wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend.css", [], self::VERSION );
-        wp_add_inline_style( "smp-tts-frontend", self::frontend_player_css() );
         wp_enqueue_script( "smp-tts-frontend-player", plugin_dir_url( __FILE__ ) . "assets/frontend.js", [], self::VERSION, true );
     }
 
@@ -272,6 +306,18 @@ final class Plugin {
 
         $schema = [];
         if ( $post_id > 0 && get_post( $post_id ) ) {
+            if ( ! PostVisibility::canExposeSchema( $post_id ) ) {
+                return new \WP_REST_Response(
+                    [
+                        "plugin" => "smp-wp-text-to-speech",
+                        "context" => "restricted",
+                        "requested_url" => $url,
+                        "post_id" => $post_id,
+                        "message" => "AudioObject schema is available only for publicly readable posts.",
+                    ],
+                    403
+                );
+            }
             $context = "single";
             $schema = self::generate_audio_schema_array( $post_id );
         }
@@ -307,16 +353,6 @@ final class Plugin {
         echo "\n<script type=\"application/ld+json\" id=\"smp-tts-audio-schema-jsonld\">" . wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT ) . "</script>\n";
     }
 
-    private static function frontend_player_css(): string {
-        $path = __DIR__ . "/assets/frontend.css";
-        if ( ! is_readable( $path ) ) {
-            return "";
-        }
-
-        $css = file_get_contents( $path );
-        return is_string( $css ) ? $css : "";
-    }
-
     private static function admin_inline_script() {
         return <<<JS
 (function () {
@@ -340,17 +376,6 @@ final class Plugin {
       append: box.find(".hexa-tts-post-append").val(),
       shorten: box.find(".hexa-tts-post-shorten").is(":checked") ? 1 : 0
     };
-  }
-
-  function ensureAudio(box, audioUrl) {
-    var audio = box.find("audio");
-    if (!audio.length) {
-      audio = jq(document.createElement("audio"));
-      audio.attr("controls", "controls");
-      audio.attr("preload", "metadata");
-      audio.insertAfter(box.find(".hexa-tts-post-feedback"));
-    }
-    audio.attr("src", audioUrl);
   }
 
   function renderActivityLog(box, entries, apiStatus) {
@@ -663,7 +688,7 @@ CSS;
       var data = form.serializeArray().filter(function (item) { return item.name !== "action"; });
       data.push({ name: "action", value: "hexa_tts_preview_display" });
       data.push({ name: "nonce", value: hexaTts.nonce });
-      state.removeClass("is-error is-success").addClass("is-loading").text("Saving and refreshing preview...");
+      state.removeClass("is-error is-success").addClass("is-loading").text("Refreshing preview...");
       $.ajax({ url: hexaTts.ajaxUrl, method: "POST", data: data })
         .done(function (response) {
           if (response && response.success) {
@@ -703,48 +728,15 @@ CSS;
 JS;
     }
 
-    public static function register_acf_audio_field_unused() {
-        if ( ! function_exists( "acf_add_local_field_group" ) ) {
-            return;
-        }
-        $settings = self::get_settings();
-        $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
-        return;
-        acf_add_local_field_group( [
-            "key" => "group_hexa_tts_article_audio",
-            "title" => "Article Audio",
-            "fields" => [
-                [
-                    "key" => self::acf_audio_field_key(),
-                    "label" => "Article Audio",
-                    "name" => $acf_field,
-                    "type" => "file",
-                    "instructions" => "Upload or select the audio file for this article. Generated TTS audio is saved here automatically.",
-                    "required" => 0,
-                    "return_format" => "url",
-                    "library" => "all",
-                    "mime_types" => "mp3,m4a,wav,aac,ogg",
-                ],
-            ],
-            "location" => [
-                [ [ "param" => "post_type", "operator" => "==", "value" => "post" ] ],
-                [ [ "param" => "post_type", "operator" => "==", "value" => "press-release" ] ],
-            ],
-            "position" => "acf_after_title",
-            "style" => "default",
-            "label_placement" => "top",
-            "instruction_placement" => "label",
-            "active" => true,
-        ] );
-    }
-
-
     private static function embedded_acf_audio_field( $post_id, $acf_field ) {
         $acf_value = get_post_meta( $post_id, $acf_field, true );
-        $attachment_id = is_numeric( $acf_value ) ? (int) $acf_value : (int) get_post_meta( $post_id, "_hexa_tts_attachment_id", true );
+        $attachment_id = AcfAudioFieldResolver::attachmentIdFromValue( $acf_value );
+        if ( ! $attachment_id ) {
+            $attachment_id = (int) get_post_meta( $post_id, "_hexa_tts_attachment_id", true );
+        }
         if ( function_exists( "acf_render_field_wrap" ) ) {
             $field = [
-                "key" => self::acf_audio_field_key(),
+                "key" => AcfAudioFieldResolver::renderFieldKey( $acf_field ),
                 "label" => "Article Audio",
                 "name" => $acf_field,
                 "type" => "file",
@@ -945,7 +937,7 @@ JS;
                 <div class="hexa-tts-panel-head"><div><h2>Publish Scale API Connection</h2><p>Paste the site API key generated in Publish Scale. The upstream API base is never printed into browser JavaScript.</p></div><button type="button" class="button button-secondary hexa-tts-test-central-api hexa-tts-test-provider" data-provider="central">Test API Key</button></div>
                 <div class="hexa-tts-grid hexa-tts-grid-2">
                     <label><span>Site API Key</span><input type="password" name="hexa_tts[api_key]" value="" placeholder="<?php echo esc_attr( $api_key ? "Saved: " . self::mask_secret( $api_key ) : "Paste Publish Scale site API key" ); ?>" autocomplete="off"><small>Stored encrypted in WordPress. Leave blank to keep the existing key.</small></label>
-                    <label><span>ACF audio file field</span><input type="text" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( $settings["acf_audio_field"] ); ?>"><small>Mashviral currently uses <code>article_audio</code>.</small></label>
+                    <label><span>ACF audio file field</span><input type="text" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( AcfAudioFieldResolver::fieldName( $settings ) ); ?>"><small>Mashviral currently uses <code>article_audio</code>.</small></label>
                 </div>
                 <div class="hexa-tts-test-result hexa-tts-central-result" data-provider-result="central" aria-live="polite"></div>
                 <?php if ( ! empty( $last_status["message"] ) ) : ?><div class="hexa-tts-status-card"><strong><?php echo esc_html( $last_status["message"] ); ?></strong><?php if ( ! empty( $last_status["usage"] ) ) : ?><span>Requests: <?php echo esc_html( $last_status["usage"]["requests"] ?? 0 ); ?> · Characters: <?php echo esc_html( $last_status["usage"]["characters"] ?? 0 ); ?> · Est. cost: $<?php echo esc_html( $last_status["usage"]["estimated_cost_usd"] ?? 0 ); ?></span><?php endif; ?></div><?php endif; ?>
@@ -1013,7 +1005,7 @@ JS;
         $templates = self::template_options();
         $placements = self::placement_options();
         $shortcode = self::display_shortcode( $settings );
-        $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
+        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
         $enabled = ! empty( $settings["auto_insert_player"] );
         ?>
         <style>
@@ -1124,7 +1116,7 @@ JS;
                     <?php echo self::primary_color_control_html( $settings, "hexa-tts-display-primary-color" ); ?>
                     <label><span>Player label</span><input type="text" class="hexa-tts-live-control" name="hexa_tts[player_label]" value="<?php echo esc_attr( $settings["player_label"] ); ?>"></label>
                     <label><span>Player size</span><select class="hexa-tts-live-control" name="hexa_tts[player_size]"><?php self::render_options( self::size_options(), $settings["player_size"] ); ?></select></label>
-                    <label><span>ACF audio file field</span><input type="text" class="hexa-tts-live-control" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( sanitize_key( $settings["acf_audio_field"] ?: "article_audio" ) ); ?>"></label>
+                    <label><span>ACF audio file field</span><input type="text" class="hexa-tts-live-control" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( AcfAudioFieldResolver::fieldName( $settings ) ); ?>"></label>
                     <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[auto_insert_player]" value="1" <?php checked( ! empty( $settings["auto_insert_player"] ) ); ?>><span>Enable automatic player placement</span></label>
                     <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[enable_player_controls]" value="1" <?php checked( ! empty( $settings["enable_player_controls"] ) ); ?>><span>Show enhanced frontend controls</span></label>
                 </div>
@@ -1278,7 +1270,7 @@ JS;
         $clean["default_profile"] = sanitize_key( $incoming["default_profile"] ?? $existing["default_profile"] );
         $clean["default_voice"] = sanitize_text_field( $incoming["default_voice"] ?? $existing["default_voice"] );
         $clean["default_speed"] = (string) floatval( $incoming["default_speed"] ?? $existing["default_speed"] );
-        $clean["acf_audio_field"] = sanitize_key( $incoming["acf_audio_field"] ?? $existing["acf_audio_field"] );
+        $clean["acf_audio_field"] = AcfAudioFieldResolver::fieldName( [ "acf_audio_field" => $incoming["acf_audio_field"] ?? $existing["acf_audio_field"] ?? "article_audio" ] );
         $clean["auto_insert_player"] = array_key_exists( "auto_insert_player", $incoming ) ? 1 : ( in_array( $tab, [ "display", "features" ], true ) ? 0 : (int) ( $existing["auto_insert_player"] ?? 1 ) );
         $clean["include_title"] = array_key_exists( "include_title", $incoming ) ? 1 : ( in_array( $tab, [ "api", "features" ], true ) ? 0 : (int) ( $existing["include_title"] ?? 1 ) );
         $clean["show_player_meta"] = array_key_exists( "show_player_meta", $incoming ) ? 1 : ( in_array( $tab, [ "display", "features" ], true ) ? 0 : (int) ( $existing["show_player_meta"] ?? 1 ) );
@@ -1424,7 +1416,7 @@ JS;
         return (int) $wpdb->get_var(
             $wpdb->prepare(
                 "SELECT p.ID FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID WHERE pm.meta_key = %s AND p.post_status = %s ORDER BY p.post_date_gmt DESC LIMIT 1",
-                sanitize_key( self::get_settings()["acf_audio_field"] ?: "article_audio" ),
+                AcfAudioFieldResolver::fieldName( self::get_settings() ),
                 "publish"
             )
         );
@@ -1475,7 +1467,7 @@ JS;
         }
 
         $settings = self::get_settings();
-        $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
+        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
         $attachment_id = self::current_audio_attachment_id( $post_id, $settings );
         $url = (string) get_post_meta( $post_id, "_hexa_tts_audio_url", true );
         if ( "" === $url && $attachment_id ) {
@@ -1631,7 +1623,7 @@ JS;
             return esc_url_raw( $url );
         }
         $settings = self::get_settings();
-        $field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
+        $field = AcfAudioFieldResolver::fieldName( $settings );
         $value = $wpdb instanceof \wpdb ? $wpdb->get_var( $wpdb->prepare( "SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s ORDER BY meta_id DESC LIMIT 1", $field ) ) : "";
         $resolved = self::resolve_audio_url( $value );
         return $resolved ? esc_url_raw( $resolved ) : "";
@@ -1727,17 +1719,16 @@ JS;
         check_ajax_referer( self::NONCE_ACTION, "nonce" );
         $incoming = isset( $_POST["hexa_tts"] ) && is_array( $_POST["hexa_tts"] ) ? wp_unslash( $_POST["hexa_tts"] ) : [];
         $settings = self::sanitize_display_settings( $incoming, self::get_settings(), true );
-        update_option( self::OPTION, $settings, false );
         wp_send_json_success( [
             "preview_html" => self::template_preview_rows_html( $settings ),
             "shortcode" => self::display_shortcode( $settings ),
-            "message" => "Display settings saved and preview refreshed.",
+            "message" => "Preview refreshed. Click Save to persist these display settings.",
         ] );
     }
 
     private static function sanitize_display_settings( array $incoming, array $existing, bool $checkbox_context = false ): array {
         $clean = $existing;
-        $clean["acf_audio_field"] = sanitize_key( $incoming["acf_audio_field"] ?? $existing["acf_audio_field"] ?? "article_audio" );
+        $clean["acf_audio_field"] = AcfAudioFieldResolver::fieldName( [ "acf_audio_field" => $incoming["acf_audio_field"] ?? $existing["acf_audio_field"] ?? "article_audio" ] );
         $clean["primary_color"] = self::sanitize_color( $incoming["primary_color"] ?? $existing["primary_color"] ?? "#3657e3" );
         $clean["player_label"] = sanitize_text_field( $incoming["player_label"] ?? $existing["player_label"] ?? "Listen to this article" );
         $clean["player_size"] = array_key_exists( sanitize_key( $incoming["player_size"] ?? "" ), self::size_options() ) ? sanitize_key( $incoming["player_size"] ) : ( $existing["player_size"] ?? "default" );
@@ -1764,7 +1755,7 @@ JS;
             \Hexa\PluginCore\WpAdminComponents\CoreUi::render_assets();
         }
         $settings = self::get_settings();
-        $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
+        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
         $acf_value = get_post_meta( $post->ID, $acf_field, true );
         $audio_url = get_post_meta( $post->ID, "_hexa_tts_audio_url", true );
         $attachment_id = get_post_meta( $post->ID, "_hexa_tts_attachment_id", true );
@@ -1865,11 +1856,9 @@ JS;
         if ( ! current_user_can( "edit_post", $post_id ) ) {
             return;
         }
-        $posted = $_POST["acf"][ self::acf_audio_field_key() ] ?? null;
-        if ( null === $posted ) {
-            return;
-        }
-        $attachment_id = absint( wp_unslash( $posted ) );
+        $settings = self::get_settings();
+        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
+        $attachment_id = AcfAudioFieldResolver::postedAttachmentId( $acf_field );
         if ( ! $attachment_id ) {
             return;
         }
@@ -1941,6 +1930,85 @@ JS;
         ] );
     }
 
+    private static function prepare_generation_content( int $post_id, array $settings, string $content, string $prepend = "", string $append = "", bool $shorten = false ) {
+        $content = trim( $content );
+        $extracted = false;
+
+        if ( "" === $content ) {
+            $extract = self::extract_post_text( $post_id );
+            if ( is_wp_error( $extract ) ) {
+                update_post_meta( $post_id, "_hexa_tts_status", "Extraction failed" );
+                update_post_meta( $post_id, "_hexa_tts_error", $extract->get_error_message() );
+                return $extract;
+            }
+
+            $content = (string) ( $extract["text"] ?? "" );
+            $extracted = true;
+        }
+
+        $content = trim( implode( "\n\n", array_filter( [ trim( $prepend ), $content, trim( $append ) ] ) ) );
+        if ( "" === $content ) {
+            update_post_meta( $post_id, "_hexa_tts_status", "Empty" );
+            return new WP_Error( "hexa_tts_empty_text", "No usable text was available for this post." );
+        }
+
+        $max = absint( $settings["max_characters"] ?? 0 );
+        $characters = Text::length( $content );
+        $shortened = false;
+        if ( $max > 0 && $characters > $max ) {
+            if ( $shorten ) {
+                $content = Text::truncateWithDots( $content, max( 100, $max - 20 ) );
+                $characters = Text::length( $content );
+                $shortened = true;
+            } else {
+                update_post_meta( $post_id, "_hexa_tts_status", "Too long" );
+                return new WP_Error( "hexa_tts_too_long", "Content is " . $characters . " characters, above the limit of " . $max . "." );
+            }
+        }
+
+        return [
+            "text" => $content,
+            "characters" => $characters,
+            "hash" => hash( "sha256", $content ),
+            "extracted" => $extracted,
+            "shortened" => $shortened,
+        ];
+    }
+
+    private static function generation_api_payload( int $post_id, string $content, array $settings, array $source = [], string $client_request_id = "" ): array {
+        $current_user = wp_get_current_user();
+        $wordpress_user_id = get_current_user_id();
+        if ( $wordpress_user_id < 1 ) {
+            $wordpress_user_id = max( 1, (int) get_post_field( "post_author", $post_id ) );
+        }
+
+        $wordpress_user_login = $current_user ? (string) $current_user->user_login : "";
+        if ( "" === $wordpress_user_login && $wordpress_user_id > 0 ) {
+            $author = get_user_by( "id", $wordpress_user_id );
+            $wordpress_user_login = $author ? (string) $author->user_login : "";
+        }
+
+        $payload = [
+            "content" => $content,
+            "article_url" => get_permalink( $post_id ),
+            "post_id" => $post_id,
+            "wordpress_user_id" => $wordpress_user_id,
+            "wordpress_user_login" => $wordpress_user_login,
+            "provider" => sanitize_key( $source["provider"] ?? $settings["default_provider"] ),
+            "profile" => sanitize_key( $source["profile"] ?? $settings["default_profile"] ),
+            "runtime" => [
+                "voice" => sanitize_text_field( $source["voice"] ?? $settings["default_voice"] ),
+                "speed" => sanitize_text_field( $source["speed"] ?? $settings["default_speed"] ),
+            ],
+        ];
+
+        if ( "" !== $client_request_id ) {
+            $payload["client_request_id"] = $client_request_id;
+        }
+
+        return $payload;
+    }
+
     public static function ajax_generate_audio() {
         check_ajax_referer( self::NONCE_ACTION, "nonce" );
         $post_id = absint( $_POST["post_id"] ?? 0 );
@@ -1956,83 +2024,56 @@ JS;
         self::reset_generation_log( $post_id, $client_request_id );
         delete_post_meta( $post_id, "_hexa_tts_error" );
         self::add_generation_log( $post_id, "Preparing article content.", "working" );
-        $log = self::generation_log( $post_id );
-        $content = trim( wp_unslash( (string) ( $_POST["content"] ?? "" ) ) );
-        if ( "" === $content ) {
-            $extract = self::extract_post_text( $post_id );
-            if ( is_wp_error( $extract ) ) {
-                update_post_meta( $post_id, "_hexa_tts_status", "Extraction failed" );
-                self::add_generation_log( $post_id, "Article text extraction failed: " . $extract->get_error_message(), "error" );
-                wp_send_json_error( [ "message" => $extract->get_error_message(), "log" => self::generation_log( $post_id ) ] );
-            }
-            $content = $extract["text"];
-            self::add_generation_log( $post_id, "Article text extracted from the post editor: " . strlen( $content ) . " characters.", "success" );
-        }
+
+        $raw_content = wp_unslash( (string) ( $_POST["content"] ?? "" ) );
         $prepend = trim( wp_unslash( (string) ( $_POST["prepend"] ?? "" ) ) );
         $append = trim( wp_unslash( (string) ( $_POST["append"] ?? "" ) ) );
-        $content = trim( implode( "\n\n", array_filter( [ $prepend, $content, $append ] ) ) );
-        $max = absint( $settings["max_characters"] );
-        if ( strlen( $content ) > $max ) {
-            if ( ! empty( $_POST["shorten"] ) ) {
-                $content = substr( $content, 0, max( 100, $max - 20 ) ) . "...";
-                $log[] = "Content exceeded max length and was shortened locally.";
-                self::add_generation_log( $post_id, "Content exceeded max length and was shortened locally.", "info" );
-            } else {
-                update_post_meta( $post_id, "_hexa_tts_status", "Too long" );
-                self::add_generation_log( $post_id, "Content is " . strlen( $content ) . " characters, above the limit of " . $max . ".", "error" );
-                wp_send_json_error( [ "message" => "Content is " . strlen( $content ) . " characters, above the limit of " . $max . ".", "log" => self::generation_log( $post_id ) ] );
-            }
+        $prepared = self::prepare_generation_content( $post_id, $settings, $raw_content, $prepend, $append, ! empty( $_POST["shorten"] ) );
+        if ( is_wp_error( $prepared ) ) {
+            self::add_generation_log( $post_id, $prepared->get_error_message(), "error" );
+            wp_send_json_error( [ "message" => $prepared->get_error_message(), "log" => self::generation_log( $post_id ) ] );
+        }
+
+        $content = $prepared["text"];
+        if ( ! empty( $prepared["extracted"] ) ) {
+            self::add_generation_log( $post_id, "Article text extracted from the post editor: " . (int) $prepared["characters"] . " characters.", "success" );
+        }
+        if ( ! empty( $prepared["shortened"] ) ) {
+            self::add_generation_log( $post_id, "Content exceeded max length and was shortened locally.", "info" );
         }
         update_post_meta( $post_id, "_hexa_tts_status", "Waiting" );
         self::add_generation_log( $post_id, "WordPress payload prepared. Sending server-side request to Publish Scale API.", "working", [ "client_request_id" => $client_request_id ] );
-        $log[] = "Sending server-side request to Publish Scale API.";
-        $current_user = wp_get_current_user();
-        $wordpress_user_id = get_current_user_id();
-        if ( $wordpress_user_id < 1 ) {
-            $wordpress_user_id = max( 1, (int) get_post_field( "post_author", $post_id ) );
-        }
-        $wordpress_user_login = $current_user ? (string) $current_user->user_login : "";
-        if ( "" === $wordpress_user_login && $wordpress_user_id > 0 ) {
-            $author = get_user_by( "id", $wordpress_user_id );
-            $wordpress_user_login = $author ? (string) $author->user_login : "";
-        }
-        $result = self::api_request( "/synthesize", [
-            "content" => $content,
-            "article_url" => get_permalink( $post_id ),
-            "post_id" => $post_id,
-            "wordpress_user_id" => $wordpress_user_id,
-            "wordpress_user_login" => $wordpress_user_login,
-            "provider" => sanitize_key( $_POST["provider"] ?? $settings["default_provider"] ),
-            "profile" => sanitize_key( $_POST["profile"] ?? $settings["default_profile"] ),
-            "runtime" => [ "voice" => sanitize_text_field( wp_unslash( $_POST["voice"] ?? $settings["default_voice"] ) ), "speed" => sanitize_text_field( wp_unslash( $_POST["speed"] ?? $settings["default_speed"] ) ) ],
-            "client_request_id" => $client_request_id,
-        ], 240 );
+        $source = [
+            "provider" => wp_unslash( (string) ( $_POST["provider"] ?? $settings["default_provider"] ) ),
+            "profile" => wp_unslash( (string) ( $_POST["profile"] ?? $settings["default_profile"] ) ),
+            "voice" => wp_unslash( (string) ( $_POST["voice"] ?? $settings["default_voice"] ) ),
+            "speed" => wp_unslash( (string) ( $_POST["speed"] ?? $settings["default_speed"] ) ),
+        ];
+        $result = self::api_request( "/synthesize", self::generation_api_payload( $post_id, $content, $settings, $source, $client_request_id ), 240 );
         if ( is_wp_error( $result ) ) {
             update_post_meta( $post_id, "_hexa_tts_status", "Failed" );
             update_post_meta( $post_id, "_hexa_tts_error", $result->get_error_message() );
-            $log[] = "Publish Scale API failed: " . $result->get_error_message();
             self::add_generation_log( $post_id, "Publish Scale API failed: " . $result->get_error_message(), "error" );
             wp_send_json_error( [ "message" => $result->get_error_message(), "log" => self::generation_log( $post_id ) ] );
         }
-        $log[] = "Audio returned by API. Saving to WordPress Media Library.";
         self::add_generation_log( $post_id, "Publish Scale API returned audio bytes. Request " . ( $result["request_id"] ?? $client_request_id ) . " is ready for WordPress storage.", "success", [ "request_id" => $result["request_id"] ?? $client_request_id, "bytes" => $result["bytes"] ?? null, "cost_usd" => $result["cost_usd"] ?? null ] );
         self::add_generation_log( $post_id, "Saving returned MP3 to the WordPress Media Library.", "working" );
         $stored = self::store_api_audio( $post_id, $result, $content );
         if ( is_wp_error( $stored ) ) {
             update_post_meta( $post_id, "_hexa_tts_status", "Storage failed" );
             update_post_meta( $post_id, "_hexa_tts_error", $stored->get_error_message() );
-            $log[] = "Storage failed: " . $stored->get_error_message();
             self::add_generation_log( $post_id, "Storage failed: " . $stored->get_error_message(), "error" );
             wp_send_json_error( [ "message" => $stored->get_error_message(), "log" => self::generation_log( $post_id ) ] );
         }
-        $log[] = "Attachment stored and ACF/meta field synced.";
         self::add_generation_log( $post_id, "Attachment stored and ACF/meta field synced.", "success", [ "attachment_id" => $stored["attachment_id"] ?? null, "acf_field" => $stored["acf_field"] ?? null ] );
-        $deleted_previous_attachment_id = self::delete_replaced_audio_attachment( $previous_attachment_id, (int) ( $stored["attachment_id"] ?? 0 ) );
+        $deleted_previous_attachment_id = self::delete_replaced_audio_attachment( $previous_attachment_id, (int) ( $stored["attachment_id"] ?? 0 ), $post_id );
         if ( $deleted_previous_attachment_id ) {
             self::add_generation_log( $post_id, "Deleted previous article audio attachment " . $deleted_previous_attachment_id . ".", "success", [ "deleted_attachment_id" => $deleted_previous_attachment_id ] );
         }
         delete_post_meta( $post_id, "_hexa_tts_error" );
         update_post_meta( $post_id, "_hexa_tts_status", "Ready" );
+        update_post_meta( $post_id, "_hexa_tts_text_hash", (string) $prepared["hash"] );
+        update_post_meta( $post_id, "_hexa_tts_character_count", (int) $prepared["characters"] );
         wp_send_json_success( array_merge( $stored, [ "message" => "Audio generated, stored in Media Library, and synced to ACF/meta.", "request_id" => $result["request_id"] ?? "", "archive_url" => $result["archive_url"] ?? "", "cost_usd" => $result["cost_usd"] ?? null, "deleted_attachment_id" => $deleted_previous_attachment_id, "log" => self::generation_log( $post_id ) ] ) );
     }
 
@@ -2048,38 +2089,22 @@ JS;
         }
 
         $settings = self::get_settings();
-        $content = trim( (string) ( $args["content"] ?? "" ) );
-        if ( "" === $content ) {
-            $extract = self::extract_post_text( $post_id );
-            if ( is_wp_error( $extract ) ) {
-                update_post_meta( $post_id, "_hexa_tts_status", "Extraction failed" );
-                update_post_meta( $post_id, "_hexa_tts_error", $extract->get_error_message() );
-                return $extract;
-            }
-            $content = (string) ( $extract["text"] ?? "" );
+        $prepared = self::prepare_generation_content(
+            $post_id,
+            $settings,
+            (string) ( $args["content"] ?? "" ),
+            (string) ( $args["prepend"] ?? "" ),
+            (string) ( $args["append"] ?? "" ),
+            ! empty( $args["shorten"] )
+        );
+        if ( is_wp_error( $prepared ) ) {
+            return $prepared;
         }
 
-        $prepend = trim( (string) ( $args["prepend"] ?? "" ) );
-        $append  = trim( (string) ( $args["append"] ?? "" ) );
-        $content = trim( implode( "\n\n", array_filter( [ $prepend, $content, $append ] ) ) );
-        if ( "" === $content ) {
-            update_post_meta( $post_id, "_hexa_tts_status", "Empty" );
-            return new WP_Error( "hexa_tts_empty_text", "No usable text was available for this post." );
-        }
-
-        $max = absint( $settings["max_characters"] ?? 0 );
-        if ( $max > 0 && strlen( $content ) > $max ) {
-            if ( ! empty( $args["shorten"] ) ) {
-                $content = substr( $content, 0, max( 100, $max - 20 ) ) . "...";
-            } else {
-                update_post_meta( $post_id, "_hexa_tts_status", "Too long" );
-                return new WP_Error( "hexa_tts_too_long", "Content is " . strlen( $content ) . " characters, above the limit of " . $max . "." );
-            }
-        }
-
-        $hash = hash( "sha256", $content );
+        $content = $prepared["text"];
+        $hash = $prepared["hash"];
         $force = ! empty( $args["force"] );
-        $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
+        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
         $existing_url = (string) get_post_meta( $post_id, "_hexa_tts_audio_url", true );
         $existing_attachment_id = absint( get_post_meta( $post_id, "_hexa_tts_attachment_id", true ) );
         if ( "" === $existing_url && $existing_attachment_id ) {
@@ -2110,29 +2135,7 @@ JS;
         update_post_meta( $post_id, "_hexa_tts_status", "Waiting" );
         delete_post_meta( $post_id, "_hexa_tts_error" );
 
-        $current_user = wp_get_current_user();
-        $wordpress_user_id = get_current_user_id();
-        if ( $wordpress_user_id < 1 ) {
-            $wordpress_user_id = max( 1, (int) get_post_field( "post_author", $post_id ) );
-        }
-        $wordpress_user_login = $current_user ? (string) $current_user->user_login : "";
-        if ( "" === $wordpress_user_login && $wordpress_user_id > 0 ) {
-            $author = get_user_by( "id", $wordpress_user_id );
-            $wordpress_user_login = $author ? (string) $author->user_login : "";
-        }
-        $result = self::api_request( "/synthesize", [
-            "content" => $content,
-            "article_url" => get_permalink( $post_id ),
-            "post_id" => $post_id,
-            "wordpress_user_id" => $wordpress_user_id,
-            "wordpress_user_login" => $wordpress_user_login,
-            "provider" => sanitize_key( $args["provider"] ?? $settings["default_provider"] ),
-            "profile" => sanitize_key( $args["profile"] ?? $settings["default_profile"] ),
-            "runtime" => [
-                "voice" => sanitize_text_field( $args["voice"] ?? $settings["default_voice"] ),
-                "speed" => sanitize_text_field( $args["speed"] ?? $settings["default_speed"] ),
-            ],
-        ], 240 );
+        $result = self::api_request( "/synthesize", self::generation_api_payload( $post_id, $content, $settings, $args ), 240 );
 
         if ( is_wp_error( $result ) ) {
             update_post_meta( $post_id, "_hexa_tts_status", "Failed" );
@@ -2149,8 +2152,8 @@ JS;
 
         update_post_meta( $post_id, "_hexa_tts_status", "Ready" );
         update_post_meta( $post_id, "_hexa_tts_text_hash", $hash );
-        update_post_meta( $post_id, "_hexa_tts_character_count", strlen( $content ) );
-        $deleted_previous_attachment_id = self::delete_replaced_audio_attachment( $previous_attachment_id, (int) ( $stored["attachment_id"] ?? 0 ) );
+        update_post_meta( $post_id, "_hexa_tts_character_count", (int) $prepared["characters"] );
+        $deleted_previous_attachment_id = self::delete_replaced_audio_attachment( $previous_attachment_id, (int) ( $stored["attachment_id"] ?? 0 ), $post_id );
 
         return array_merge( $stored, [
             "message" => "Audio generated, stored in Media Library, and synced to ACF/meta.",
@@ -2174,10 +2177,26 @@ JS;
         if ( ! empty( $settings["include_title"] ) ) {
             $parts[] = get_the_title( $post );
         }
-        $content = $post->post_content;
+        $content = (string) $post->post_content;
         if ( function_exists( "do_blocks" ) ) {
             $content = do_blocks( $content );
         }
+        $text = self::plain_text_from_content( $content );
+        if ( "" !== $text ) {
+            $parts[] = $text;
+        }
+        $elementor_text = self::extract_elementor_text( (int) $post_id );
+        if ( "" !== $elementor_text && ( "" === $text || false === strpos( $text, $elementor_text ) ) ) {
+            $parts[] = $elementor_text;
+        }
+        $final = trim( implode( "\n\n", array_filter( $parts ) ) );
+        if ( "" === $final ) {
+            return new WP_Error( "hexa_tts_empty_text", "No usable text was extracted from this post." );
+        }
+        return [ "text" => $final, "characters" => Text::length( $final ), "words" => str_word_count( wp_strip_all_tags( $final ) ), "hash" => hash( "sha256", $final ), "preview" => Text::slice( $final, 0, 5000 ) ];
+    }
+
+    private static function plain_text_from_content( string $content ): string {
         $content = strip_shortcodes( $content );
         $content = preg_replace( "#<(script|style|noscript)[^>]*>.*?</\\1>#is", " ", $content );
         $content = preg_replace( "#<(h[1-6]|p|li|blockquote|br)[^>]*>#i", "\n", $content );
@@ -2185,15 +2204,62 @@ JS;
         $text = html_entity_decode( $text, ENT_QUOTES | ENT_HTML5, get_bloginfo( "charset" ) ?: "UTF-8" );
         $text = preg_replace( "/[ \t]+/", " ", $text );
         $text = preg_replace( "/\n{3,}/", "\n\n", $text );
-        $text = trim( $text );
-        if ( "" !== $text ) {
-            $parts[] = $text;
+        return trim( $text );
+    }
+
+    private static function extract_elementor_text( int $post_id ): string {
+        $raw = get_post_meta( $post_id, "_elementor_data", true );
+        if ( ! is_string( $raw ) || "" === trim( $raw ) ) {
+            return "";
         }
-        $final = trim( implode( "\n\n", array_filter( $parts ) ) );
-        if ( "" === $final ) {
-            return new WP_Error( "hexa_tts_empty_text", "No usable text was extracted from this post." );
+
+        $decoded = json_decode( $raw, true );
+        if ( ! is_array( $decoded ) ) {
+            $decoded = json_decode( wp_unslash( $raw ), true );
         }
-        return [ "text" => $final, "characters" => strlen( $final ), "words" => str_word_count( wp_strip_all_tags( $final ) ), "hash" => hash( "sha256", $final ), "preview" => function_exists( "mb_substr" ) ? mb_substr( $final, 0, 5000 ) : substr( $final, 0, 5000 ) ];
+        if ( ! is_array( $decoded ) ) {
+            return "";
+        }
+
+        $texts = [];
+        self::collect_elementor_text( $decoded, $texts );
+        $texts = array_values( array_unique( array_filter( array_map( "trim", $texts ) ) ) );
+        return trim( implode( "\n\n", $texts ) );
+    }
+
+    private static function collect_elementor_text( $node, array &$texts ): void {
+        if ( ! is_array( $node ) ) {
+            return;
+        }
+
+        $allowed_keys = [
+            "title",
+            "editor",
+            "text",
+            "description",
+            "caption",
+            "tab_title",
+            "tab_content",
+            "item_title",
+            "item_description",
+            "testimonial_content",
+            "blockquote_content",
+        ];
+
+        foreach ( $node as $key => $value ) {
+            $normalized_key = sanitize_key( (string) $key );
+            if ( is_string( $value ) && in_array( $normalized_key, $allowed_keys, true ) ) {
+                $text = self::plain_text_from_content( $value );
+                if ( "" !== $text && ! preg_match( "#^https?://#i", $text ) ) {
+                    $texts[] = $text;
+                }
+                continue;
+            }
+
+            if ( is_array( $value ) ) {
+                self::collect_elementor_text( $value, $texts );
+            }
+        }
     }
 
     private static function sanitize_client_request_id( $value ): string {
@@ -2238,9 +2304,15 @@ JS;
             return null;
         }
 
+        $headers = [ "Accept" => "application/json" ];
+        $api_key = self::api_key();
+        if ( "" !== $api_key ) {
+            $headers["X-SMP-TTS-Key"] = $api_key;
+        }
+
         $response = wp_remote_get( self::API_BASE . "/requests/" . rawurlencode( $public_id ), [
             "timeout" => 8,
-            "headers" => [ "Accept" => "application/json" ],
+            "headers" => $headers,
         ] );
         if ( is_wp_error( $response ) ) {
             return [ "status" => "unavailable", "message" => $response->get_error_message() ];
@@ -2280,40 +2352,19 @@ JS;
     }
 
 
-    private static function acf_audio_field_key() {
-        return "field_643ce428d9b50";
-    }
-
     private static function resolve_audio_url( $value ) {
-        if ( is_numeric( $value ) ) {
-            $url = wp_get_attachment_url( (int) $value );
-            return $url ? $url : "";
-        }
-        if ( is_string( $value ) && preg_match( "#^https?://#i", $value ) ) {
-            return $value;
-        }
-        return "";
+        return AcfAudioFieldResolver::resolveUrl( $value );
     }
 
     private static function audio_attachment_id_from_value( $value ): int {
-        if ( is_numeric( $value ) ) {
-            return absint( $value );
-        }
-        if ( is_array( $value ) ) {
-            foreach ( [ "ID", "id", "attachment_id" ] as $key ) {
-                if ( isset( $value[ $key ] ) && is_numeric( $value[ $key ] ) ) {
-                    return absint( $value[ $key ] );
-                }
-            }
-        }
-        return 0;
+        return AcfAudioFieldResolver::attachmentIdFromValue( $value );
     }
 
     private static function current_audio_attachment_id( int $post_id, array $settings = [] ): int {
         if ( empty( $settings ) ) {
             $settings = self::get_settings();
         }
-        $acf_field = sanitize_key( $settings["acf_audio_field"] ?? "article_audio" );
+        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
         foreach ( [ get_post_meta( $post_id, $acf_field, true ), get_post_meta( $post_id, "_hexa_tts_attachment_id", true ) ] as $value ) {
             $attachment_id = self::audio_attachment_id_from_value( $value );
             if ( $attachment_id && "attachment" === get_post_type( $attachment_id ) && 0 === strpos( (string) get_post_mime_type( $attachment_id ), "audio/" ) ) {
@@ -2323,14 +2374,8 @@ JS;
         return 0;
     }
 
-    private static function delete_replaced_audio_attachment( int $previous_attachment_id, int $new_attachment_id ): int {
-        if ( ! $previous_attachment_id || $previous_attachment_id === $new_attachment_id ) {
-            return 0;
-        }
-        if ( "attachment" !== get_post_type( $previous_attachment_id ) ) {
-            return 0;
-        }
-        if ( 0 !== strpos( (string) get_post_mime_type( $previous_attachment_id ), "audio/" ) ) {
+    private static function delete_replaced_audio_attachment( int $previous_attachment_id, int $new_attachment_id, int $post_id ): int {
+        if ( ! AudioAttachmentGuard::canDeleteReplacement( $previous_attachment_id, $new_attachment_id, $post_id ) ) {
             return 0;
         }
         return wp_delete_attachment( $previous_attachment_id, true ) ? $previous_attachment_id : 0;
@@ -2338,7 +2383,7 @@ JS;
 
     private static function sync_audio_attachment( $post_id, $attachment_id, $audio_url, $file_path = "", array $api_result = [] ) {
         $settings = self::get_settings();
-        $acf_field = sanitize_key( $settings["acf_audio_field"] ?: "article_audio" );
+        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
         update_post_meta( $post_id, "_hexa_tts_audio_url", esc_url_raw( $audio_url ) );
         update_post_meta( $post_id, "_hexa_tts_attachment_id", (int) $attachment_id );
         if ( $file_path ) {
@@ -2355,11 +2400,7 @@ JS;
         update_post_meta( $post_id, "_hexa_tts_provider", sanitize_key( $api_result["provider"] ?? "manual_upload" ) );
         update_post_meta( $post_id, "_hexa_tts_provider_key_last4", sanitize_text_field( $api_result["provider_key_last4"] ?? "" ) );
         update_post_meta( $post_id, "_hexa_tts_acf_field", $acf_field );
-        if ( function_exists( "update_field" ) ) {
-            update_field( self::acf_audio_field_key(), (int) $attachment_id, $post_id );
-        } else {
-            update_post_meta( $post_id, $acf_field, (int) $attachment_id );
-        }
+        AcfAudioFieldResolver::updatePostValue( (int) $post_id, $acf_field, (int) $attachment_id );
         $bytes = $file_path && file_exists( $file_path ) ? filesize( $file_path ) : 0;
         return [ "audio_url" => $audio_url, "attachment_id" => (int) $attachment_id, "acf_field" => $acf_field, "acf_value" => (int) $attachment_id, "bytes" => (int) $bytes ];
     }
@@ -2377,7 +2418,8 @@ JS;
     }
 
     private static function store_audio_bytes( $post_id, $bytes, $request_id, array $api_result ) {
-        $filename = sanitize_file_name( "hexa-tts-" . $post_id . "-" . $request_id . ".mp3" );
+        $mime = sanitize_mime_type( $api_result["audio_mime"] ?? "audio/mpeg" );
+        $filename = sanitize_file_name( "hexa-tts-" . $post_id . "-" . $request_id . "." . self::audio_extension_from_mime( $mime ) );
         $upload = wp_upload_bits( $filename, null, $bytes );
         if ( ! empty( $upload["error"] ) ) {
             return new WP_Error( "hexa_tts_upload_failed", $upload["error"] );
@@ -2385,15 +2427,31 @@ JS;
         require_once ABSPATH . "wp-admin/includes/file.php";
         require_once ABSPATH . "wp-admin/includes/media.php";
         require_once ABSPATH . "wp-admin/includes/image.php";
-        $attachment_id = wp_insert_attachment( [ "post_mime_type" => $api_result["audio_mime"] ?? "audio/mpeg", "post_title" => sanitize_text_field( get_the_title( $post_id ) . " narration" ), "post_content" => "", "post_status" => "inherit" ], $upload["file"], $post_id );
+        $attachment_id = wp_insert_attachment( [ "post_mime_type" => $mime, "post_title" => sanitize_text_field( get_the_title( $post_id ) . " narration" ), "post_content" => "", "post_status" => "inherit" ], $upload["file"], $post_id );
         if ( is_wp_error( $attachment_id ) || ! $attachment_id ) {
             return new WP_Error( "hexa_tts_attachment_failed", is_wp_error( $attachment_id ) ? $attachment_id->get_error_message() : "Could not insert media attachment." );
         }
+        AudioAttachmentGuard::markManaged( (int) $attachment_id, (int) $post_id, (string) $request_id );
         $metadata = wp_generate_attachment_metadata( $attachment_id, $upload["file"] );
         if ( is_array( $metadata ) ) {
             wp_update_attachment_metadata( $attachment_id, $metadata );
         }
         return self::sync_audio_attachment( $post_id, (int) $attachment_id, $upload["url"], $upload["file"], $api_result );
+    }
+
+    private static function audio_extension_from_mime( string $mime ): string {
+        $map = [
+            "audio/mpeg" => "mp3",
+            "audio/mp3" => "mp3",
+            "audio/wav" => "wav",
+            "audio/x-wav" => "wav",
+            "audio/aac" => "aac",
+            "audio/ogg" => "ogg",
+            "audio/mp4" => "m4a",
+            "audio/x-m4a" => "m4a",
+        ];
+
+        return $map[ strtolower( $mime ) ] ?? "mp3";
     }
 
     public static function maybe_insert_player( $content ) {
@@ -2455,7 +2513,7 @@ JS;
         $url = get_post_meta( $post_id, "_hexa_tts_audio_url", true );
         $settings = self::get_settings();
         if ( ! $url ) {
-            $url = self::resolve_audio_url( get_post_meta( $post_id, sanitize_key( $settings["acf_audio_field"] ?: "article_audio" ), true ) );
+            $url = self::resolve_audio_url( get_post_meta( $post_id, AcfAudioFieldResolver::fieldName( $settings ), true ) );
         }
         if ( ! $url ) {
             return "";

@@ -13,7 +13,7 @@ Plugin identity:
 - Plugin name: `SMP WP Text To Speech`
 - Slug/folder: `smp-wp-text-to-speech`
 - Main file: `smp-wp-text-to-speech.php`
-- Version: `1.0`
+- Version: `1.3.9`
 
 ## Implemented
 
