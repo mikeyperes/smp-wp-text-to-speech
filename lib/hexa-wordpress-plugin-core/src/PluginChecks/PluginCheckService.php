@@ -44,12 +44,12 @@ final class PluginCheckService {
     public static function status( PluginCheckDefinition $definition ): array {
         self::load_plugin_functions();
 
-        $plugins      = get_plugins();
+        $plugins      = self::inventory_plugins( $definition );
         $plugin_file  = $definition->plugin_file;
         $installed    = '' !== $plugin_file && isset( $plugins[ $plugin_file ] );
-        $resolved_by  = 'plugin_file';
+        $resolved_by  = in_array( $definition->source, [ 'must_use', 'dropin' ], true ) ? $definition->source : 'plugin_file';
 
-        if ( ! $installed && '' !== $definition->slug ) {
+        if ( ! $installed && '' !== $definition->slug && ! in_array( $definition->source, [ 'must_use', 'dropin' ], true ) ) {
             $found = PluginProvisioner::find_plugin_file_by_folder( $definition->slug );
             if ( '' !== $found ) {
                 $plugin_file = $found;
@@ -59,21 +59,32 @@ final class PluginCheckService {
         }
 
         $version          = $installed ? (string) ( $plugins[ $plugin_file ]['Version'] ?? '' ) : '';
-        $active           = $installed && is_plugin_active( $plugin_file );
+        $active           = in_array( $definition->source, [ 'must_use', 'dropin' ], true ) ? $installed : ( $installed && is_plugin_active( $plugin_file ) );
+        $auto_updates     = (array) get_site_option( 'auto_update_plugins', [] );
+        $auto_update      = ! in_array( $definition->source, [ 'must_use', 'dropin' ], true ) && $installed && in_array( $plugin_file, $auto_updates, true );
         $updates          = self::plugin_updates();
-        $update_available = $installed && isset( $updates[ $plugin_file ] );
+        $update_available = ! in_array( $definition->source, [ 'must_use', 'dropin' ], true ) && $installed && isset( $updates[ $plugin_file ] );
         $new_version      = $update_available ? (string) ( $updates[ $plugin_file ]->update->new_version ?? '' ) : '';
         $up_to_date       = $installed && ! $update_available;
+        $recommended      = property_exists( $definition, 'recommended' ) ? (bool) $definition->recommended : (bool) $definition->required;
+        $should_not_contain = method_exists( $definition, 'should_not_contain' ) ? $definition->should_not_contain() : false;
+        $auto_update_expected = property_exists( $definition, 'auto_update_expected' ) ? (bool) $definition->auto_update_expected : false;
 
         $required_failures = [];
-        if ( $definition->checks['installed'] && ! $installed ) {
+        if ( ! empty( $definition->checks['not_installed'] ) && $installed ) {
+            $required_failures[] = $active ? 'forbidden_active' : 'forbidden_installed';
+        }
+        if ( ! empty( $definition->checks['installed'] ) && ! $installed ) {
             $required_failures[] = 'missing';
         }
-        if ( $definition->checks['active'] && ! $active ) {
+        if ( ! empty( $definition->checks['active'] ) && ! $active ) {
             $required_failures[] = 'inactive';
         }
-        if ( $definition->checks['up_to_date'] && $installed && ! $up_to_date ) {
+        if ( ! empty( $definition->checks['up_to_date'] ) && $installed && ! $up_to_date ) {
             $required_failures[] = 'outdated';
+        }
+        if ( ! empty( $definition->checks['auto_update'] ) && $installed && $auto_update_expected !== $auto_update ) {
+            $required_failures[] = $auto_update ? 'auto_update_enabled' : 'auto_update_disabled';
         }
 
         return [
@@ -84,14 +95,19 @@ final class PluginCheckService {
             'slug'              => $definition->slug,
             'source'            => $definition->source,
             'required'          => $definition->required,
+            'recommended'       => $recommended,
+            'should_not_contain' => $should_not_contain,
+            'auto_update_expected' => $auto_update_expected,
             'checks'            => $definition->checks,
             'installed'         => $installed,
             'active'            => $active,
+            'auto_update'       => $auto_update,
             'version'           => $version,
             'up_to_date'        => $up_to_date,
             'update_available'  => $update_available,
             'new_version'       => $new_version,
             'installable'       => $definition->supports_ajax_install(),
+            'removable'         => $should_not_contain && $installed && ! in_array( $definition->source, [ 'must_use', 'dropin' ], true ),
             'download_url'      => self::download_url( $definition ),
             'download_label'    => $definition->download_label,
             'notes'             => $definition->notes,
@@ -123,19 +139,26 @@ final class PluginCheckService {
             'missing'   => 0,
             'inactive'  => 0,
             'outdated'  => 0,
+            'unwanted'  => 0,
             'attention' => 0,
         ];
 
         foreach ( $statuses as $status ) {
+            $should_not_contain = ! empty( $status['should_not_contain'] );
+
             if ( ! empty( $status['ok'] ) ) {
                 $summary['ready']++;
             } else {
                 $summary['attention']++;
             }
 
-            if ( empty( $status['installed'] ) ) {
+            if ( $should_not_contain && ! empty( $status['installed'] ) ) {
+                $summary['unwanted']++;
+            }
+
+            if ( ! $should_not_contain && empty( $status['installed'] ) ) {
                 $summary['missing']++;
-            } elseif ( empty( $status['active'] ) ) {
+            } elseif ( ( ! $should_not_contain || ! empty( $status['installed'] ) ) && empty( $status['active'] ) ) {
                 $summary['inactive']++;
             }
 
@@ -209,6 +232,98 @@ final class PluginCheckService {
         ];
     }
 
+    /**
+     * @return array<string,mixed>|\WP_Error
+     */
+    public static function deactivate( PluginCheckDefinition $definition ): array|\WP_Error {
+        if ( ! $definition->should_not_contain() ) {
+            return new \WP_Error( 'hexa_plugin_check_deactivate_not_allowed', 'Deactivate is only available for plugins that should not be installed.' );
+        }
+
+        if ( in_array( $definition->source, [ 'must_use', 'dropin' ], true ) ) {
+            return new \WP_Error( 'hexa_plugin_check_deactivate_unsupported', 'Must-use plugins and drop-ins cannot be deactivated from this inventory action.' );
+        }
+
+        if ( function_exists( 'current_user_can' ) && ! current_user_can( 'deactivate_plugins' ) ) {
+            return new \WP_Error( 'hexa_plugin_check_deactivate_forbidden', 'You do not have permission to deactivate plugins.' );
+        }
+
+        $status = self::status( $definition );
+        if ( empty( $status['installed'] ) || empty( $status['plugin_file'] ) ) {
+            return new \WP_Error( 'hexa_plugin_check_not_installed', 'Plugin is not installed.' );
+        }
+
+        if ( empty( $status['active'] ) ) {
+            return [
+                'message' => $definition->name . ' is already inactive.',
+                'status'  => $status,
+            ];
+        }
+
+        deactivate_plugins( (string) $status['plugin_file'], false, false );
+
+        $next = self::status( $definition );
+        if ( ! empty( $next['active'] ) ) {
+            return new \WP_Error( 'hexa_plugin_check_deactivate_failed', 'Plugin could not be deactivated.' );
+        }
+
+        return [
+            'message' => $definition->name . ' deactivated.',
+            'status'  => $next,
+        ];
+    }
+
+    /**
+     * @return array<string,mixed>|\WP_Error
+     */
+    public static function delete( PluginCheckDefinition $definition ): array|\WP_Error {
+        if ( ! $definition->should_not_contain() ) {
+            return new \WP_Error( 'hexa_plugin_check_delete_not_allowed', 'Delete is only available for plugins that should not be installed.' );
+        }
+
+        $status = self::status( $definition );
+        if ( empty( $status['installed'] ) || empty( $status['plugin_file'] ) ) {
+            return [
+                'message' => $definition->name . ' is already absent.',
+                'status'  => $status,
+            ];
+        }
+
+        if ( in_array( $definition->source, [ 'must_use', 'dropin' ], true ) ) {
+            return new \WP_Error( 'hexa_plugin_check_delete_unsupported', 'Must-use plugins and drop-ins cannot be deleted from this inventory action.' );
+        }
+
+        if ( function_exists( 'current_user_can' ) && ! current_user_can( 'delete_plugins' ) ) {
+            return new \WP_Error( 'hexa_plugin_check_delete_forbidden', 'You do not have permission to delete plugins.' );
+        }
+
+        if ( ! empty( $status['active'] ) ) {
+            $deactivated = self::deactivate( $definition );
+            if ( is_wp_error( $deactivated ) ) {
+                return $deactivated;
+            }
+        }
+
+        if ( ! function_exists( 'delete_plugins' ) ) {
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+
+        $deleted = delete_plugins( [ (string) $status['plugin_file'] ] );
+        if ( is_wp_error( $deleted ) ) {
+            return $deleted;
+        }
+        if ( false === $deleted ) {
+            return new \WP_Error( 'hexa_plugin_check_delete_failed', 'Plugin could not be deleted.' );
+        }
+
+        self::clear_plugin_inventory_cache();
+
+        return [
+            'message' => $definition->name . ' deleted.',
+            'status'  => self::status( $definition ),
+        ];
+    }
+
     public static function refresh_update_cache(): void {
         if ( function_exists( 'wp_clean_update_cache' ) ) {
             wp_clean_update_cache();
@@ -246,6 +361,35 @@ final class PluginCheckService {
     private static function load_plugin_functions(): void {
         if ( ! function_exists( 'get_plugins' ) || ! function_exists( 'is_plugin_active' ) ) {
             require_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+    }
+
+    /**
+     * @return array<string,array<string,mixed>>
+     */
+    private static function inventory_plugins( PluginCheckDefinition $definition ): array {
+        if ( 'must_use' === $definition->source ) {
+            return function_exists( 'get_mu_plugins' ) ? get_mu_plugins() : [];
+        }
+
+        if ( 'dropin' === $definition->source ) {
+            if ( function_exists( 'get_dropins' ) ) {
+                return get_dropins();
+            }
+
+            return function_exists( '_get_dropins' ) ? _get_dropins() : [];
+        }
+
+        return get_plugins();
+    }
+
+    private static function clear_plugin_inventory_cache(): void {
+        if ( function_exists( 'wp_clean_plugins_cache' ) ) {
+            wp_clean_plugins_cache( true );
+        }
+
+        if ( function_exists( 'wp_cache_delete' ) ) {
+            wp_cache_delete( 'plugins', 'plugins' );
         }
     }
 

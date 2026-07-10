@@ -11,6 +11,7 @@ Use these exact names:
 - Root PHP namespace: `Hexa\PluginCore\`
 - Source folder: `src/`
 - Version file: `VERSION`
+- Package fingerprint: `PACKAGE_HASH`
 
 Do not invent alternatives. Do not use host plugin names inside this package.
 
@@ -37,7 +38,9 @@ src/CoreContracts/      Hexa\PluginCore\CoreContracts
 src/CorePackageUpdates/ Hexa\PluginCore\CorePackageUpdates
 src/CoreRuntime/        Hexa\PluginCore\CoreRuntime
 src/CredentialVault/    Hexa\PluginCore\CredentialVault
+src/DatabaseCleanup/    Hexa\PluginCore\DatabaseCleanup
 src/LogFiles/           Hexa\PluginCore\LogFiles
+src/ObjectCache/        Hexa\PluginCore\ObjectCache
 src/PluginProvisioning/ Hexa\PluginCore\PluginProvisioning
 src/PluginUpdates/      Hexa\PluginCore\PluginUpdates
 src/SnippetRegistry/    Hexa\PluginCore\SnippetRegistry
@@ -58,11 +61,11 @@ If you add a namespace, add it to `README.md`, `docs/folder-map.md`, and this fi
 
 Every host plugin must initialize the core in the same order:
 
-1. Load Composer or vendored autoload.
-2. Create `Hexa\PluginCore\CoreRuntime\PluginContext`.
-3. Create `Hexa\PluginCore\CoreBootstrap\CoreBootstrap`.
-4. Add modules.
-5. Call `boot()` once.
+1. Require root `bootstrap.php` and register the host package candidate.
+2. Let the shared resolver select one package before any Core class is referenced.
+3. Create `Hexa\PluginCore\CoreRuntime\PluginContext`.
+4. Create `Hexa\PluginCore\CoreBootstrap\CoreBootstrap`.
+5. Add modules and call `boot()` once.
 
 Never make a module boot itself at file include time. Modules register hooks from their `register()` method only.
 
@@ -71,6 +74,8 @@ Never make a module boot itself at file include time. Modules register hooks fro
 - Put interfaces in `src/CoreContracts`.
 - Put reusable ACF field array factories in `src/AcfFieldFactory`.
 - Put runtime value objects and version metadata in `src/CoreRuntime`.
+- Put reusable database cleanup sessions, table optimization, provider activation, and live row reporting in `src/DatabaseCleanup`.
+- Put reusable object-cache provider status and activation adapters in `src/ObjectCache`.
 - Put admin tab abstractions in `src/WpAdminTabs`.
 - Put reusable visual primitives in `src/WpAdminComponents`.
 - Put reusable error-log viewer/read/classification features in `src/LogFiles`.

@@ -65,10 +65,10 @@ final class PluginChecksRenderer {
         ob_start();
         ?>
         <section class="hpc-plugin-checks-summary">
-            <span>✅ <?php echo (int) $summary['ready']; ?> ready</span>
-            <span>❌ <?php echo (int) $summary['missing']; ?> missing</span>
-            <span>❌ <?php echo (int) $summary['inactive']; ?> inactive</span>
-            <span>⚠️ <?php echo (int) $summary['outdated']; ?> outdated</span>
+            <span><?php echo $this->status_icon( true ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> <?php echo (int) $summary['ready']; ?> ready</span>
+            <span><?php echo $this->status_icon( false ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> <?php echo (int) $summary['missing']; ?> missing</span>
+            <span><?php echo $this->status_icon( false ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?> <?php echo (int) $summary['inactive']; ?> inactive</span>
+            <span><span class="hpc-plugin-check-fa hpc-plugin-check-fa-warning" aria-hidden="true"></span> <?php echo (int) $summary['outdated']; ?> outdated</span>
             <span><?php echo (int) $summary['total']; ?> configured</span>
         </section>
         <section class="hpc-plugin-checks-list">
@@ -127,7 +127,7 @@ final class PluginChecksRenderer {
             return '<span class="hpc-plugin-check-item is-muted">• ' . esc_html( $label ) . ': not checked</span>';
         }
 
-        return '<span class="hpc-plugin-check-item ' . ( $passed ? 'is-pass' : 'is-fail' ) . '">' . ( $passed ? '✅' : '❌' ) . ' ' . esc_html( $label ) . '</span>';
+        return '<span class="hpc-plugin-check-item ' . ( $passed ? 'is-pass' : 'is-fail' ) . '">' . $this->status_icon( $passed ) . ' ' . esc_html( $label ) . '</span>';
     }
 
     /**
@@ -178,7 +178,11 @@ final class PluginChecksRenderer {
             return CoreUi::external_link( admin_url( 'update-core.php' ), 'Open updates', 'hpc-button secondary' );
         }
 
-        return '<span class="hpc-plugin-check-ready">✅ Ready</span>';
+        return '<span class="hpc-plugin-check-ready">' . $this->status_icon( true ) . ' Ready</span>';
+    }
+
+    private function status_icon( bool $passed ): string {
+        return '<span class="hpc-plugin-check-fa ' . ( $passed ? 'hpc-plugin-check-fa-check' : 'hpc-plugin-check-fa-xmark' ) . '" aria-hidden="true"></span>';
     }
 
     private function source_label( string $source ): string {
@@ -247,6 +251,13 @@ final class PluginChecksRenderer {
 .hpc-plugin-check-item.is-pass{color:var(--hpc-green)}
 .hpc-plugin-check-item.is-fail{color:var(--hpc-red)}
 .hpc-plugin-check-item.is-muted{color:var(--hpc-muted)}
+.hpc-plugin-check-fa{display:inline-flex;font-family:"Font Awesome 6 Free","Font Awesome 5 Free","FontAwesome",Arial,sans-serif;font-size:13px;font-weight:900;line-height:1;margin-right:2px}
+.hpc-plugin-check-fa-check{color:var(--hpc-green)}
+.hpc-plugin-check-fa-check:before{content:"\f00c"}
+.hpc-plugin-check-fa-xmark{color:var(--hpc-red)}
+.hpc-plugin-check-fa-xmark:before{content:"\f00d"}
+.hpc-plugin-check-fa-warning{color:var(--hpc-amber)}
+.hpc-plugin-check-fa-warning:before{content:"!"}
 .hpc-plugin-check-version{display:grid;gap:2px}
 .hpc-plugin-check-version strong{color:var(--hpc-ink);font-size:13px}
 .hpc-plugin-check-version span{color:var(--hpc-muted);font-size:12px}

@@ -2,6 +2,7 @@
 
 namespace Hexa\PluginCore\CorePackageUpdates;
 
+use Hexa\PluginCore\PluginUpdates\UpdaterFilesystem;
 use Hexa\PluginCore\PluginUpdates\UpdateProgressStore;
 use WP_Error;
 
@@ -58,8 +59,8 @@ final class CorePackageInstaller {
             return $this->fail( new WP_Error( 'hexa_core_source_missing', 'Downloaded core package did not contain VERSION and src.' ) );
         }
 
-        $this->step( 'Copying core files into the vendored package folder.' );
-        $result = copy_dir( trailingslashit( $source ), trailingslashit( $this->config->core_root() ) );
+        $this->step( 'Copying core files into the vendored package folder without VCS metadata.' );
+        $result = UpdaterFilesystem::copy_directory_clean( $source, $this->config->core_root() );
         $this->delete_dir( $extract_to );
 
         if ( is_wp_error( $result ) ) {

@@ -11,6 +11,7 @@ use Hexa\PluginCore\SmartSearch\SmartSearchRenderer;
 use Hexa\PluginCore\FieldStructures\FieldStructureRenderer;
 use Hexa\PluginCore\BrandColors\BrandColorProvider;
 use Hexa\PluginCore\CoreRuntime\CoreVersion;
+use Hexa\PluginCore\CoreRuntime\CorePackageRuntime;
 use Hexa\PluginCore\WpAdminComponents\ColorControl;
 use Hexa\PluginCore\WpAdminComponents\CoreUi;
 use Hexa\PluginCore\WpAdminComponents\DetailedColorPicker;
@@ -128,7 +129,32 @@ Current core sections:
 - Field Structures
 README;
 
+        $runtime          = CorePackageRuntime::report();
+        $selected         = is_array( $runtime['selected'] ?? null ) ? $runtime['selected'] : [];
+        $candidate_count  = count( (array) ( $runtime['candidates'] ?? [] ) );
+        $issues           = (array) ( $runtime['issues'] ?? [] );
+        $runtime_status   = ! empty( $runtime['healthy'] ) ? CoreUi::pill( 'Healthy', 'success' ) : CoreUi::pill( 'Needs attention', 'danger' );
+        $runtime_details  = '<p>' . $runtime_status . '</p>'
+            . '<p>Selected host: <span class="hpc-code">' . esc_html( (string) ( $selected['host'] ?? 'unresolved' ) ) . '</span></p>'
+            . '<p>Selected version: <span class="hpc-code">' . esc_html( (string) ( $selected['version'] ?? 'unresolved' ) ) . '</span></p>'
+            . '<p>Registered candidates: <span class="hpc-code">' . esc_html( (string) $candidate_count ) . '</span></p>';
+
+        if ( [] !== $issues ) {
+            $runtime_details .= '<ul>';
+            foreach ( $issues as $issue ) {
+                $runtime_details .= '<li>' . esc_html( (string) ( $issue['message'] ?? $issue['type'] ?? 'Unknown Core runtime issue.' ) ) . '</li>';
+            }
+            $runtime_details .= '</ul>';
+        }
+
         return '<div class="hpc-grid">'
+            . CoreUi::card(
+                [
+                    'title'     => 'Runtime package owner',
+                    'body_html' => $runtime_details,
+                    'meta_html' => CoreUi::pill( 'One namespace owner', ! empty( $runtime['healthy'] ) ? 'success' : 'danger' ),
+                ]
+            )
             . CoreUi::card(
                 [
                     'title'     => 'Source of truth',
