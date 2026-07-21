@@ -30,7 +30,7 @@ BrandColorProvider
 - `BrandColorProvider::elementor_payload($fallback_primary, $fallback_secondary)` returns Elementor primary/secondary color and font-family tokens when Elementor site settings exist.
 - `BrandColorProvider::elementor_palette()` returns every Elementor system/custom color as normalized display rows.
 - `BrandColorProvider::rgb_string($hex)` converts a hex value to `rgb(r, g, b)`.
-- `Hexa\PluginCore\WpAdminComponents\ColorControl::render()` owns the visual picker/hex/RGB/swatch/copy/import control.
+- `Hexa\PluginCore\WpAdminComponents\ColorControl::render()` owns the visual picker/hex/RGB/swatch/copy/import control and optional inherited-value state.
 - `Hexa\PluginCore\WpAdminComponents\ElementorPaletteDetector::render()` owns the reference-only Elementor palette detector.
 - `Hexa\PluginCore\WpAdminComponents\ColorPalette::render()` owns multi-color saved palettes and can compose the Elementor detector.
 - `Hexa\PluginCore\WpAdminComponents\DetailedColorPicker::render()` owns the paired primary/secondary visual picker and optional font controls.
@@ -58,7 +58,7 @@ echo ColorControl::render([
 
 Use `ColorControl::render()` when a feature needs one color field. It is storage-agnostic and does not require the palette structure.
 
-The control is isolated from the palette wrapper. Callers may hide any visual part with `show_picker`, `show_hex_input`, `show_rgb`, `show_hex_code`, `show_swatch`, or `show_copy`.
+The control is isolated from the palette wrapper. Callers may hide any visual part with `show_picker`, `show_hex_input`, `show_rgb`, `show_hex_code`, `show_swatch`, or `show_copy`. Set `allow_inherit` and pass `inherited_value` when an empty stored value should inherit a parent color. In inherited mode, `value_input_class` belongs on the hidden persisted field while `hex_input_class` styles the editable effective value.
 
 ```php
 use Hexa\PluginCore\WpAdminComponents\ColorControl;

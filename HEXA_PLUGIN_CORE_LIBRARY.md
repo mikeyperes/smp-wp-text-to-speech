@@ -20,18 +20,32 @@ Do not rename these.
 
 ```text
 src/ActivityLog/        Hexa\PluginCore\ActivityLog
+src/AcfFieldFactory/    Hexa\PluginCore\AcfFieldFactory
 src/CoreBootstrap/      Hexa\PluginCore\CoreBootstrap
 src/CoreContracts/      Hexa\PluginCore\CoreContracts
 src/CorePackageUpdates/ Hexa\PluginCore\CorePackageUpdates
 src/CoreRuntime/        Hexa\PluginCore\CoreRuntime
+src/ContentCleanup/     Hexa\PluginCore\ContentCleanup
 src/CredentialVault/    Hexa\PluginCore\CredentialVault
+src/DatabaseCleanup/    Hexa\PluginCore\DatabaseCleanup
+src/FieldStructures/    Hexa\PluginCore\FieldStructures
+src/FaqSets/            Hexa\PluginCore\FaqSets
+src/GettingStartedChecklist/
+                        Hexa\PluginCore\GettingStartedChecklist
 src/LogFiles/           Hexa\PluginCore\LogFiles
+src/ObjectCache/        Hexa\PluginCore\ObjectCache
+src/PluginChecks/       Hexa\PluginCore\PluginChecks
 src/PluginProvisioning/ Hexa\PluginCore\PluginProvisioning
 src/PluginUpdates/      Hexa\PluginCore\PluginUpdates
+src/SnippetRegistry/    Hexa\PluginCore\SnippetRegistry
 src/ShortcodeRegistry/  Hexa\PluginCore\ShortcodeRegistry
 src/SiteStructure/      Hexa\PluginCore\SiteStructure
+src/SchemaDetection/    Hexa\PluginCore\SchemaDetection
+src/SearchDisplay/      Hexa\PluginCore\SearchDisplay
+src/SearchQuery/        Hexa\PluginCore\SearchQuery
 src/SmartSearch/        Hexa\PluginCore\SmartSearch
 src/SystemEnvironment/  Hexa\PluginCore\SystemEnvironment
+src/WpAdminUiCleanup/   Hexa\PluginCore\WpAdminUiCleanup
 src/WpAdminAjax/        Hexa\PluginCore\WpAdminAjax
 src/WpAdminComponents/  Hexa\PluginCore\WpAdminComponents
 src/WpAdminTabs/        Hexa\PluginCore\WpAdminTabs
@@ -47,6 +61,328 @@ Namespace:
 Hexa\PluginCore\WpAdminComponents
 ```
 
+Use `CoreUi::collapsible()` for expandable cards. The shared component owns the native `<details>` structure, persistent open/closed state, and visible chevron SVG indicator, so users can tell the card expands.
+
+Use `CoreUi::toggle()` for checkbox-style toggles. Core clips the hidden checkbox input to a 1px focusable control so the input never creates horizontal page overflow.
+
+Use `CoreUi::detail_card()` for nested expandable/collapsible subcards inside a parent tool section. It is meant for descriptions, rule explanations, scan-location lists, and other supporting details that should not dominate the page on load.
+
+Use CoreUi::collection_filter() for a client-side search control above a repeated card collection. Give every top-level item a dedicated class through the CoreUi::collapsible() class argument; do not target every nested Core section.
+
+An optional group selector hides headings whose groups contain no matches. Core owns visible/total reporting, clear and Escape behavior, empty results, initial setup, and AJAX host-tab reinitialization.
+
+Set text_selector when repeated cards contain shared logs or diagnostics. Core searches only those descendant regions, then falls back to data-hpc-filter-text or full item text when no selector is supplied.
+
+Use `ScopedCssOverride::render()` for a closed-by-default CSS editor or reference panel. The host supplies its scope selector, concise instructions, formatted HTML structure, and formatted CSS example. When the host supplies a setting key and value, Core also renders the actual code editor and save-status slot. Core owns the details card, editor, code blocks, and copy actions; the host owns validation, persistence, and frontend output.
+
+```php
+use Hexa\PluginCore\WpAdminComponents\ScopedCssOverride;
+
+echo ScopedCssOverride::render(
+    [
+        'title'        => 'Component CSS override',
+        'selector'     => 'body .example-component',
+        'instructions' => [
+            'Keep every rule inside this selector.',
+            'Add a WordPress body class before it to target one page.',
+        ],
+        'html_example' => '<div class="example-component">...</div>',
+        'css_example'  => "body .example-component {\n  color: #111827;\n}",
+    ]
+);
+```
+
+## WP Admin UI Cleanup
+
+Namespace:
+
+```text
+Hexa\PluginCore\WpAdminUiCleanup
+```
+
+Use `CleanupRegistry` to define admin cleanup options once, render toggle rows, save settings through AJAX, and apply behavior on the target admin screens.
+
+Required rules:
+
+- Register cleanup behavior admin-wide, not only inside the settings tab.
+- Use plugin-specific option prefixes and AJAX action names.
+- Use `css_hide` for direct selectors and `postbox_collapse` when the box should stay visible but load closed.
+- Test through the visible admin UI and exact target screen with Puppeteer or Playwright.
+
+Example definition shape:
+
+```text
+key: hide_post_editor_comments
+label: Post Editor Comments
+section: wordpress_editor
+default: true
+admin_pages: post.php, post-new.php
+mode: css_hide
+selectors: #commentsdiv, #commentsdiv-hide, label[for="commentsdiv-hide"]
+```
+
+## Content Cleanup
+
+Namespace:
+
+```text
+Hexa\PluginCore\ContentCleanup
+```
+
+Use `ContentCleanupConfig` for host-specific action names, nonce settings, allowed post types, statuses, default age filters, fixed report mode, detection rules, limits, and protected IDs. Use `ContentCleanupAjaxController` to register scan/trash/delete actions. Use `ContentCleanupRenderer` for a separate collapsible service card with a collapsed description subcard, backend-only detection rules, filters or no-filter report UI, detected rows table, row flags, edit-new-tab links, red destructive buttons, and a closed-by-default Hexa Core Log Type 1 live activity log. Cleanup renderers must tolerate older already-loaded `CoreUi` classes because multiple plugins can vendor the core on the same site.
+
+Cleanup services default to manual scan. Leave `auto_scan` unset or false when the page should open instantly. Set `auto_scan => true` only when a plugin intentionally wants the service to run its AJAX scan on page load.
+
+Use `BackupCleanupConfig`, `BackupCleanupAjaxController`, and `BackupCleanupRenderer` when a plugin needs a reusable backup-file cleanup table. The host plugin supplies configured roots and allowed extensions; Core renders a collapsed description subcard, a visible scan-location subcard with configured paths/extensions/resolved directories, scans those locations, logs every configured location, returns row IDs, and deletes only files that still match the configured roots/extensions.
+
+Use `ArticleMediaCleanupConfig`, `ArticleMediaCleanupAjaxController`, and `ArticleMediaCleanupRenderer` when a plugin needs reusable post cleanup. Core renders the primary batch actions first: delete all matching posts, or delete matching posts except the latest X posts. Each primary batch action has its own associated-media toggle. Advanced filters, preview rows, select-all/row selection, row-by-row AJAX deletion, and filtered selected-row deletion remain available in a collapsed Advanced Filters & Preview card. Media deletion is off by default and only runs when the visible checkbox for that action is enabled. Associated media includes featured images plus inline/gallery attachment IDs detected from post content.
+
+Batch deletion is intentionally separate from the preview table. `limit` only controls the visible preview rows. The batch actions use `post_type`, `status`, `search`, and the selected mode across all matching posts. Use `batch_delete_action`, `default_batch_size`, and `max_batch_size` to configure the plugin-specific AJAX endpoint and per-request batch limits.
+
+Core automatically protects the WordPress front page, posts page, and privacy policy page.
+
+## Getting Started Checklist
+
+Namespace:
+
+```text
+Hexa\PluginCore\GettingStartedChecklist
+```
+
+Use `GettingStartedChecklistConfig` for host-owned action names, nonce settings, capability, labels, ordered steps, semantic request types, and request metadata. Use `GettingStartedChecklistAjaxController` to register the guarded AJAX runner. Use `GettingStartedChecklistRenderer` to render the reusable checklist UI with simple action rows, collapsible parent steps only when real subtasks exist, nested subtasks, spinner/check/X states, request type badges, sequential AJAX execution, optional image preview assets in reports, and a collapsed dark technical activity log.
+
+Set `show_search` to `true` for long checklists. Core then renders the shared collection filter, indexes parent and actionable child labels/descriptions/IDs/types, updates visible counts, applies a force-hidden state that host row display rules cannot override, hides parent groups without matches, and reapplies the active query after template changes. Hosts may provide `search_label`, `search_placeholder`, and `search_empty_message`; they must not duplicate the search script.
+
+`GettingStartedChecklistRenderer` owns host-facing markup and delegates its scoped CSS/browser runtime to the internal `GettingStartedChecklistAssets` collaborator. Hosts continue to instantiate only the renderer.
+
+Set `show_type_badges` to `false` for checklist screens that are meant to read as simple action lists. Keep it enabled when request type labels help operators understand mixed setup, status-check, destructive, and configuration tasks.
+
+Checklist reports can include `meta.preview_assets` as an array of `label`, `url`, `preview_url`, `format`, and `meta`. Core renders those as visible image preview cards above the report table. Reports can also include `meta.documentation` and `meta.summary_items` to show plain-English before/action/verified-after proof above the raw table. For `wp_config_changes`, Core uses `Before Action`, `Requested Value`, and `Verified After`; host plugins must decide success from the verified value, not just the writer return.
+
+Required rules:
+
+- Keep plugin-specific callbacks in the host plugin.
+- Keep checklist UI, AJAX execution, status icons, subtask sequencing, and log rendering in Hexa Core.
+- Simple one-action steps should render as plain list rows with individual run buttons. Do not add fake subtasks or fake accordions for simple steps.
+- A parent step with subtasks must stay in the running state until each subtask has finished.
+- Callback returns may be `true`, `false`, a string, `WP_Error`, or an array with `success`, `message`, `logs`, and optional `data`.
+- Step and subtask `type` values should be one of `callback`, `status_check`, `setup_action`, `feature_toggle`, `config_mutation`, `ajax_request`, or `custom`.
+- Use `request` for structured request metadata. Core passes raw request metadata to callbacks and redacts secret/token/password/nonce/key values in public output.
+- Use `required_inputs` or `inputs` for operator-supplied values that must be typed before a checklist item can run. Core renders the fields, validates them in the browser, sends them through AJAX as `inputs[field_id]`, validates/sanitizes them server-side, and passes them to callbacks as `$payload["inputs"]`.
+- Supported input types are `text`, `email`, `url`, `password`, `number`, `tel`, and `search`.
+- Do not hardcode site-specific SMTP sender emails, alert emails, API keys, or approval text in reusable Core code. Define the required input and feed the typed value into the existing host callback.
+
+Example:
+
+```php
+$config = new \Hexa\PluginCore\GettingStartedChecklist\GettingStartedChecklistConfig([
+    'root_id'      => 'my-plugin-getting-started',
+    'show_search'  => true,
+    'nonce_action' => 'my_plugin_getting_started',
+    'run_action'   => 'my_plugin_getting_started_run_item',
+    'steps'        => [
+        [
+            'id'          => 'environment',
+            'label'       => 'Verify Environment',
+            'type'        => 'status_check',
+            'subtasks'    => [
+                [
+                    'id'       => 'wordpress',
+                    'label'    => 'WordPress Runtime',
+                    'type'     => 'status_check',
+                    'callback' => 'my_plugin_check_wordpress_runtime',
+                ],
+            ],
+        ],
+        [
+            'id'          => 'smtp_setup',
+            'label'       => 'Apply SMTP Settings',
+            'type'        => 'config_mutation',
+            'callback'    => 'my_plugin_apply_smtp_settings',
+            'required_inputs' => [
+                [
+                    'id'          => 'from_email',
+                    'label'       => 'From email',
+                    'type'        => 'email',
+                    'required'    => true,
+                    'placeholder' => '',
+                    'description' => 'Passed to the callback as $payload["inputs"]["from_email"].',
+                ],
+            ],
+        ],
+    ],
+]);
+
+( new \Hexa\PluginCore\GettingStartedChecklist\GettingStartedChecklistAjaxController($config) )->register();
+( new \Hexa\PluginCore\GettingStartedChecklist\GettingStartedChecklistRenderer($config) )->render();
+```
+
+## Plugin Checks And Plugin Inventory
+
+Namespace:
+
+```text
+Hexa\PluginCore\PluginChecks
+```
+
+Use `PluginCheckDefinition` arrays for host-owned plugin lists. Use `PluginCheckService` for installed/active/update/auto-update status. Use `PluginInventoryRenderer` when a plugin needs a reusable table UI for plugin status or a plugin library. Use `PluginInventoryAjaxController` for no-refresh refresh, install-and-activate, activate, deactivate, and delete actions. Forbidden rows show Deactivate when active, Activate when inactive, and Delete when removable.
+
+Required rules:
+
+- Keep plugin-specific catalog and policy data in the host plugin.
+- Keep table UI, collapsible cards, plugin actions, and status rendering in Hexa Core.
+- Use `required => true` for dependencies that must be installed and active.
+- Use `should_not_contain => true` only for plugins the host explicitly forbids. Never infer forbidden policy from an installed plugin being absent from a recommendation list.
+- Leave installed-but-unlisted plugins neutral. Core labels them `Not listed`; it does not flag or remove them.
+- Render Policy, Installation, and Status as separate columns. A satisfied required policy and an absent forbidden policy are green; an unsatisfied required policy or installed forbidden policy is red.
+- Keep compliant forbidden definitions visible unless the host deliberately sets `hide_compliant_forbidden => true`.
+- Use `source => wordpress_org` with `wp_org_slug` for WordPress.org installs.
+- Use `source => github` with `github_repo` for GitHub ZIP installs. Core normalizes extracted `repo-main` folders to the configured slug.
+- Use `source => pro` or `manual` when a plugin requires a manual upload/download.
+- Use `source => must_use` or `dropin` for MU plugins and WordPress drop-ins; Core treats installed/present as active and skips update/auto-update checks.
+- Keep shared Core and DynamicButton assets in the full renderer. AJAX content fragments must suppress automatic asset emission so style and script tags never land inside plugin rows.
+- When a host disables the Source column, Core renders source beneath the plugin path, uses a fixed seven-column desktop layout without horizontal scrolling, and stacks labeled cells below 900px.
+- Keep Deactivate and Delete as subtle secondary row controls. They are available for installed normal plugins, require confirmation where destructive, and remain blocked for must-use plugins and drop-ins.
+- Do not use emoji indicators in plugin inventory UIs.
+
+Example:
+
+```php
+$definitions = [
+    [
+        'id'                   => 'classic-editor',
+        'name'                 => 'Classic Editor',
+        'plugin_file'          => 'classic-editor/classic-editor.php',
+        'slug'                 => 'classic-editor',
+        'source'               => 'wordpress_org',
+        'wp_org_slug'          => 'classic-editor',
+        'required'             => true,
+        'recommended'          => true,
+        'auto_update_expected' => true,
+        'checks'               => [
+            'installed'   => true,
+            'active'      => true,
+            'up_to_date'  => false,
+            'auto_update' => true,
+        ],
+    ],
+];
+
+( new \Hexa\PluginCore\PluginChecks\PluginInventoryAjaxController(
+    $definitions,
+    [
+        'capability'    => 'install_plugins',
+        'nonce_action'  => 'my_plugin_admin',
+        'nonce_field'   => 'nonce',
+        'action_prefix' => 'my_plugin_inventory',
+        'renderer_args' => [
+            'title'       => 'Plugin Status',
+            'persist_key' => 'my-plugin-status',
+            'columns'     => [
+                'auto_update' => true,
+                'version'     => true,
+                'source'      => true,
+            ],
+        ],
+    ]
+) )->register();
+
+echo ( new \Hexa\PluginCore\PluginChecks\PluginInventoryRenderer() )->render(
+    $definitions,
+    [
+        'title'         => 'Plugin Status',
+        'description'   => 'Plugin health for this integration.',
+        'nonce'         => wp_create_nonce( 'my_plugin_admin' ),
+        'nonce_field'   => 'nonce',
+        'action_prefix' => 'my_plugin_inventory',
+        'persist_key'   => 'my-plugin-status',
+        'open'          => true,
+    ]
+);
+```
+
+```php
+use Hexa\PluginCore\ContentCleanup\ContentCleanupAjaxController;
+use Hexa\PluginCore\ContentCleanup\ContentCleanupConfig;
+use Hexa\PluginCore\ContentCleanup\ContentCleanupRenderer;
+
+$config = new ContentCleanupConfig([
+    'root_id'                => 'example-cleanup',
+    'title'                  => 'Cleanup',
+    'nonce_action'           => 'example_cleanup',
+    'scan_action'            => 'example_cleanup_scan',
+    'trash_action'           => 'example_cleanup_trash',
+    'delete_action'          => 'example_cleanup_delete',
+    'auto_scan'              => false,
+    'post_types'             => [ 'page' => 'Pages' ],
+    'default_published_days' => 365,
+    'show_filters'           => false,
+    'count_label'            => 'Reported',
+    'detection_rules'        => [
+        [
+            'id'                 => 'home_not_front',
+            'label'              => 'Home',
+            'tone'               => 'warning',
+            'terms'              => [ 'home' ],
+            'fields'             => [ 'title', 'slug' ],
+            'exclude_option_ids' => [ 'page_on_front' ],
+        ],
+    ],
+]);
+
+( new ContentCleanupAjaxController( $config ) )->register();
+( new ContentCleanupRenderer( $config ) )->render();
+```
+
+Backup cleanup example:
+
+```php
+use Hexa\PluginCore\ContentCleanup\BackupCleanupAjaxController;
+use Hexa\PluginCore\ContentCleanup\BackupCleanupConfig;
+use Hexa\PluginCore\ContentCleanup\BackupCleanupRenderer;
+
+$backup_config = new BackupCleanupConfig([
+    'root_id'       => 'example-backup-cleanup',
+    'nonce_action'  => 'example_cleanup',
+    'scan_action'   => 'example_backup_scan',
+    'delete_action' => 'example_backup_delete',
+    'auto_scan'     => false,
+    'locations'     => [
+        'updraftplus' => [
+            'name'       => 'UpdraftPlus',
+            'path'       => WP_CONTENT_DIR . '/updraft/',
+            'extensions' => [ 'zip', 'gz', 'sql' ],
+        ],
+    ],
+]);
+
+( new BackupCleanupAjaxController( $backup_config ) )->register();
+( new BackupCleanupRenderer( $backup_config ) )->render();
+```
+
+Article cleanup example:
+
+```php
+use Hexa\PluginCore\ContentCleanup\ArticleMediaCleanupAjaxController;
+use Hexa\PluginCore\ContentCleanup\ArticleMediaCleanupConfig;
+use Hexa\PluginCore\ContentCleanup\ArticleMediaCleanupRenderer;
+
+$article_config = new ArticleMediaCleanupConfig([
+    'root_id'             => 'example-article-cleanup',
+    'nonce_action'        => 'example_cleanup',
+    'scan_action'         => 'example_article_scan',
+    'delete_action'       => 'example_article_delete',
+    'batch_delete_action' => 'example_article_batch_delete',
+    'auto_scan'           => false,
+    'post_types'          => [ 'post' => 'Posts' ],
+    'default_batch_size'  => 50,
+    'max_batch_size'      => 100,
+]);
+
+( new ArticleMediaCleanupAjaxController( $article_config ) )->register();
+( new ArticleMediaCleanupRenderer( $article_config ) )->render();
+```
+
 ## WP Admin AJAX
 
 Namespace:
@@ -56,6 +392,22 @@ Hexa\PluginCore\WpAdminAjax
 ```
 
 Use `AjaxActionRegistry` for host plugin admin-AJAX actions. Use `AjaxRequest` for sanitized request values. Use `AjaxFailure` for expected validation errors. `AjaxGuard` remains available for low-level nonce/capability checks.
+
+## Snippet Registry
+
+Namespace:
+
+```text
+Hexa\PluginCore\SnippetRegistry
+```
+
+Use `SnippetDefinition` and `SnippetRegistry` to normalize host plugin snippets. Use `SnippetRenderer` to render description, testing, snippets, shortcodes, and basic README components. Use `SnippetAjaxController` when a host plugin wants generic toggle/test AJAX handlers.
+
+Required host responsibilities:
+
+- Host plugins own snippet functions and option keys.
+- Core owns the generic registry, UI, test rule evaluation, and AJAX response shape.
+- Testing rules should include at least option-enabled and function-exists checks for each feature snippet.
 
 ```php
 use Hexa\PluginCore\WpAdminAjax\AjaxActionRegistry;
@@ -188,7 +540,9 @@ Namespace:
 Hexa\PluginCore\SiteStructure
 ```
 
-Use `PageStructureManager` for critical page blueprints, callback-backed assigned page storage, starter/template content, page details, managed page create/delete protection, WordPress navigation menu creation, custom menu items, add-all-pages menu actions, menu blueprint attachment, and page-to-menu-item attachment. Use `SiteStructureAjaxController` to keep host-specific AJAX action names while sharing nonce, capability, and request handling. Use `SiteStructureRenderer` for the admin UI.
+Use `PageStructureManager` for critical page blueprints, callback-backed assigned page storage, starter/template content, page details, managed page create/delete protection, WordPress navigation menu creation, custom menu items, add-all-pages menu actions, menu blueprint attachment, and page-to-menu-item attachment. Use `SiteStructureAjaxController` to keep host-specific AJAX action names while sharing nonce, capability, and request handling. Use `SiteStructureRenderer` for the admin UI. The renderer accepts `show_pages` and `show_menus` so hosts can split page assignment and menu building into separate tabs without duplicating menu code. For large page sets, `lazy_page_workspace` plus the `page_workspace` AJAX action renders one shared editor and loads only the selected page's detail/template payload.
+
+`PageStructureManager` remains the host-facing facade; internal `PageStructureMenuService` and `PageStructureTemplateService` collaborators isolate menu and template/workspace behavior without changing its public methods. `SiteStructureRenderer` similarly delegates browser behavior to internal `SiteStructureScriptRenderer`.
 
 ```php
 use Hexa\PluginCore\SiteStructure\PageStructureManager;
@@ -200,7 +554,7 @@ $manager = new PageStructureManager([
     'template_option_prefix' => 'my_plugin_page_template_',
     'managed_meta_key' => '_my_plugin_managed_page',
     'managed_key_meta_key' => '_my_plugin_page_key',
-    'created_page_status' => 'publish',
+    'created_page_status' => 'draft',
     'select_post_statuses' => ['publish', 'draft', 'private'],
     'assignment_statuses' => ['publish', 'draft', 'private'],
     'reuse_existing_pages' => true,
@@ -226,7 +580,7 @@ $manager = new PageStructureManager([
         'create_menu_item' => 'my_plugin_create_menu_item',
         'attach_page_to_menu_item' => 'my_plugin_attach_page_to_menu_item',
         'attach_menu_structure' => 'my_plugin_attach_menu_structure',
-        'add_pages_to_menu' => 'my_plugin_add_pages_to_menu',
+        'menu_inventory' => 'my_plugin_menu_inventory',
         'save_template' => 'my_plugin_save_template',
         'apply_template' => 'my_plugin_apply_template',
         'page_details' => 'my_plugin_page_details',
@@ -247,7 +601,7 @@ echo (new SiteStructureRenderer($manager, [
         'create_menu_item' => 'my_plugin_create_menu_item',
         'attach_page_to_menu_item' => 'my_plugin_attach_page_to_menu_item',
         'attach_menu_structure' => 'my_plugin_attach_menu_structure',
-        'add_pages_to_menu' => 'my_plugin_add_pages_to_menu',
+        'menu_inventory' => 'my_plugin_menu_inventory',
         'save_template' => 'my_plugin_save_template',
         'apply_template' => 'my_plugin_apply_template',
         'page_details' => 'my_plugin_page_details',
@@ -262,7 +616,7 @@ Generic SiteStructure AJAX actions:
 
 ```text
 assign_page, create_page, delete_page, create_navigation_menu, delete_navigation_menu,
-create_menu_item, attach_page_to_menu_item, attach_menu_structure, add_pages_to_menu,
+create_menu_item, attach_page_to_menu_item, attach_menu_structure, menu_inventory,
 save_template, apply_template, page_details, update_page_slug
 ```
 
@@ -320,6 +674,87 @@ $store->store( 'openai', 'api_key', $raw_key );
 $masked = $store->get_masked( 'openai', 'api_key' );
 ```
 
+## Front-End Search Display
+
+Namespace:
+
+```text
+Hexa\PluginCore\SearchDisplay
+```
+
+Class:
+
+```text
+SearchDisplayRenderer
+```
+
+Use this renderer for public site-search forms. It owns five selectable templates: `icon-reveal`, `overlay`, `pill`, `underline`, and `command`. Every template submits a native WordPress GET request with `name="s"`; it does not load AJAX search results.
+
+The host plugin owns its saved design option and shortcode. The host must call this same renderer for the backend preview and the front-end shortcode so preview markup cannot drift from production markup.
+
+```php
+echo \Hexa\PluginCore\SearchDisplay\SearchDisplayRenderer::render([
+    'style'       => 'overlay',
+    'accent'      => '#2f6df6',
+    'placeholder' => 'Search stories...',
+    'hidden_fields' => [ 'example_search' => '1' ],
+]);
+```
+
+Do not duplicate the renderer CSS, SVG, markup, or interaction script inside a host plugin. `hidden_fields` is the bridge to a shortcode-scoped `SearchQuery` engine; names are sanitized, values are escaped, and the renderer accepts at most ten fields.
+
+## Native Search Query Behavior
+
+Namespace:
+
+```text
+Hexa\PluginCore\SearchQuery
+```
+
+Classes:
+
+```text
+SearchQueryConfiguration
+SearchTermParser
+SearchQueryEngine
+JetEngineSearchAdapter
+```
+
+Use this namespace to alter one explicitly eligible native WordPress search-results query. The host owns option storage, capability/nonce checks, available public post types and taxonomies, and the request marker. Core owns normalization, bounded parsing, selected-source SQL, and query scoping.
+
+```php
+$settings_provider = static function (): array {
+    return \Hexa\PluginCore\SearchQuery\SearchQueryConfiguration::normalize(
+        (array) get_option( 'example_search_behavior', [] ),
+        get_post_types( [ 'public' => true ], 'names' ),
+        get_taxonomies( [ 'public' => true ], 'names' )
+    );
+};
+$engine = new \Hexa\PluginCore\SearchQuery\SearchQueryEngine(
+    $settings_provider,
+    'example_search'
+);
+$engine->register();
+
+$jet_engine = new \Hexa\PluginCore\SearchQuery\JetEngineSearchAdapter(
+    $settings_provider,
+    'example_search'
+);
+$jet_engine->register();
+```
+
+Supported behavior:
+
+- term logic: `all`, `any`, or `exact`
+- word matching: `whole`, `prefix`, or `contains`
+- sources: title, content, excerpt, slug, selected taxonomy names, author display names, and selected custom-field keys
+- public post-type selection, result count from 0 to 100, and relevance/newest/oldest/title ordering
+- `shortcode` scope through a hidden marker, or deliberate `all` public-search scope
+
+Safety rules are mandatory. The engine rejects admin, AJAX, REST, cron, XML-RPC, feeds, unmarked nested queries, empty searches, suppressed filters, and disabled queries before host settings are loaded. It then checks enabled/scope state, binds `posts_search` to one exact `WP_Query` object, and removes the temporary filter immediately after that object reaches it. `JetEngineSearchAdapter` can explicitly mark a posts grid created by a search-results template; archive grids and unrelated requests stay untouched. Advanced sources use `EXISTS` subqueries and remain opt-in. Parsing is capped at eight unique terms and 80 characters per term.
+
+Do not copy this into host `pre_get_posts` callbacks. Do not use it for suggestions: `SmartSearch` remains the separate AJAX typeahead/content-picker system. Full protocol: `docs/search-query.md`.
+
 ## Smart Search / X-Search
 
 Namespace:
@@ -353,6 +788,18 @@ Example:
     'post_type' => 'any',
 ]);
 ```
+
+## Field Structures
+
+Namespace: Hexa\PluginCore\FieldStructures
+
+Classes: FieldStructureManager, FieldStructureRenderer
+
+Use this for admin displays that explain and test ACF field groups, custom post types, taxonomies, and option-backed structures. Host plugins provide definitions; Hexa Core normalizes them, renders one row per structure, shows enabled and registered status, exposes setting toggles through the host save AJAX action, and keeps fields, dependencies, code examples, test reports, and activity notes in a consistent layout.
+
+Definition keys: id, label, type, setting_key, enabled, registered, acf_group_key, object_name, location, fields, dependencies, instructions, code_example, test_report, activity, edit_url. The registered and test_report values may be callbacks. Do not move plugin-specific ACF registration arrays into core; core owns the display and status model only.
+
+Example use: create a FieldStructureRenderer, pass an array of structure definitions, and pass save_action plus nonce when toggles should save through AJAX.
 
 ## Error Logs
 
@@ -420,6 +867,8 @@ transient  stored with set_transient
 permanent  stored with update_option
 ```
 
+Activity logs are collapsed by default. Hosts may opt into an initially open log by passing `collapsed => false`.
+
 Example:
 
 ```php
@@ -442,13 +891,17 @@ $logger->add( new ActivityLogEntry( 'Update started.', [], 'admin', 'updater', n
 
 Every consuming plugin should:
 
-1. Load Composer or the vendored core autoloader.
-2. Create `Hexa\PluginCore\CoreRuntime\PluginContext`.
-3. Create `Hexa\PluginCore\CoreBootstrap\CoreBootstrap`.
-4. Add core modules and host adapter modules.
-5. Call `boot()` once.
+1. Require the vendored root `bootstrap.php` and register its candidate.
+2. Let the shared resolver select one package before referencing any Core class.
+3. Create `Hexa\PluginCore\CoreRuntime\PluginContext`.
+4. Create `Hexa\PluginCore\CoreBootstrap\CoreBootstrap`.
+5. Add core modules and host adapter modules, then call `boot()` once.
 
 ```php
+$core_root = __DIR__ . '/lib/hexa-wordpress-plugin-core';
+require_once $core_root . '/bootstrap.php';
+\hexa_plugin_core_register_package( 'example-plugin', $core_root );
+
 use Hexa\PluginCore\CoreBootstrap\CoreBootstrap;
 use Hexa\PluginCore\CoreRuntime\PluginContext;
 
@@ -489,6 +942,12 @@ Purpose:
 - Normalized plugin ZIP downloads
 - Version history ZIP downloads
 - Transient-backed update activity log
+
+Package hygiene rules:
+
+- Never ship or install nested VCS metadata inside a plugin package. Core excludes `.git`, `.svn`, `.hg`, `.bzr`, `.DS_Store`, and `Thumbs.db` from ZIP builders, direct installs, vendored Core installs, and GitHub plugin provisioning.
+- Native WordPress plugin updates call a Core pre-install purge for the current plugin folder before WordPress starts copying files. If locked metadata cannot be removed, Core returns a clear `WP_Error` instead of letting WordPress dump a long copy-failure list.
+- Do not append GitHub tokens or API keys to package URLs. If a private GitHub request needs auth, pass the token through the HTTP `Authorization` header only.
 
 ### Required Updater Config
 
@@ -651,6 +1110,25 @@ public GitHub VERSION from mikeyperes/hexa-wordpress-plugin-core
 ```
 
 Do not use the WordPress plugin header updater for the core library.
+
+The host plugin updater and vendored core updater must use the same report shape:
+
+```text
+Git repo
+Git URL
+Git branch
+Git version
+current installed version
+current-vs-Git comparison
+green Current flag
+red Outdated flag
+Check for Updates button
+Pull from GitHub button
+normalized ZIP download without the GitHub -main folder suffix
+live activity log for update work
+```
+
+Wrap each updater in one default-open `CoreUi` expandable section with browser-persistent collapse memory.
 
 ### Updater Input Terms
 
@@ -838,6 +1316,18 @@ public function register(): void;
 
 Do not execute feature behavior at include time.
 
+## Database Cleanup
+
+Namespace: `Hexa\PluginCore\DatabaseCleanup`
+
+Use `DatabaseCleanupService`, `DatabaseCleanupAjaxController`, and `DatabaseCleanupRenderer` for WP-Optimize-backed cleanup sessions. Core owns provider activation, task/table iteration, live reporting, and restoring the provider to its pre-run activation state. Hosts provide capability, nonce, AJAX names, labels, and the provider plugin file.
+
+## Object Cache
+
+Namespace: `Hexa\PluginCore\ObjectCache`
+
+Use `LiteSpeedRedisService` to distinguish configured Redis from a working object cache. A healthy `active` result requires LiteSpeed settings, a drop-in, direct Redis connectivity, and a successful WordPress cache round trip. Hosts own AJAX guards and placement, not duplicate connection logic.
+
 ## Support
 
 Namespace:
@@ -849,10 +1339,19 @@ Hexa\PluginCore\CoreRuntime
 Core classes:
 
 ```text
+CorePackageRuntime
 PluginContext
 ```
 
 Use `PluginContext` for host plugin identity. Do not hard-code host plugin names inside shared core classes.
+
+`CorePackageRuntime::report()` exposes the single selected package root, every registered vendored candidate, package fingerprint mismatches, incompatible constraints, and Core classes loaded outside the selected root. Every host must use root `bootstrap.php`; competing plugin-specific autoloaders are forbidden.
+
+## Checklist Workflow Extensions
+
+`GettingStartedChecklistRenderer` exposes a host-neutral browser API on `root.hexaChecklistApi`. It dispatches `hexa:checklist:ready` and `hexa:checklist:run` events. A host with a specialized live workflow may claim only its own step by setting `event.detail.handled = true` and assigning `event.detail.promise`.
+
+The API provides input collection/validation, row state, reports, logs, and guarded arbitrary-action POST requests. Host-specific step IDs, input keys, AJAX actions, CSS, and result mapping stay in the host plugin. Number inputs support `min`, `max`, and `step` with browser and server enforcement.
 
 ## Agent Checklist
 
@@ -871,17 +1370,127 @@ Before changing a plugin that consumes this core:
 
 Namespace: `Hexa\PluginCore\WpAdminTabs`
 
-Use `HostTabsRenderer` for the visible host plugin tab shell. It owns the shared Hexa tab bar, AJAX tab loading, status text, history updates, and load events. Host plugins provide the tab array, active tab, admin page URL, AJAX action, nonce, and first-render callback.
+Use `HostTabsRenderer` for the complete visible host plugin shell. It owns the top-tab or grouped-sidebar markup, responsive UI, AJAX tab loading, status text, history updates, accessibility relationships, load events, and optional persisted sidebar state. Host plugins provide the tab registry, active tab, groups, admin page URL, AJAX action, nonce, unique root and panel IDs, and first-render callback.
+
+Optional `sidebar_identity` data contains host plugin and Core names, installed or GitHub versions, and repository URLs. Core owns escaping, markup, external-link safety, responsive wrapping, and hiding this metadata when the rail is collapsed.
 
 ```php
 ( new \Hexa\PluginCore\WpAdminTabs\HostTabsRenderer() )->render(
     [
-        "tabs"            => $tabs,
-        "active"          => $active,
-        "page_url"        => admin_url( "options-general.php?page=example-plugin" ),
-        "ajax_action"     => "example_load_tab",
-        "nonce"           => $nonce,
-        "render_callback" => [ $dashboard, "tab" ],
+        "tabs"                => $tabs,
+        "active"              => $active,
+        "page_url"            => admin_url( "options-general.php?page=example-plugin" ),
+        "ajax_action"         => "example_load_tab",
+        "nonce"               => $nonce,
+        "root_id"             => "example-plugin-tabs",
+        "panel_id"            => "example-plugin-panel",
+        "layout"              => "sidebar",
+        "groups"              => $navigation_groups,
+        "sidebar_identity"    => [
+            "plugin_name"     => "Example Plugin",
+            "current_version" => $installed_version,
+            "github_version"  => $github_version,
+            "github_url"      => "https://github.com/example/example-plugin",
+            "core_name"       => "Hexa WP Core",
+            "core_version"    => $core_version,
+            "core_github_url" => "https://github.com/mikeyperes/hexa-wordpress-plugin-core",
+        ],
+        "sidebar_collapsible" => true,
+        "sidebar_collapsed"   => false,
+        "sidebar_persist"     => true,
+        "render_callback"     => [ $dashboard, "tab" ],
     ]
 );
 ```
+
+The expanded desktop rail is 214px, remains in normal document flow, and has no internal vertical scroll. It does not stick to the viewport, so the full navigation is reached through normal page scrolling. It collapses to a 44px icon control. Persistent state is scoped to `root_id`; identity metadata is hidden when collapsed; and mobile links and versions wrap without horizontal scrolling. Host plugins must remove obsolete host-level tab CSS and JavaScript after migration rather than maintaining two navigation systems.
+
+## System Checks
+
+`Hexa\PluginCore\SystemChecks\SystemChecksRenderer` renders grouped pass/fail/warn/info checklists from a flat item array. Use it for launch readiness, plugin health, schema audits, and environment checks instead of duplicating checklist HTML in host plugins. See `docs/system-checks.md`.
+
+## Schema Detection
+
+Namespace:
+
+```text
+Hexa\PluginCore\SchemaDetection
+```
+
+Use schema detection for plugin pages that fetch frontend URLs and inspect JSON-LD output. Host plugins own the list of URLs and expected schema types. The core owns fetching, JSON-LD extraction, source labels, duplicate-type conflicts, FAQPage validation, and the dark report UI.
+
+Primary classes:
+
+```text
+SchemaPageScanner
+SchemaScanRenderer
+```
+
+```php
+use Hexa\PluginCore\SchemaDetection\SchemaPageScanner;
+use Hexa\PluginCore\SchemaDetection\SchemaScanRenderer;
+
+$scanner = new SchemaPageScanner();
+$scan = $scanner->scanUrl(
+    home_url( "/" ),
+    [
+        "title" => "Homepage",
+        "cache_bust" => true,
+    ]
+);
+
+echo ( new SchemaScanRenderer() )->renderReport(
+    [ $scan ],
+    [
+        "title" => "Schema Detection Results: HOMEPAGE",
+        "expected" => [ "Expected: Person" ],
+    ]
+);
+```
+
+## FAQ Sets
+
+Namespace:
+
+```text
+Hexa\PluginCore\FaqSets
+```
+
+Use FAQ sets for repeatable question and answer collections that need shortcode output and FAQPage schema.
+
+Primary class:
+
+```text
+FaqSetManager
+```
+
+```php
+use Hexa\PluginCore\FaqSets\FaqSetManager;
+
+$manager = new FaqSetManager();
+$sets = $manager->sanitizeSets( $raw_sets );
+$set = $manager->resolveSet(
+    $sets,
+    "primary",
+    $primary_slug
+);
+
+echo $manager->renderFaqs(
+    $set,
+    [
+        "style" => "accordion",
+        "inject_schema" => true,
+    ]
+);
+```
+
+Core owns:
+
+- sanitizing FAQ set arrays
+- normalizing question and answer item arrays
+- resolving primary sets
+- safe answer link attributes
+- FAQPage schema arrays and JSON-LD script output
+- reusable list and accordion output
+
+Host plugins own option names, shortcode names, and any plugin-specific source of truth messaging.

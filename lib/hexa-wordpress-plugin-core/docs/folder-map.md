@@ -47,11 +47,13 @@ The package version is stored in the root `VERSION` file. Root `bootstrap.php` s
 | `src/ShortcodeRegistry/` | `Hexa\PluginCore\ShortcodeRegistry` | Shortcode definitions, registries, dashboard display rows, examples, live output, and testing. |
 | `src/SiteStructure/` | `Hexa\PluginCore\SiteStructure` | Critical page blueprints, callback-backed assigned page storage, starter templates, page details, WordPress navigation menu creation, custom menu items, add-all-pages actions, menu structure attachment, and page-to-menu-item tools. |
 | `src/SchemaDetection/` | `Hexa\PluginCore\SchemaDetection` | JSON-LD page scans, schema source detection, duplicate-type conflicts, FAQ validation, and dark report rendering. |
+| `src/SearchDisplay/` | `Hexa\PluginCore\SearchDisplay` | Reusable public WordPress search-form templates, markup, styling, and accessible interactions. |
+| `src/SearchQuery/` | `Hexa\PluginCore\SearchQuery` | Bounded term parsing, normalized native-search settings, selected source SQL, exact-query hook scoping, and guarded search-template adapters. |
 | `src/SmartSearch/` | `Hexa\PluginCore\SmartSearch` | Smart search/X-Search AJAX endpoints and reusable typeahead renderers. |
 | `src/SystemChecks/` | `Hexa\PluginCore\SystemChecks` | Grouped readiness, launch, schema, and environment checklist renderers. |
 | `src/SystemEnvironment/` | `Hexa\PluginCore\SystemEnvironment` | Safe constants, INI, shell wrappers, size parsing, CPU/memory detection, and byte formatting. |
 | `src/WpAdminAjax/` | `Hexa\PluginCore\WpAdminAjax` | WordPress admin-AJAX nonce, capability, request parsing, action registration, and callback guards. |
-| `src/WpAdminComponents/` | `Hexa\PluginCore\WpAdminComponents` | Shared UI primitives: cards, subcards, buttons, pills, tooltips, and collapsibles. |
+| `src/WpAdminComponents/` | `Hexa\PluginCore\WpAdminComponents` | Shared UI primitives: cards, subcards, buttons, pills, tooltips, collapsibles, and scoped CSS override references. |
 | `src/WpAdminTabs/` | `Hexa\PluginCore\WpAdminTabs` | Admin tab definitions, registries, rendering contracts, and the automatic core tab. |
 | `src/WpConfigFile/` | `Hexa\PluginCore\WpConfigFile` | Safe wp-config.php constant and ini_set reads/writes with validation and rollback backup handling. |
 | `src/WpCronTasks/` | `Hexa\PluginCore\WpCronTasks` | WP-Cron interval registration, scheduling, unscheduling, event inspection, and health status payloads. |

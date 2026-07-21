@@ -22,6 +22,7 @@ Host plugins should use these primitives instead of rebuilding card, button, too
 
 ```text
 CoreUi
+ScopedCssOverride
 ColorControl
 ColorPalette
 ElementorPaletteDetector
@@ -38,6 +39,7 @@ collapsible()
 pill()
 tooltip()
 copy_button()
+ScopedCssOverride::render()
 ColorControl::render()
 ColorPalette::render()
 ElementorPaletteDetector::render()
@@ -60,6 +62,23 @@ echo CoreUi::card(
 );
 ```
 
+Scoped CSS editor or reference example:
+
+```php
+use Hexa\PluginCore\WpAdminComponents\ScopedCssOverride;
+
+echo ScopedCssOverride::render(
+    [
+        'title'        => 'Header CSS override',
+        'selector'     => 'body .example-header',
+        'instructions' => [ 'Keep every rule inside this selector.' ],
+        'html_example' => '<header class="example-header">...</header>',
+        'css_example'  => "body .example-header {\n  color: #111827;\n}",
+        'open'         => false,
+    ]
+);
+```
+
 ## Rule
 
-If a host plugin needs cards, subcards, collapsibles, tooltips, status pills, copy buttons, brand-aware isolated color controls, saved color palettes, or Elementor palette detection, add the missing parameter or helper here first.
+If a host plugin needs cards, subcards, collapsibles, tooltips, status pills, copy buttons, scoped CSS override editors and references, brand-aware isolated color controls, saved color palettes, or Elementor palette detection, add the missing parameter or helper here first.

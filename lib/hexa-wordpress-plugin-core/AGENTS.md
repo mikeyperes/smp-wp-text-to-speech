@@ -46,6 +46,8 @@ src/PluginUpdates/      Hexa\PluginCore\PluginUpdates
 src/SnippetRegistry/    Hexa\PluginCore\SnippetRegistry
 src/ShortcodeRegistry/  Hexa\PluginCore\ShortcodeRegistry
 src/SiteStructure/      Hexa\PluginCore\SiteStructure
+src/SearchDisplay/      Hexa\PluginCore\SearchDisplay
+src/SearchQuery/        Hexa\PluginCore\SearchQuery
 src/SmartSearch/        Hexa\PluginCore\SmartSearch
 src/SystemEnvironment/  Hexa\PluginCore\SystemEnvironment
 src/WpAdminAjax/        Hexa\PluginCore\WpAdminAjax
@@ -86,6 +88,9 @@ Never make a module boot itself at file include time. Modules register hooks fro
 - Put reusable critical page blueprints, assigned page storage, navigation menu creation, menu structure attachment, and page-to-menu-item tools in `src/SiteStructure`.
 - Put activity log abstractions, storage modes, and the shared dark renderer in `src/ActivityLog`.
 - Put shortcode registries, definitions, display renderers, examples, live output, and testing tools in `src/ShortcodeRegistry`.
+- Put reusable front-end WordPress search-form templates and their shared interaction assets in `src/SearchDisplay`.
+- Put reusable native WordPress search-result matching, bounded term parsing, query configuration, and exact-query SQL scoping in `src/SearchQuery`.
+- Keep all three search domains separate: `SearchDisplay` renders native GET forms, `SearchQuery` changes an explicitly eligible native results query, and `SmartSearch` provides AJAX typeahead/content selection.
 - Put safe constants, INI, shell wrappers, size parsing, CPU/memory detection, and byte formatting in `src/SystemEnvironment`.
 - Put host plugin GitHub/update configuration and updater abstractions in `src/PluginUpdates`.
 - Put vendored core package version checks and core package update UI in `src/CorePackageUpdates`; do not treat the shared core as a WordPress plugin.
@@ -102,6 +107,7 @@ Never make a module boot itself at file include time. Modules register hooks fro
 - Do not hard-code plugin slugs, GitHub repos, admin page slugs, paths, URLs, or versions.
 - Do not duplicate credential/API-key storage or masking in host plugins.
 - Do not duplicate typeahead search UI in host plugins.
+- Never attach broad search SQL permanently. Reject admin, AJAX, REST, cron, feeds, nested queries, empty searches, and unrelated requests before loading host settings; attach `posts_search` only for one exact `WP_Query` object and remove it immediately after use.
 
 ## Documentation Rule
 
