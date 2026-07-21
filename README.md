@@ -2,7 +2,7 @@
 
 Standalone WordPress plugin for converting post/page text into audio with provider-specific settings, AJAX credential validation, editor extraction, and one-click post audio generation.
 
-Version 1.3.14 synchronizes the vendored Hexa WP Core package to 0.19.65.
+Version 1.3.15 synchronizes the vendored Hexa WP Core package to 0.19.66.
 
 Plugin folder/slug:
 

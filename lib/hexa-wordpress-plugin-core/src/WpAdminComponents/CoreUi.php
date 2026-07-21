@@ -241,8 +241,8 @@ final class CoreUi {
                     });
                     var url = new URL(window.location.href);
                     url.searchParams.delete(detailsQueryParam);
-                    if (keys.length) keys.forEach(function(key) { url.searchParams.append(detailsQueryParam, key); });
-                    else url.searchParams.append(detailsQueryParam, 'none');
+                    if (keys.length) url.searchParams.set(detailsQueryParam, keys.join(','));
+                    else url.searchParams.set(detailsQueryParam, 'none');
                     history.replaceState(history.state || null, '', url.toString());
                 } catch (e) {}
             }

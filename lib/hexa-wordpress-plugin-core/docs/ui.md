@@ -81,7 +81,7 @@ echo ScopedCssOverride::render(
 
 ## Query-Backed Collapsibles
 
-`CoreUi::collapsible()` automatically gives every titled section a stable query key. Opening or closing a section updates the current URL with repeated `hpc_open` parameters, and Core restores those sections after a full refresh or an AJAX tab load.
+`CoreUi::collapsible()` automatically gives every titled section a stable query key. Opening or closing a section updates the current URL with one comma-delimited `hpc_open` parameter, and Core restores those sections after a full refresh or an AJAX tab load.
 
 ```php
 echo CoreUi::collapsible(

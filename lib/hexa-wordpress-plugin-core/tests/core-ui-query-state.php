@@ -59,8 +59,9 @@ $checks = [
     'Keeps the default query key readable when a local-storage key exists.' => str_contains( $local_fallback, 'data-hpc-query-key="readable-card-title"' )
         && str_contains( $local_fallback, 'data-hpc-persist-key="internal-storage-key"' ),
     'Allows intentionally ephemeral sections to opt out.' => ! str_contains( $disabled, 'data-hpc-query-key=' ),
-    'Uses a namespaced repeated query parameter and explicit all-closed state.' => str_contains( $assets, "detailsQueryParam = 'hpc_open'" )
-        && str_contains( $assets, "url.searchParams.append(detailsQueryParam, 'none')" )
+    'Uses one WordPress-safe query parameter and an explicit all-closed state.' => str_contains( $assets, "detailsQueryParam = 'hpc_open'" )
+        && str_contains( $assets, "url.searchParams.set(detailsQueryParam, keys.join(','))" )
+        && str_contains( $assets, "url.searchParams.set(detailsQueryParam, 'none')" )
         && str_contains( $assets, 'params.getAll(detailsQueryParam)' ),
     'Updates the current URL without adding browser-history noise.' => str_contains( $assets, 'history.replaceState(history.state || null' ),
     'Restores query state on initial and AJAX-loaded admin content.' => str_contains( $assets, 'DOMContentLoaded' )
