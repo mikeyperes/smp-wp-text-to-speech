@@ -259,6 +259,8 @@ final class CoreUi {
                 var details = event.target;
                 if (!details || !details.matches || !details.matches('details[data-hpc-persist-key],details[data-hpc-query-key]')) return;
                 if (details.dataset.hpcStateRestoring === '1') return;
+                if (details.dataset.hpcPersistKey && details.dataset.hpcPersistentReady !== '1') return;
+                if (details.dataset.hpcQueryKey && details.dataset.hpcQueryReady !== '1') return;
                 if (details.dataset.hpcPersistKey) {
                     try {
                         if (window.localStorage) window.localStorage.setItem('hpc-details-' + details.dataset.hpcPersistKey, details.open ? '1' : '0');

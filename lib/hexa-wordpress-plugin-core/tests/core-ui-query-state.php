@@ -66,6 +66,8 @@ $checks = [
     'Restores query state on initial and AJAX-loaded admin content.' => str_contains( $assets, 'DOMContentLoaded' )
         && str_contains( $assets, "document.addEventListener('hexa-core-host-tab-loaded'" )
         && str_contains( $assets, 'window.hexaPluginCoreInitPersistentDetails' ),
+    'Pre-initialization native toggles cannot overwrite restored query or local state.' => str_contains( $assets, "details.dataset.hpcPersistentReady !== '1'" )
+        && str_contains( $assets, "details.dataset.hpcQueryReady !== '1'" ),
     'Keeps query and local-storage state in the same generic toggle handler.' => str_contains( $assets, 'details[data-hpc-persist-key],details[data-hpc-query-key]' )
         && str_contains( $assets, 'if (details.dataset.hpcQueryKey) updateDetailsQuery();' ),
 ];

@@ -220,6 +220,8 @@ Its `pre_get_posts` coordination is deliberately narrow: unrelated, admin, AJAX,
 
 ## Collection Filters and Sidebar Header
 
+Version 0.19.65 prevents parser- and AJAX-insertion `toggle` events from overwriting query or local-storage state before a collapsible has completed Core initialization. This keeps explicit closed state authoritative for default-open cards.
+
 Version 0.19.64 makes every titled `CoreUi::collapsible()` section refresh-safe and linkable through repeated `hpc_open` query parameters. Query state is restored after full-page and AJAX tab loads, explicit query keys and opt-out are supported, and existing local-storage persistence remains available as a fallback.
 
 Version 0.19.63 lets CoreUi::toggle() accept sanitized host input classes and data attributes, allowing AJAX-saving host plugins to use the shared toggle renderer without rebuilding its markup.
