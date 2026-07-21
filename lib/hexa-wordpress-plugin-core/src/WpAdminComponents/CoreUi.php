@@ -183,27 +183,88 @@ final class CoreUi {
         (function(){
             if (window.hexaPluginCoreUiReady) return;
             window.hexaPluginCoreUiReady = true;
+            var detailsQueryParam = 'hpc_open';
+            function detailsQueryState() {
+                var state = { specified: false, keys: [] };
+                try {
+                    var params = new URLSearchParams(window.location.search || '');
+                    state.specified = params.has(detailsQueryParam);
+                    params.getAll(detailsQueryParam).forEach(function(value) {
+                        String(value || '').split(',').forEach(function(key) {
+                            key = key.trim();
+                            if (!key || key === 'none' || state.keys.indexOf(key) !== -1) return;
+                            state.keys.push(key);
+                        });
+                    });
+                } catch (e) {}
+                return state;
+            }
+            function detailsIn(scope) {
+                var selector = 'details[data-hpc-persist-key],details[data-hpc-query-key]';
+                var items = [];
+                if (scope && scope.matches && scope.matches(selector)) items.push(scope);
+                if (scope && scope.querySelectorAll) items = items.concat(Array.prototype.slice.call(scope.querySelectorAll(selector)));
+                return items;
+            }
+            function setRestoredOpen(item, open) {
+                if (item.open === open) return;
+                item.dataset.hpcStateRestoring = '1';
+                item.open = open;
+                window.setTimeout(function() { delete item.dataset.hpcStateRestoring; }, 0);
+            }
             function initPersistentDetails(scope) {
                 scope = scope || document;
-                var items = scope.querySelectorAll ? scope.querySelectorAll('details[data-hpc-persist-key]') : [];
+                var query = detailsQueryState();
+                var items = detailsIn(scope);
                 items.forEach(function(item) {
-                    if (item.dataset.hpcPersistentReady === '1') return;
-                    item.dataset.hpcPersistentReady = '1';
-                    try {
-                        var stored = window.localStorage ? window.localStorage.getItem('hpc-details-' + item.dataset.hpcPersistKey) : null;
-                        if (stored === '1') item.open = true;
-                        if (stored === '0') item.open = false;
-                    } catch (e) {}
+                    if (item.dataset.hpcPersistKey && item.dataset.hpcPersistentReady !== '1') {
+                        item.dataset.hpcPersistentReady = '1';
+                        try {
+                            var stored = window.localStorage ? window.localStorage.getItem('hpc-details-' + item.dataset.hpcPersistKey) : null;
+                            if (stored === '1') setRestoredOpen(item, true);
+                            if (stored === '0') setRestoredOpen(item, false);
+                        } catch (e) {}
+                    }
+                    if (item.dataset.hpcQueryKey && item.dataset.hpcQueryReady !== '1') {
+                        item.dataset.hpcQueryReady = '1';
+                        if (query.specified) setRestoredOpen(item, query.keys.indexOf(item.dataset.hpcQueryKey) !== -1);
+                    }
                 });
             }
+            function updateDetailsQuery() {
+                if (!window.history || !history.replaceState || typeof URL !== 'function') return;
+                try {
+                    var keys = [];
+                    Array.prototype.slice.call(document.querySelectorAll('details[data-hpc-query-key]')).forEach(function(item) {
+                        var key = item.dataset.hpcQueryKey || '';
+                        if (item.open && key && keys.indexOf(key) === -1) keys.push(key);
+                    });
+                    var url = new URL(window.location.href);
+                    url.searchParams.delete(detailsQueryParam);
+                    if (keys.length) keys.forEach(function(key) { url.searchParams.append(detailsQueryParam, key); });
+                    else url.searchParams.append(detailsQueryParam, 'none');
+                    history.replaceState(history.state || null, '', url.toString());
+                } catch (e) {}
+            }
             window.hexaPluginCoreInitPersistentDetails = initPersistentDetails;
-            initPersistentDetails(document);
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() { initPersistentDetails(document); });
+            } else {
+                initPersistentDetails(document);
+            }
+            document.addEventListener('hexa-core-host-tab-loaded', function(event) {
+                initPersistentDetails(event.detail && event.detail.panel ? event.detail.panel : document);
+            });
             document.addEventListener('toggle', function(event) {
                 var details = event.target;
-                if (!details || !details.matches || !details.matches('details[data-hpc-persist-key]')) return;
-                try {
-                    if (window.localStorage) window.localStorage.setItem('hpc-details-' + details.dataset.hpcPersistKey, details.open ? '1' : '0');
-                } catch (e) {}
+                if (!details || !details.matches || !details.matches('details[data-hpc-persist-key],details[data-hpc-query-key]')) return;
+                if (details.dataset.hpcStateRestoring === '1') return;
+                if (details.dataset.hpcPersistKey) {
+                    try {
+                        if (window.localStorage) window.localStorage.setItem('hpc-details-' + details.dataset.hpcPersistKey, details.open ? '1' : '0');
+                    } catch (e) {}
+                }
+                if (details.dataset.hpcQueryKey) updateDetailsQuery();
             }, true);
             document.addEventListener('click', function(event) {
                 var trigger = event.target.closest('[data-hpc-copy]');
@@ -405,6 +466,10 @@ final class CoreUi {
         $meta        = isset( $args['meta_html'] ) ? (string) $args['meta_html'] : '';
         $persist_key = isset( $args['persist_key'] ) ? (string) $args['persist_key'] : '';
         $persist     = '' !== $persist_key ? ' data-hpc-persist-key="' . esc_attr( $persist_key ) . '"' : '';
+        $query_state = ! array_key_exists( 'query_state', $args ) || ! empty( $args['query_state'] );
+        $query_seed  = isset( $args['query_key'] ) ? (string) $args['query_key'] : $title;
+        $query_key   = $query_state ? self::normalize_query_key( $query_seed ) : '';
+        $query       = '' !== $query_key ? ' data-hpc-query-key="' . esc_attr( $query_key ) . '"' : '';
         $classes     = [ 'hpc-section' ];
         foreach ( preg_split( '/\\s+/', (string) ( $args['class'] ?? '' ) ) ?: [] as $class_name ) {
             $class_name = sanitize_html_class( $class_name );
@@ -414,7 +479,21 @@ final class CoreUi {
         }
         $toggle = '<span class="hpc-section-toggle" aria-hidden="true"><svg viewBox="0 0 512 512" focusable="false"><path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"></path></svg></span>';
 
-        return '<details class="' . esc_attr( implode( ' ', array_unique( $classes ) ) ) . '"' . $open . $persist . '><summary><span class="hpc-section-title">' . esc_html( $title ) . '</span><span class="hpc-section-summary-side">' . $meta . $toggle . '</span></summary><div class="hpc-section-body">' . $body . '</div></details>';
+        return '<details class="' . esc_attr( implode( ' ', array_unique( $classes ) ) ) . '"' . $open . $persist . $query . '><summary><span class="hpc-section-title">' . esc_html( $title ) . '</span><span class="hpc-section-summary-side">' . $meta . $toggle . '</span></summary><div class="hpc-section-body">' . $body . '</div></details>';
+    }
+
+    private static function normalize_query_key( string $value ): string {
+        $raw = trim( $value );
+        if ( '' === $raw ) {
+            return '';
+        }
+        $key = strtolower( $raw );
+        $key = preg_replace( '/[^a-z0-9]+/', '-', $key ) ?: '';
+        $key = trim( $key, '-' );
+        if ( '' === $key ) {
+            return 'section-' . substr( md5( $raw ), 0, 12 );
+        }
+        return rtrim( substr( $key, 0, 80 ), '-' );
     }
 
     public static function collection_filter( array $args ): string {

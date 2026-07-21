@@ -641,6 +641,8 @@ shared admin styles
 
 Never rebuild those patterns directly in host plugins when `CoreUi` can render them.
 
+`CoreUi::collapsible()` automatically stores titled section state in the current URL through repeated `hpc_open` query parameters. This makes expanded cards linkable and refresh-safe across every host plugin. Supply `query_key` when a title may change or repeat; set `query_state => false` only for intentionally ephemeral sections.
+
 ## Credentials / API Keys
 
 Namespace:

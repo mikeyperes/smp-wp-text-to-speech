@@ -220,6 +220,8 @@ Its `pre_get_posts` coordination is deliberately narrow: unrelated, admin, AJAX,
 
 ## Collection Filters and Sidebar Header
 
+Version 0.19.64 makes every titled `CoreUi::collapsible()` section refresh-safe and linkable through repeated `hpc_open` query parameters. Query state is restored after full-page and AJAX tab loads, explicit query keys and opt-out are supported, and existing local-storage persistence remains available as a fallback.
+
 Version 0.19.63 lets CoreUi::toggle() accept sanitized host input classes and data attributes, allowing AJAX-saving host plugins to use the shared toggle renderer without rebuilding its markup.
 
 Version 0.19.62 gives collection-filter search inputs enough selector specificity and left padding to keep the shared search icon separate from placeholder and entered text under WordPress admin styles.
@@ -533,6 +535,8 @@ echo CoreUi::collapsible(
     ]
 );
 ```
+
+Titled `CoreUi::collapsible()` sections automatically synchronize their open state to repeated `hpc_open` query parameters and restore it after refresh or AJAX tab loading. Hosts may provide a stable `query_key`; use `query_state => false` only when URL persistence is inappropriate.
 
 For a formatted, closed-by-default scoped CSS editor or reference:
 
