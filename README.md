@@ -2,7 +2,7 @@
 
 Standalone WordPress plugin for converting post/page text into audio with provider-specific settings, AJAX credential validation, editor extraction, and one-click post audio generation.
 
-Version 1.3.15 synchronizes the vendored Hexa WP Core package to 0.19.66.
+Version 1.3.16 adds secure retrieval of an existing domain-assigned site API key. Retrieval uses a one-time WordPress REST challenge, exact-domain verification, encrypted local storage, and immediate API validation; it never creates or rotates a key.
 
 Plugin folder/slug:
 

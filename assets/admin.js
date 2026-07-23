@@ -79,6 +79,45 @@
       });
   });
 
+  $(document).on('click', '.hexa-tts-fetch-source-api-key', function () {
+    var $button = $(this);
+    var $card = $button.closest('[data-provider-card="central"]');
+    var $result = $card.find('[data-provider-result="central"]');
+    var $keyField = $card.find('.hexa-tts-site-api-key');
+    var originalLabel = $button.text();
+
+    $button.prop('disabled', true).attr('aria-busy', 'true').text('Verifying this domain...');
+    setResult($result, 'loading', 'Proving control of this WordPress domain...', 'The source will return a key only if this exact domain already has an active assignment.');
+
+    $.ajax({
+      url: hexaTts.ajaxUrl,
+      method: 'POST',
+      dataType: 'json',
+      data: {
+        action: 'hexa_tts_fetch_source_api_key',
+        nonce: hexaTts.nonce
+      }
+    })
+      .done(function (response) {
+        if (response && response.success) {
+          $keyField.val('').attr('placeholder', 'Saved: ' + response.data.masked_key).addClass('hexa-tts-saved-secret');
+          setResult($result, 'success', response.data.message, response.data.details);
+          return;
+        }
+        setResult($result, 'error', 'API key was not fetched', response && response.data ? response.data.message : 'The source rejected the request.');
+      })
+      .fail(function (xhr) {
+        var payload = xhr.responseJSON;
+        var message = payload && payload.data && payload.data.message
+          ? payload.data.message
+          : (xhr.statusText || 'The source request failed.');
+        setResult($result, 'error', 'API key was not fetched', message);
+      })
+      .always(function () {
+        $button.prop('disabled', false).removeAttr('aria-busy').text(originalLabel);
+      });
+  });
+
   $(document).on('click', '.hexa-tts-extract-post', function () {
     var $box = $(this).closest('.hexa-tts-postbox');
     var $feedback = $box.find('.hexa-tts-post-feedback');

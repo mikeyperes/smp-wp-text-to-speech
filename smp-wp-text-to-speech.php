@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.3.15
+ * Version: 1.3.16
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -61,7 +61,7 @@ function register_smp_tts_autoloader(): void {
 register_smp_tts_autoloader();
 
 final class Plugin {
-    const VERSION = "1.3.15";
+    const VERSION = "1.3.16";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -84,6 +84,7 @@ final class Plugin {
         add_action( "wp_ajax_smp_tts_load_tab", [ __CLASS__, "ajax_load_tab" ] );
         add_action( "wp_ajax_hexa_tts_validate_central_api", [ __CLASS__, "ajax_validate_central_api" ] );
         add_action( "wp_ajax_hexa_tts_validate_provider", [ __CLASS__, "ajax_validate_central_api" ] );
+        add_action( "wp_ajax_hexa_tts_fetch_source_api_key", [ __CLASS__, "ajax_fetch_source_api_key" ] );
         add_action( "wp_ajax_hexa_tts_extract_post_content", [ __CLASS__, "ajax_extract_post_content" ] );
         add_action( "wp_ajax_hexa_tts_generate_audio", [ __CLASS__, "ajax_generate_audio" ] );
         add_action( "wp_ajax_hexa_tts_generation_status", [ __CLASS__, "ajax_generation_status" ] );
@@ -264,6 +265,58 @@ final class Plugin {
                 ],
             ]
         );
+        register_rest_route(
+            self::REST_NS,
+            "/key-claim",
+            [
+                "methods" => "POST",
+                "callback" => [ __CLASS__, "rest_key_claim" ],
+                "permission_callback" => "__return_true",
+                "args" => [
+                    "challenge" => [
+                        "required" => true,
+                        "sanitize_callback" => "sanitize_text_field",
+                    ],
+                ],
+            ]
+        );
+    }
+
+    public static function rest_key_claim( \WP_REST_Request $request ): \WP_REST_Response {
+        $challenge = strtolower( trim( (string) $request->get_param( "challenge" ) ) );
+        $transient = self::key_claim_transient_name( $challenge );
+        $stored_proof = "" !== $transient ? (string) get_transient( $transient ) : "";
+        $expected_proof = "" !== $challenge ? hash_hmac( "sha256", $challenge, self::secret_key() ) : "";
+
+        if ( ! preg_match( "/\\A[a-f0-9]{64}\\z/", $challenge )
+            || "" === $stored_proof
+            || "" === $expected_proof
+            || ! hash_equals( $expected_proof, $stored_proof )
+        ) {
+            $response = new \WP_REST_Response(
+                [ "success" => false, "message" => "No active site-key claim was found." ],
+                404
+            );
+            $response->header( "Cache-Control", "no-store, private, max-age=0" );
+            $response->header( "X-Robots-Tag", "noindex, nofollow" );
+            return $response;
+        }
+
+        delete_transient( $transient );
+        $response = new \WP_REST_Response(
+            [
+                "success" => true,
+                "challenge" => $challenge,
+                "site_url" => home_url( "/" ),
+                "plugin" => self::SETTINGS_SLUG,
+                "version" => self::VERSION,
+            ],
+            200
+        );
+        $response->header( "Cache-Control", "no-store, private, max-age=0" );
+        $response->header( "Pragma", "no-cache" );
+        $response->header( "X-Robots-Tag", "noindex, nofollow" );
+        return $response;
     }
 
     public static function rest_schema( \WP_REST_Request $request ): \WP_REST_Response {
@@ -905,9 +958,15 @@ JS;
             <input type="hidden" name="action" value="hexa_tts_save_settings">
             <input type="hidden" name="hexa_tts_tab" value="api">
             <section class="hexa-tts-panel" data-provider-card="central">
-                <div class="hexa-tts-panel-head"><div><h2>Publish Scale API Connection</h2><p>Paste the site API key generated in Publish Scale. The upstream API base is never printed into browser JavaScript.</p></div><button type="button" class="button button-secondary hexa-tts-test-central-api hexa-tts-test-provider" data-provider="central">Test API Key</button></div>
+                <div class="hexa-tts-panel-head">
+                    <div><h2>Publish Scale API Connection</h2><p>Enter the assigned site key manually, or securely fetch an existing assignment after this WordPress site proves control of its own domain. The upstream API base is never printed into browser JavaScript.</p></div>
+                    <div class="hexa-tts-panel-actions">
+                        <button type="button" class="button button-secondary hexa-tts-fetch-source-api-key">Fetch Assigned API Key</button>
+                        <button type="button" class="button button-secondary hexa-tts-test-central-api hexa-tts-test-provider" data-provider="central">Test API Key</button>
+                    </div>
+                </div>
                 <div class="hexa-tts-grid hexa-tts-grid-2">
-                    <label><span>Site API Key</span><input type="password" name="hexa_tts[api_key]" value="" placeholder="<?php echo esc_attr( $api_key ? "Saved: " . self::mask_secret( $api_key ) : "Paste Publish Scale site API key" ); ?>" autocomplete="off"><small>Stored encrypted in WordPress. Leave blank to keep the existing key.</small></label>
+                    <label><span>Site API Key</span><input class="hexa-tts-site-api-key" type="password" name="hexa_tts[api_key]" value="" placeholder="<?php echo esc_attr( $api_key ? "Saved: " . self::mask_secret( $api_key ) : "Paste Publish Scale site API key" ); ?>" autocomplete="off"><small>Stored encrypted in WordPress. Fetch only retrieves a key already assigned to this exact domain; it cannot create, rotate, or claim another site's key. Leave blank to keep the existing key.</small></label>
                     <label><span>ACF audio file field</span><input type="text" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( AcfAudioFieldResolver::fieldName( $settings ) ); ?>"><small>Mashviral currently uses <code>article_audio</code>.</small></label>
                 </div>
                 <div class="hexa-tts-test-result hexa-tts-central-result" data-provider-result="central" aria-live="polite"></div>
@@ -1681,6 +1740,97 @@ JS;
         $settings["last_status"] = $result;
         update_option( self::OPTION, $settings, false );
         wp_send_json_success( $result );
+    }
+
+    public static function ajax_fetch_source_api_key() {
+        if ( ! current_user_can( "manage_options" ) ) {
+            wp_send_json_error( [ "message" => "You do not have permission to fetch the TTS API key." ], 403 );
+        }
+        check_ajax_referer( self::NONCE_ACTION, "nonce" );
+
+        try {
+            $challenge = bin2hex( random_bytes( 32 ) );
+        } catch ( \Throwable $exception ) {
+            $challenge = hash( "sha256", wp_generate_password( 64, true, true ) . microtime( true ) . wp_rand() );
+        }
+
+        $transient = self::key_claim_transient_name( $challenge );
+        if ( "" === $transient ) {
+            wp_send_json_error( [ "message" => "Could not initialize secure domain verification." ], 500 );
+        }
+
+        $proof = hash_hmac( "sha256", $challenge, self::secret_key() );
+        set_transient( $transient, $proof, 5 * MINUTE_IN_SECONDS );
+
+        $response = wp_remote_post(
+            self::API_BASE . "/site-key/fetch",
+            [
+                "timeout" => 20,
+                "redirection" => 0,
+                "sslverify" => true,
+                "headers" => [
+                    "Accept" => "application/json",
+                    "Content-Type" => "application/json",
+                    "Cache-Control" => "no-store",
+                ],
+                "body" => wp_json_encode(
+                    [
+                        "site_url" => home_url( "/" ),
+                        "challenge_url" => rest_url( self::REST_NS . "/key-claim" ),
+                        "challenge" => $challenge,
+                    ]
+                ),
+            ]
+        );
+
+        delete_transient( $transient );
+
+        if ( is_wp_error( $response ) ) {
+            wp_send_json_error( [ "message" => $response->get_error_message() ], 502 );
+        }
+
+        $code = (int) wp_remote_retrieve_response_code( $response );
+        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+        if ( $code < 200 || $code >= 300 || ! is_array( $body ) || empty( $body["success"] ) ) {
+            $message = is_array( $body ) && ! empty( $body["message"] )
+                ? sanitize_text_field( (string) $body["message"] )
+                : "The source rejected this site's API-key claim.";
+            wp_send_json_error( [ "message" => $message ], $code >= 400 && $code <= 599 ? $code : 422 );
+        }
+
+        $api_key = self::sanitize_secret( $body["api_key"] ?? "" );
+        if ( strlen( $api_key ) < 20 || 0 !== strpos( $api_key, "pstts_" ) ) {
+            wp_send_json_error( [ "message" => "The source returned an invalid site API key." ], 502 );
+        }
+
+        $existing = self::get_settings();
+        $settings = $existing;
+        $settings["api_key"] = self::encrypt_secret( $api_key );
+        update_option( self::OPTION, $settings, false );
+
+        $status = self::api_request( "/status", [], 20 );
+        if ( is_wp_error( $status ) ) {
+            update_option( self::OPTION, $existing, false );
+            wp_send_json_error(
+                [ "message" => "The assigned key was retrieved but failed validation, so the prior setting was restored: " . $status->get_error_message() ],
+                502
+            );
+        }
+
+        $settings["last_status"] = $status;
+        update_option( self::OPTION, $settings, false );
+
+        $site_domain = sanitize_text_field( (string) ( $status["site"]["domain"] ?? wp_parse_url( home_url( "/" ), PHP_URL_HOST ) ) );
+        $provider_count = is_array( $status["available_apis"] ?? null ) ? count( $status["available_apis"] ) : 0;
+        wp_send_json_success(
+            [
+                "message" => "Assigned API key fetched, encrypted, saved, and verified.",
+                "details" => "Domain: " . $site_domain . " · Available APIs: " . $provider_count . " · Key: " . self::mask_secret( $api_key ),
+                "masked_key" => self::mask_secret( $api_key ),
+                "site" => $status["site"] ?? [],
+                "status" => $status,
+            ]
+        );
     }
 
     public static function ajax_preview_display() {
@@ -2552,6 +2702,14 @@ JS;
     private static function sanitize_secret( $value ) {
         $value = trim( (string) $value );
         return preg_replace( "/[\\x00-\\x1F\\x7F]/", "", $value );
+    }
+
+    private static function key_claim_transient_name( string $challenge ): string {
+        $challenge = strtolower( trim( $challenge ) );
+        if ( ! preg_match( "/\\A[a-f0-9]{64}\\z/", $challenge ) ) {
+            return "";
+        }
+        return "hexa_tts_key_claim_" . substr( hash( "sha256", $challenge ), 0, 40 );
     }
 
     private static function secret_key() {

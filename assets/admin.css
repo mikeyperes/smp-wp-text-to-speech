@@ -28,6 +28,19 @@
   color: #646970;
 }
 
+.hexa-tts-panel-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.hexa-tts-panel-actions .button[aria-busy='true'] {
+  cursor: wait;
+  opacity: .72;
+}
+
 .hexa-tts-panel,
 .hexa-tts-provider-card,
 .hexa-tts-profile-card,
@@ -308,6 +321,10 @@
   .hexa-tts-post-actions {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .hexa-tts-panel-actions {
+    justify-content: flex-start;
   }
 }
 
