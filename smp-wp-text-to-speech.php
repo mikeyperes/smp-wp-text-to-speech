@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.3.17
+ * Version: 1.3.18
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -74,7 +74,7 @@ function register_smp_tts_autoloader(): void {
 register_smp_tts_autoloader();
 
 final class Plugin {
-    const VERSION = "1.3.17";
+    const VERSION = "1.3.18";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -272,7 +272,7 @@ final class Plugin {
             }
         }
         wp_enqueue_style( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.css", [], self::VERSION );
-        wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend.css", [ "hexa-tts-admin" ], self::VERSION );
+        wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend-1.3.18.css", [ "hexa-tts-admin" ], self::VERSION );
         wp_enqueue_script( "smp-tts-frontend-player", plugin_dir_url( __FILE__ ) . "assets/frontend.js", [], self::VERSION, true );
         wp_enqueue_script( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.js", [ "jquery" ], self::VERSION, true );
         wp_localize_script( "hexa-tts-admin", "hexaTts", [ "ajaxUrl" => admin_url( "admin-ajax.php" ), "nonce" => wp_create_nonce( self::NONCE_ACTION ) ] );
@@ -285,7 +285,7 @@ final class Plugin {
         if ( is_admin() ) {
             return;
         }
-        wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend.css", [], self::VERSION );
+        wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend-1.3.18.css", [], self::VERSION );
         wp_enqueue_script( "smp-tts-frontend-player", plugin_dir_url( __FILE__ ) . "assets/frontend.js", [], self::VERSION, true );
     }
 
@@ -1501,7 +1501,7 @@ JS;
 
     private static function template_options(): array {
         return [
-            "clean_card" => [ "label" => "Clean Card", "description" => "Rounded article-audio card for normal article pages." ],
+            "clean_card" => [ "label" => "Clean Card", "description" => "Article-audio card with a straight top accent and softly rounded lower corners." ],
             "editorial_bar" => [ "label" => "Editorial Bar", "description" => "Thin publication-style bar above or below visual content." ],
             "compact_pill" => [ "label" => "Compact Pill", "description" => "Small lightweight pill for tight article headers." ],
             "media_panel" => [ "label" => "Media Panel", "description" => "Larger audio-first module with stronger visual weight." ],

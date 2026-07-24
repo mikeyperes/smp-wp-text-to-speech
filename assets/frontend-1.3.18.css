@@ -5,7 +5,7 @@
 .hexa-tts-player--size-compact { max-width: 560px; padding: 10px 12px; }
 .hexa-tts-player--size-large { padding: 22px; }
 .hexa-tts-player--size-full { width: 100%; }
-.hexa-tts-player--clean_card { border-top: 4px solid var(--smp-tts-primary); }
+.hexa-tts-player--clean_card { border-top: 4px solid var(--smp-tts-primary); border-top-left-radius: 0; border-top-right-radius: 0; }
 .hexa-tts-player--editorial_bar { border-left: 6px solid var(--smp-tts-primary); border-radius: 6px; box-shadow: none; }
 .hexa-tts-player--compact_pill { display: grid; grid-template-columns: auto minmax(180px, 1fr); gap: 12px; align-items: center; border-radius: 999px; padding: 10px 14px; }
 .hexa-tts-player--compact_pill .hexa-tts-player__label { margin: 0; white-space: nowrap; }
