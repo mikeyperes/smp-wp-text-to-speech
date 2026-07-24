@@ -2,7 +2,9 @@
 
 Standalone WordPress plugin for converting post/page text into audio with provider-specific settings, AJAX credential validation, editor extraction, and one-click post audio generation.
 
-Version 1.3.16 adds secure retrieval of an existing domain-assigned site API key. Retrieval uses a one-time WordPress REST challenge, exact-domain verification, encrypted local storage, and immediate API validation; it never creates or rotates a key.
+Version 1.3.17 integrates the settings experience with the canonical Hexa WP Core admin shell. All settings sections now use shared tab definitions, a grouped and collapsible sidebar, AJAX navigation with browser-history support, plugin/Core Git identity reporting, and the shared updater dashboards. The vendored Hexa WP Core package is updated to 0.19.73.
+
+Version 1.3.16 added secure retrieval of an existing domain-assigned site API key. Retrieval uses a one-time WordPress REST challenge, exact-domain verification, encrypted local storage, and immediate API validation; it never creates or rotates a key.
 
 Plugin folder/slug:
 
@@ -30,7 +32,7 @@ smp-wp-text-to-speech.php
 
 1. Install the folder under `wp-content/plugins/smp-wp-text-to-speech`.
 2. Activate `SMP WP Text To Speech`.
-3. Open Settings -> SMP WP Text To Speech.
+3. Open Settings -> SMP WP Text To Speech. The canonical Hexa WP Core sidebar provides Dashboard, API Settings, Features, Display, Shortcodes, Schema, and Hexa WP Core sections.
 4. Fill provider credentials.
 5. Use each provider card's `Test credentials` button. Validation runs through `admin-ajax.php` and does not refresh the page.
 6. Set default service and default profile.

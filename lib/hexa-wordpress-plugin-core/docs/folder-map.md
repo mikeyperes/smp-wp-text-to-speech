@@ -28,7 +28,7 @@ The package version is stored in the root `VERSION` file. Root `bootstrap.php` s
 | --- | --- | --- |
 | `src/AcfFieldFactory/` | `Hexa\PluginCore\AcfFieldFactory` | Reusable ACF field array factories for host field-group registrations. |
 | `src/ActivityLog/` | `Hexa\PluginCore\ActivityLog` | Activity logs and activity storage adapters. |
-| `src/BrandColors/` | `Hexa\PluginCore\BrandColors` | HWS brand color readers, hex normalization, RGB conversion, and color payload helpers. |
+| `src/BrandColors/` | `Hexa\PluginCore\BrandColors` | HWS brand color readers plus safe Elementor color and font-source discovery and resolution. |
 | `src/CoreBootstrap/` | `Hexa\PluginCore\CoreBootstrap` | Core setup, module registration, and lifecycle. |
 | `src/CoreContracts/` | `Hexa\PluginCore\CoreContracts` | Interfaces shared across modules and host plugins. |
 | `src/CorePackageUpdates/` | `Hexa\PluginCore\CorePackageUpdates` | Vendored Hexa WordPress Plugin Core version checks and package update UI. |
@@ -52,8 +52,9 @@ The package version is stored in the root `VERSION` file. Root `bootstrap.php` s
 | `src/SmartSearch/` | `Hexa\PluginCore\SmartSearch` | Smart search/X-Search AJAX endpoints and reusable typeahead renderers. |
 | `src/SystemChecks/` | `Hexa\PluginCore\SystemChecks` | Grouped readiness, launch, schema, and environment checklist renderers. |
 | `src/SystemEnvironment/` | `Hexa\PluginCore\SystemEnvironment` | Safe constants, INI, shell wrappers, size parsing, CPU/memory detection, and byte formatting. |
+| `src/Typography/` | `Hexa\PluginCore\Typography` | Prefix-scoped typography-preservation setting keys, defaults, values, and preview-state classes. |
 | `src/WpAdminAjax/` | `Hexa\PluginCore\WpAdminAjax` | WordPress admin-AJAX nonce, capability, request parsing, action registration, and callback guards. |
-| `src/WpAdminComponents/` | `Hexa\PluginCore\WpAdminComponents` | Shared UI primitives: cards, subcards, buttons, pills, tooltips, collapsibles, and scoped CSS override references. |
+| `src/WpAdminComponents/` | `Hexa\PluginCore\WpAdminComponents` | Shared UI primitives: cards, subcards, buttons, pills, tooltips, collapsibles, color/font controls, and scoped CSS override references. |
 | `src/WpAdminTabs/` | `Hexa\PluginCore\WpAdminTabs` | Admin tab definitions, registries, rendering contracts, and the automatic core tab. |
 | `src/WpConfigFile/` | `Hexa\PluginCore\WpConfigFile` | Safe wp-config.php constant and ini_set reads/writes with validation and rollback backup handling. |
 | `src/WpCronTasks/` | `Hexa\PluginCore\WpCronTasks` | WP-Cron interval registration, scheduling, unscheduling, event inspection, and health status payloads. |

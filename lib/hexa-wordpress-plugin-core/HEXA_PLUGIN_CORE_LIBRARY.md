@@ -21,6 +21,7 @@ Do not rename these.
 ```text
 src/ActivityLog/        Hexa\PluginCore\ActivityLog
 src/AcfFieldFactory/    Hexa\PluginCore\AcfFieldFactory
+src/BrandColors/        Hexa\PluginCore\BrandColors
 src/CoreBootstrap/      Hexa\PluginCore\CoreBootstrap
 src/CoreContracts/      Hexa\PluginCore\CoreContracts
 src/CorePackageUpdates/ Hexa\PluginCore\CorePackageUpdates
@@ -45,6 +46,7 @@ src/SearchDisplay/      Hexa\PluginCore\SearchDisplay
 src/SearchQuery/        Hexa\PluginCore\SearchQuery
 src/SmartSearch/        Hexa\PluginCore\SmartSearch
 src/SystemEnvironment/  Hexa\PluginCore\SystemEnvironment
+src/Typography/         Hexa\PluginCore\Typography
 src/WpAdminUiCleanup/   Hexa\PluginCore\WpAdminUiCleanup
 src/WpAdminAjax/        Hexa\PluginCore\WpAdminAjax
 src/WpAdminComponents/  Hexa\PluginCore\WpAdminComponents
@@ -74,6 +76,12 @@ An optional group selector hides headings whose groups contain no matches. Core 
 Set text_selector when repeated cards contain shared logs or diagnostics. Core searches only those descendant regions, then falls back to data-hpc-filter-text or full item text when no selector is supplied.
 
 Use `ScopedCssOverride::render()` for a closed-by-default CSS editor or reference panel. The host supplies its scope selector, concise instructions, formatted HTML structure, and formatted CSS example. When the host supplies a setting key and value, Core also renders the actual code editor and save-status slot. Core owns the details card, editor, code blocks, and copy actions; the host owns validation, persistence, and frontend output.
+
+Use `FontFamilyControl::render()` for a reusable font source selector. Core discovers Elementor global typography, exposes template/native/unique Elementor choices, validates saved source IDs through `BrandColors\FontFamilyProvider`, and resolves them to safe CSS values. Supply `weight_key`, `weight_value`, and a host save class to include the Core `FontWeightProvider` default/100-900 selector. Host plugins own persistence and frontend selectors; they must omit `font-family` or `font-weight` when Core returns an empty CSS value.
+
+Use `TypographyPreservation::defaults()` and `TypographyPreservation::setting_keys()` to define prefix-scoped font-family, size, color, and weight preservation settings. Render `TypographyPreservationControl` inside a `data-hpc-typography-scope` container and map each property to the host setting keys it disables. Core owns the four toggles, state classes, target synchronization, and `hexa-typography-preserve-change` event; hosts own only their save transport and CSS declaration policy.
+
+Use `TypographyControl::render()` when a feature exposes the corresponding editors. Core composes `FontFamilyControl`, font weight, `ColorControl`, one or more size fields, and the preservation contract into one host-neutral interface with every toggle adjacent to its field. Hosts pass field configuration and save classes instead of concatenating separate controls. Preserving a color disables the complete Core color editor, including the native picker and import actions, while keeping the preservation toggle operable.
 
 ```php
 use Hexa\PluginCore\WpAdminComponents\ScopedCssOverride;

@@ -97,7 +97,7 @@ Do not create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core`
 - `SmartSearch`: smart search/X-Search AJAX endpoint and reusable typeahead renderer.
 - `SystemEnvironment`: safe constants, INI, shell wrappers, size parsing, CPU/memory detection, and byte formatting.
 - `WpAdminUiCleanup`: shared admin UI cleanup definitions, AJAX toggles, target-screen CSS/JS, postbox hide/collapse behavior, and footer filters.
-- `WpAdminComponents`: shared visual primitives such as cards, subcards, buttons, pills, tooltips, collapsible sections, and scoped CSS override editors and references.
+- `WpAdminComponents`: shared visual primitives such as cards, subcards, buttons, pills, tooltips, collapsible sections, color controls, font-family controls, and scoped CSS override editors and references.
 - `WpAdminAjax`: WordPress admin-AJAX nonce, capability, request parsing, action registration, and handler guards.
 - `WpAdminTabs`: admin tab definitions, registry, host hook integration, and the automatic Hexa core documentation tab.
 - `WpConfigFile`: safe `wp-config.php` constant and `ini_set()` reads/writes with validation and rollback backup handling.
@@ -243,6 +243,22 @@ Version 0.19.52 adds CoreUi::collection_filter() for searchable admin-card colle
 Version 0.19.53 also initializes collection filters after DOMContentLoaded so first-render panels work before any AJAX navigation.
 
 Version 0.19.54 adds an optional host-selected text selector so shared logs and diagnostics do not create false search matches.
+
+Version 0.19.73 makes typography color preservation disable the complete Core color editor, including its native picker and import actions, while leaving the preservation toggle available.
+
+Version 0.19.72 adds a shared light highlight and stronger boundary to open `CoreUi::collapsible()` sections so expanded tools remain visually distinct without host CSS.
+
+Version 0.19.71 keeps the typography color-preservation toggle attached to the Core color heading when detailed picker values wrap on narrower screens.
+
+Version 0.19.70 adds `TypographyControl`, a complete host-neutral typography editor that places each preservation toggle beside its Core-owned family, weight, color, or size field. It supports multiple size fields and decorative color controls that remain editable while inherited text color is preserved.
+
+Version 0.19.69 adds `TypographyPreservation` and `TypographyPreservationControl`. Hosts provide a setting prefix and optional target keys; Core owns the four reusable font-family, size, color, and weight preservation settings, toggle markup, target disabling, preview-state classes, and change events.
+
+Version 0.19.68 extends `FontFamilyControl` with an optional Core-owned font-weight selector backed by `FontWeightProvider`. Hosts can persist a default or validated 100-900 weight without duplicating option markup or validation.
+
+Version 0.19.67 adds `FontFamilyProvider` and `FontFamilyControl`. Hosts can offer template, native primary, native secondary, and deduplicated Elementor font choices while saving validated source identifiers instead of arbitrary CSS.
+
+Use `TypographyPreservation::defaults()` and `TypographyPreservation::setting_keys()` for host persistence. Render `TypographyPreservationControl` inside a `data-hpc-typography-scope` container to expose the same four preservation toggles to any template feature. Core emits prefix-scoped state classes and `hexa-typography-preserve-change` events; the host only maps its typography controls and omits preserved CSS declarations.
 
 Version 0.19.61 adds reusable inherited-value support to ColorControl. Hosts can persist an empty override while Core displays the inherited color and keeps picker, editable hex, RGB, swatch, copy, import, and inherit actions synchronized.
 

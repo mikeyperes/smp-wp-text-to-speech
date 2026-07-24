@@ -33,6 +33,7 @@ Each sub-namespace must have a matching folder:
 ```text
 src/ActivityLog/        Hexa\PluginCore\ActivityLog
 src/AcfFieldFactory/    Hexa\PluginCore\AcfFieldFactory
+src/BrandColors/        Hexa\PluginCore\BrandColors
 src/CoreBootstrap/      Hexa\PluginCore\CoreBootstrap
 src/CoreContracts/      Hexa\PluginCore\CoreContracts
 src/CorePackageUpdates/ Hexa\PluginCore\CorePackageUpdates

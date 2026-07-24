@@ -20,6 +20,7 @@ Brand color helpers keep host plugins from rebuilding the same HWS Base Tools Br
 
 ```text
 BrandColorProvider
+FontFamilyProvider
 ```
 
 ## Contract
@@ -29,11 +30,16 @@ BrandColorProvider
 - `BrandColorProvider::payload($fallback)` returns source labels, hex values, RGB strings, and the Brand Assets admin URL.
 - `BrandColorProvider::elementor_payload($fallback_primary, $fallback_secondary)` returns Elementor primary/secondary color and font-family tokens when Elementor site settings exist.
 - `BrandColorProvider::elementor_palette()` returns every Elementor system/custom color as normalized display rows.
+- `BrandColorProvider::elementor_font_palette()` returns every valid Elementor system/custom typography entry and its global CSS variable.
+- `FontFamilyProvider::options()` returns safe template, native, and unique Elementor font-source choices.
+- `FontFamilyProvider::normalize_selection()` validates a saved source identifier; `css_value()` resolves it for frontend output.
 - `BrandColorProvider::rgb_string($hex)` converts a hex value to `rgb(r, g, b)`.
 - `Hexa\PluginCore\WpAdminComponents\ColorControl::render()` owns the visual picker/hex/RGB/swatch/copy/import control and optional inherited-value state.
 - `Hexa\PluginCore\WpAdminComponents\ElementorPaletteDetector::render()` owns the reference-only Elementor palette detector.
 - `Hexa\PluginCore\WpAdminComponents\ColorPalette::render()` owns multi-color saved palettes and can compose the Elementor detector.
 - `Hexa\PluginCore\WpAdminComponents\DetailedColorPicker::render()` owns the paired primary/secondary visual picker and optional font controls.
+- `Hexa\PluginCore\WpAdminComponents\FontFamilyControl::render()` owns the reusable Elementor-aware font selector.
+- `Hexa\PluginCore\BrandColors\FontWeightProvider` owns the validated default and 100-900 weight choices used by the optional font-picker weight field.
 
 ## Host Plugin Rule
 

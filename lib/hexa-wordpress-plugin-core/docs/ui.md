@@ -27,6 +27,9 @@ ColorControl
 ColorPalette
 ElementorPaletteDetector
 DetailedColorPicker
+FontFamilyControl
+TypographyPreservationControl
+TypographyControl
 ```
 
 ## Components
@@ -44,6 +47,9 @@ ColorControl::render()
 ColorPalette::render()
 ElementorPaletteDetector::render()
 DetailedColorPicker::render()
+FontFamilyControl::render()
+TypographyPreservationControl::render()
+TypographyControl::render()
 ```
 
 ## Example
@@ -83,6 +89,10 @@ echo ScopedCssOverride::render(
 
 `CoreUi::collapsible()` automatically gives every titled section a stable query key. Opening or closing a section updates the current URL with one comma-delimited `hpc_open` parameter, and Core restores those sections after a full refresh or an AJAX tab load.
 
+Typography preservation disables every editor that can mutate the preserved value. For Core color fields, this includes the picker, hex input, stored value input, brand import, and inherited-color action; the adjacent preservation toggle remains enabled.
+
+Open collapsibles use the shared Core highlight state: a pale summary background and a slightly stronger boundary. Hosts should not add separate open-card colors.
+
 ```php
 echo CoreUi::collapsible(
     [
@@ -97,4 +107,4 @@ The title slug is used when `query_key` is omitted. Set `query_state => false` o
 
 ## Rule
 
-If a host plugin needs cards, subcards, collapsibles, tooltips, status pills, copy buttons, scoped CSS override editors and references, brand-aware isolated color controls, saved color palettes, or Elementor palette detection, add the missing parameter or helper here first.
+If a host plugin needs cards, subcards, collapsibles, tooltips, status pills, copy buttons, scoped CSS override editors and references, brand-aware isolated color controls, combined typography fields, typography preservation, saved color palettes, or Elementor palette detection, add the missing parameter or helper here first.

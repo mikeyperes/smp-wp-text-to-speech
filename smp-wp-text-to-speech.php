@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.3.16
+ * Version: 1.3.17
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -14,6 +14,19 @@
 
 namespace smp_text_to_speech;
 
+use Hexa\PluginCore\CoreBootstrap\CoreBootstrap;
+use Hexa\PluginCore\CorePackageUpdates\CorePackageAjaxController;
+use Hexa\PluginCore\CorePackageUpdates\CorePackageStatus;
+use Hexa\PluginCore\CoreRuntime\PluginContext;
+use Hexa\PluginCore\PluginUpdates\GitHubPluginUpdater;
+use Hexa\PluginCore\PluginUpdates\PluginUpdateStatus;
+use Hexa\PluginCore\PluginUpdates\UpdaterAjaxController;
+use Hexa\PluginCore\WpAdminTabs\CoreTabConfig;
+use Hexa\PluginCore\WpAdminTabs\CoreTabModule;
+use Hexa\PluginCore\WpAdminTabs\HostTabsRenderer;
+use Hexa\PluginCore\WpAdminTabs\TabDefinition;
+use Hexa\PluginCore\WpAdminTabs\TabRegistry;
+use Smp\TextToSpeech\Admin\SettingsNavigation;
 use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
 use Smp\TextToSpeech\Support\AudioAttachmentGuard;
 use Smp\TextToSpeech\Support\PostVisibility;
@@ -61,7 +74,7 @@ function register_smp_tts_autoloader(): void {
 register_smp_tts_autoloader();
 
 final class Plugin {
-    const VERSION = "1.3.16";
+    const VERSION = "1.3.17";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -182,42 +195,67 @@ final class Plugin {
     }
 
     private static function boot_hexa_core(): void {
+        static $booted = false;
+        if ( $booted ) {
+            return;
+        }
+
         if ( ! is_admin() && ! wp_doing_ajax() && ! wp_doing_cron() && ! ( defined( "WP_CLI" ) && WP_CLI ) ) {
             return;
         }
 
-        $updater_config = self::updater_config();
-        if ( $updater_config && class_exists( "\\Hexa\\PluginCore\\PluginUpdates\\GitHubPluginUpdater" ) ) {
-            ( new \Hexa\PluginCore\PluginUpdates\GitHubPluginUpdater( $updater_config ) )->register();
-        }
-
-        if ( ! is_admin() && ! wp_doing_ajax() ) {
+        if ( ! class_exists( CoreBootstrap::class ) || ! class_exists( PluginContext::class ) ) {
             return;
         }
 
-        if ( $updater_config && class_exists( "\\Hexa\\PluginCore\\PluginUpdates\\UpdaterAjaxController" ) ) {
-            ( new \Hexa\PluginCore\PluginUpdates\UpdaterAjaxController( $updater_config ) )->register();
+        $context = new PluginContext(
+            [
+                "slug"        => self::SETTINGS_SLUG,
+                "basename"    => self::plugin_basename(),
+                "version"     => self::VERSION,
+                "path"        => plugin_dir_path( __FILE__ ),
+                "url"         => plugin_dir_url( __FILE__ ),
+                "github_repo" => self::GITHUB_REPO,
+                "admin_page"  => self::SETTINGS_SLUG,
+                "capability"  => "manage_options",
+            ]
+        );
+        $core = new CoreBootstrap( $context );
+        $updater_config = self::updater_config();
+        if ( $updater_config ) {
+            $core->add_module( new GitHubPluginUpdater( $updater_config ) );
         }
 
-        $core_config = self::core_package_config();
-        if ( $core_config && class_exists( "\\Hexa\\PluginCore\\CorePackageUpdates\\CorePackageAjaxController" ) ) {
-            ( new \Hexa\PluginCore\CorePackageUpdates\CorePackageAjaxController( $core_config ) )->register();
-        }
+        if ( is_admin() || wp_doing_ajax() ) {
+            if ( $updater_config ) {
+                $core->add_module( new UpdaterAjaxController( $updater_config ) );
+            }
 
-        if ( class_exists( "\\Hexa\\PluginCore\\WpAdminTabs\\CoreTabModule" ) && class_exists( "\\Hexa\\PluginCore\\WpAdminTabs\\CoreTabConfig" ) ) {
-            ( new \Hexa\PluginCore\WpAdminTabs\CoreTabModule(
-                new \Hexa\PluginCore\WpAdminTabs\CoreTabConfig(
-                    [
-                        "tabs_filter"   => "smp_tts_dashboard_tabs",
-                        "render_filter" => "smp_tts_render_dashboard_tab",
-                        "capability"    => "manage_options",
-                        "core_root"     => self::core_root(),
-                        "readme_path"   => self::core_root() . "/README.md",
-                        "library_path"  => __DIR__ . "/HEXA_PLUGIN_CORE_LIBRARY.md",
-                    ]
+            $core_config = self::core_package_config();
+            if ( $core_config ) {
+                $core->add_module( new CorePackageAjaxController( $core_config ) );
+            }
+
+            $core->add_module(
+                new CoreTabModule(
+                    new CoreTabConfig(
+                        [
+                            "tab_id"        => "hexa_core",
+                            "label"         => "Hexa WP Core",
+                            "tabs_filter"   => "smp_tts_dashboard_tabs",
+                            "render_filter" => "smp_tts_render_dashboard_tab",
+                            "capability"    => "manage_options",
+                            "core_root"     => self::core_root(),
+                            "readme_path"   => self::core_root() . "/README.md",
+                            "library_path"  => __DIR__ . "/HEXA_PLUGIN_CORE_LIBRARY.md",
+                        ]
+                    )
                 )
-            ) )->register();
+            );
         }
+
+        $core->boot();
+        $booted = true;
     }
 
     public static function enqueue_admin_assets( $hook ) {
@@ -823,9 +861,12 @@ JS;
         if ( ! current_user_can( "manage_options" ) ) {
             return;
         }
-        $tabs = self::settings_tabs();
-        $active = isset( $_GET["tab"] ) ? sanitize_key( wp_unslash( $_GET["tab"] ) ) : "overview";
-        $active = isset( $tabs[ $active ] ) ? $active : "overview";
+        $navigation = self::settings_navigation();
+        $registry = self::tab_registry( $navigation );
+        $tabs = $registry->all();
+        $requested = isset( $_GET["tab"] ) ? sanitize_key( wp_unslash( $_GET["tab"] ) ) : "overview";
+        $active = $navigation->resolve( $requested );
+        $sidebar_identity = self::sidebar_identity();
         $saved = isset( $_GET["hexa_tts_saved"] ) && "1" === $_GET["hexa_tts_saved"];
         $imported = isset( $_GET["hexa_tts_imported"] ) ? sanitize_key( wp_unslash( $_GET["hexa_tts_imported"] ) ) : "";
         ?>
@@ -838,44 +879,97 @@ JS;
             if ( class_exists( "\\Hexa\\PluginCore\\WpAdminComponents\\CoreUi" ) ) {
                 \Hexa\PluginCore\WpAdminComponents\CoreUi::render_assets();
             }
-            if ( class_exists( "\\Hexa\\PluginCore\\WpAdminTabs\\HostTabsRenderer" ) ) {
-                ( new \Hexa\PluginCore\WpAdminTabs\HostTabsRenderer() )->render(
-                    [
-                        "tabs"            => $tabs,
-                        "active"          => $active,
-                        "page_url"        => admin_url( "options-general.php?page=" . self::SETTINGS_SLUG ),
-                        "ajax_action"     => "smp_tts_load_tab",
-                        "nonce"           => wp_create_nonce( self::NONCE_ACTION ),
-                        "nonce_field"     => "nonce",
-                        "root_id"         => "smp-tts-core-tabs",
-                        "panel_id"        => "smp-tts-tab-panel",
-                        "label"           => "SMP WP Text To Speech sections",
-                        "render_callback" => function( string $tab ): void { self::render_settings_tab( $tab ); },
-                    ]
-                );
-            } else {
-                echo '<nav class="nav-tab-wrapper">';
-                foreach ( $tabs as $id => $label ) {
-                    $url = add_query_arg( [ "page" => self::SETTINGS_SLUG, "tab" => $id ], admin_url( "options-general.php" ) );
-                    echo '<a class="nav-tab ' . esc_attr( $id === $active ? "nav-tab-active" : "" ) . '" href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a>';
-                }
-                echo '</nav>';
-                self::render_settings_tab( $active );
-            }
+            ( new HostTabsRenderer() )->render(
+                [
+                    "tabs"                => $tabs,
+                    "active"              => $active,
+                    "page_url"            => admin_url( "options-general.php?page=" . self::SETTINGS_SLUG ),
+                    "ajax_action"         => "smp_tts_load_tab",
+                    "nonce"               => wp_create_nonce( self::NONCE_ACTION ),
+                    "nonce_field"         => "nonce",
+                    "root_id"             => "smp-tts-core-tabs",
+                    "panel_id"            => "smp-tts-tab-panel",
+                    "label"               => "SMP WP Text To Speech sections",
+                    "layout"              => "sidebar",
+                    "groups"              => $navigation->groups(),
+                    "sidebar_identity"    => $sidebar_identity,
+                    "sidebar_collapsible" => true,
+                    "sidebar_collapsed"   => false,
+                    "sidebar_persist"     => true,
+                    "render_callback"     => function( string $tab ) use ( $registry ): void {
+                        self::render_registered_tab( $registry, $tab );
+                    },
+                ]
+            );
             ?>
         </div>
         <?php
     }
 
-    private static function settings_tabs(): array {
-        return apply_filters( "smp_tts_dashboard_tabs", [
-            "overview"   => "Overview",
-            "api"        => "API Settings",
-            "features"   => "Features",
-            "display"    => "Display",
-            "shortcodes" => "Shortcodes",
-            "schema"     => "Schema",
-        ] );
+    private static function settings_navigation(): SettingsNavigation {
+        return new SettingsNavigation();
+    }
+
+    private static function tab_registry( ?SettingsNavigation $navigation = null ): TabRegistry {
+        $navigation = $navigation ?? self::settings_navigation();
+
+        return $navigation->registry(
+            static function( string $id ): void {
+                self::render_settings_tab( $id );
+            },
+            "manage_options"
+        );
+    }
+
+    private static function render_registered_tab( TabRegistry $registry, string $id ): void {
+        $definition = $registry->get( $id ) ?? $registry->get( "overview" );
+        if ( ! $definition instanceof TabDefinition ) {
+            return;
+        }
+
+        if (
+            null !== $definition->capability
+            && "" !== $definition->capability
+            && ! current_user_can( $definition->capability )
+        ) {
+            echo '<div class="notice notice-error"><p>You do not have permission to view this section.</p></div>';
+            return;
+        }
+
+        if ( is_callable( $definition->renderer ) ) {
+            call_user_func( $definition->renderer );
+        }
+    }
+
+    private static function tab_label( TabDefinition $definition ): string {
+        return $definition->label . ( $definition->deprecated ? " (Deprecated)" : "" );
+    }
+
+    /**
+     * @return array<string,string>
+     */
+    private static function sidebar_identity(): array {
+        $plugin_status = [];
+        $core_status = [];
+        $updater_config = self::updater_config();
+        $core_config = self::core_package_config();
+
+        if ( $updater_config ) {
+            $plugin_status = ( new PluginUpdateStatus( $updater_config ) )->get();
+        }
+        if ( $core_config ) {
+            $core_status = ( new CorePackageStatus( $core_config ) )->get();
+        }
+
+        return [
+            "plugin_name"     => (string) ( $plugin_status["plugin_name"] ?? "SMP WP Text To Speech" ),
+            "current_version" => (string) ( $plugin_status["current_version"] ?? self::VERSION ),
+            "github_version"  => (string) ( $plugin_status["latest_version"] ?? "Unknown" ),
+            "github_url"      => (string) ( $plugin_status["github_url"] ?? "https://github.com/" . self::GITHUB_REPO ),
+            "core_name"       => "Hexa WP Core",
+            "core_version"    => (string) ( $core_status["current_version"] ?? "Unknown" ),
+            "core_github_url" => (string) ( $core_status["github_url"] ?? "https://github.com/mikeyperes/hexa-wordpress-plugin-core" ),
+        ];
     }
 
     public static function ajax_load_tab() {
@@ -888,12 +982,24 @@ JS;
     }
 
     private static function tab_fragment( string $id ): array {
-        $tabs = self::settings_tabs();
-        $active = isset( $tabs[ $id ] ) ? $id : "overview";
+        $navigation = self::settings_navigation();
+        $registry = self::tab_registry( $navigation );
+        $active = $navigation->resolve( $id );
+        $definition = $registry->get( $active ) ?? $registry->get( "overview" );
+
+        if ( ! $definition instanceof TabDefinition ) {
+            return [ "tab" => "overview", "label" => "Dashboard", "html" => "" ];
+        }
+
+        $active = $definition->id;
         ob_start();
-        self::render_settings_tab( $active );
+        self::render_registered_tab( $registry, $active );
         $html = ob_get_clean();
-        return [ "tab" => $active, "label" => $tabs[ $active ], "html" => is_string( $html ) ? $html : "" ];
+        return [
+            "tab"   => $active,
+            "label" => self::tab_label( $definition ),
+            "html"  => is_string( $html ) ? $html : "",
+        ];
     }
 
     private static function render_settings_tab( string $id ): void {

@@ -94,8 +94,10 @@ final class CoreUi {
             .hpc-host-tab-panel.is-loading{opacity:.6;pointer-events:none}
             .hpc-host-tab-panel.is-loading:after{animation:hpc-host-load 1s linear infinite;background:linear-gradient(90deg,transparent,var(--hpc-blue),transparent);background-size:200% 100%;border-radius:var(--hpc-radius) var(--hpc-radius) 0 0;content:"";height:3px;left:0;position:absolute;right:0;top:0}
             @keyframes hpc-host-load{0%{background-position:200% 0}100%{background-position:-200% 0}}
-            .hpc-section{background:#fff;border:1px solid var(--hpc-line);border-radius:8px;margin:0 0 14px;overflow:hidden}
-            .hpc-section summary{align-items:center;cursor:pointer;display:flex;font-size:15px;font-weight:800;gap:12px;justify-content:space-between;list-style:none;padding:15px 16px}
+            .hpc-section{background:#fff;border:1px solid var(--hpc-line);border-radius:8px;margin:0 0 14px;overflow:hidden;transition:border-color .18s,box-shadow .18s}
+            .hpc-section summary{align-items:center;cursor:pointer;display:flex;font-size:15px;font-weight:800;gap:12px;justify-content:space-between;list-style:none;padding:15px 16px;transition:background .18s}
+            .hpc-section[open]{border-color:#c6d3e4;box-shadow:0 0 0 1px rgba(49,87,213,.06)}
+            .hpc-section[open]>summary{background:#f1f5fb}
             .hpc-section summary::-webkit-details-marker{display:none}
             .hpc-section-title{min-width:0;overflow-wrap:anywhere;white-space:normal}
             .hpc-section-summary-side{align-items:center;display:inline-flex;flex:0 0 auto;gap:10px;margin-left:auto}

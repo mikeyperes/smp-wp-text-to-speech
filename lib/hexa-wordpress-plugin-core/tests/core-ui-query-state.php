@@ -71,6 +71,8 @@ $checks = [
         && str_contains( $assets, "details.dataset.hpcQueryReady !== '1'" ),
     'Keeps query and local-storage state in the same generic toggle handler.' => str_contains( $assets, 'details[data-hpc-persist-key],details[data-hpc-query-key]' )
         && str_contains( $assets, 'if (details.dataset.hpcQueryKey) updateDetailsQuery();' ),
+    'Visually distinguishes every open Core section without host CSS.' => str_contains( $assets, '.hpc-section[open]{border-color:#c6d3e4' )
+        && str_contains( $assets, '.hpc-section[open]>summary{background:#f1f5fb}' ),
 ];
 
 foreach ( $checks as $message => $passed ) {
