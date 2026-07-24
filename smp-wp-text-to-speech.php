@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.3.18
+ * Version: 1.3.19
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -74,7 +74,7 @@ function register_smp_tts_autoloader(): void {
 register_smp_tts_autoloader();
 
 final class Plugin {
-    const VERSION = "1.3.18";
+    const VERSION = "1.3.19";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -1419,6 +1419,7 @@ JS;
         $clean["auto_player_placement"] = array_key_exists( sanitize_key( $incoming["auto_player_placement"] ?? "" ), self::placement_options() ) ? sanitize_key( $incoming["auto_player_placement"] ) : ( $existing["auto_player_placement"] ?? "above_article" );
         $clean["last_status"] = is_array( $existing["last_status"] ?? null ) ? $existing["last_status"] : [];
         update_option( self::OPTION, $clean, false );
+        self::purge_frontend_cache();
         wp_safe_redirect( add_query_arg( [ "page" => self::SETTINGS_SLUG, "tab" => $tab, "hexa_tts_saved" => "1" ], admin_url( "options-general.php" ) ) );
         exit;
     }
@@ -1434,6 +1435,7 @@ JS;
         if ( $color ) {
             $settings["primary_color"] = $color;
             update_option( self::OPTION, $settings, false );
+            self::purge_frontend_cache();
             $imported = "yes";
         }
         wp_safe_redirect( add_query_arg( [ "page" => self::SETTINGS_SLUG, "tab" => "display", "hexa_tts_imported" => $imported ], admin_url( "options-general.php" ) ) );
@@ -2628,8 +2630,52 @@ JS;
         update_post_meta( $post_id, "_hexa_tts_provider_key_last4", sanitize_text_field( $api_result["provider_key_last4"] ?? "" ) );
         update_post_meta( $post_id, "_hexa_tts_acf_field", $acf_field );
         AcfAudioFieldResolver::updatePostValue( (int) $post_id, $acf_field, (int) $attachment_id );
+        self::purge_frontend_cache( (int) $post_id );
         $bytes = $file_path && file_exists( $file_path ) ? filesize( $file_path ) : 0;
         return [ "audio_url" => $audio_url, "attachment_id" => (int) $attachment_id, "acf_field" => $acf_field, "acf_value" => (int) $attachment_id, "bytes" => (int) $bytes ];
+    }
+
+    private static function purge_frontend_cache( int $post_id = 0 ): void {
+        if ( $post_id > 0 ) {
+            clean_post_cache( $post_id );
+
+            if ( has_action( "litespeed_purge_post" ) ) {
+                do_action( "litespeed_purge_post", $post_id );
+            }
+
+            $permalink = get_permalink( $post_id );
+            if ( $permalink && has_action( "litespeed_purge_url" ) ) {
+                do_action( "litespeed_purge_url", $permalink );
+            }
+
+            if ( function_exists( "rocket_clean_post" ) ) {
+                rocket_clean_post( $post_id );
+            }
+
+            if ( function_exists( "w3tc_flush_post" ) ) {
+                w3tc_flush_post( $post_id );
+            }
+
+            return;
+        }
+
+        if ( function_exists( "wp_cache_flush" ) ) {
+            wp_cache_flush();
+        }
+
+        foreach ( [ "litespeed_purge_all", "litespeed_purge_all_object" ] as $action ) {
+            if ( has_action( $action ) ) {
+                do_action( $action );
+            }
+        }
+
+        if ( function_exists( "rocket_clean_domain" ) ) {
+            rocket_clean_domain();
+        }
+
+        if ( function_exists( "w3tc_flush_all" ) ) {
+            w3tc_flush_all();
+        }
     }
 
     private static function store_api_audio( $post_id, array $api_result, $content ) {

@@ -2,6 +2,8 @@
 
 Standalone WordPress plugin for converting post/page text into audio with provider-specific settings, AJAX credential validation, editor extraction, and one-click post audio generation.
 
+Version 1.3.19 makes frontend display changes immediate by centrally invalidating supported page/object caches after global player settings change and after generated or uploaded audio is synchronized to a post. LiteSpeed receives targeted post/URL purges for audio changes and a global purge for template, placement, color, label, size, and control changes; WP Rocket and W3 Total Cache fallbacks are included.
+
 Version 1.3.18 gives the Clean Card player a straight blue top accent by removing its top-left and top-right corner radius while retaining the rounded lower corners. Its release-fingerprinted stylesheet path also prevents stale edge-cache CSS from making the admin preview and frontend disagree.
 
 Version 1.3.17 integrates the settings experience with the canonical Hexa WP Core admin shell. All settings sections now use shared tab definitions, a grouped and collapsible sidebar, AJAX navigation with browser-history support, plugin/Core Git identity reporting, and the shared updater dashboards. The vendored Hexa WP Core package is updated to 0.19.73.
