@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.3.19
+ * Version: 1.3.20
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -74,7 +74,7 @@ function register_smp_tts_autoloader(): void {
 register_smp_tts_autoloader();
 
 final class Plugin {
-    const VERSION = "1.3.19";
+    const VERSION = "1.3.20";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -272,7 +272,7 @@ final class Plugin {
             }
         }
         wp_enqueue_style( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.css", [], self::VERSION );
-        wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend-1.3.18.css", [ "hexa-tts-admin" ], self::VERSION );
+        wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend-1.3.20.css", [ "hexa-tts-admin" ], self::VERSION );
         wp_enqueue_script( "smp-tts-frontend-player", plugin_dir_url( __FILE__ ) . "assets/frontend.js", [], self::VERSION, true );
         wp_enqueue_script( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.js", [ "jquery" ], self::VERSION, true );
         wp_localize_script( "hexa-tts-admin", "hexaTts", [ "ajaxUrl" => admin_url( "admin-ajax.php" ), "nonce" => wp_create_nonce( self::NONCE_ACTION ) ] );
@@ -285,7 +285,7 @@ final class Plugin {
         if ( is_admin() ) {
             return;
         }
-        wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend-1.3.18.css", [], self::VERSION );
+        wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend-1.3.20.css", [], self::VERSION );
         wp_enqueue_script( "smp-tts-frontend-player", plugin_dir_url( __FILE__ ) . "assets/frontend.js", [], self::VERSION, true );
     }
 
@@ -1503,27 +1503,28 @@ JS;
 
     private static function template_options(): array {
         return [
-            "clean_card" => [ "label" => "Clean Card", "description" => "Article-audio card with a straight top accent and softly rounded lower corners." ],
-            "editorial_bar" => [ "label" => "Editorial Bar", "description" => "Thin publication-style bar above or below visual content." ],
-            "compact_pill" => [ "label" => "Compact Pill", "description" => "Small lightweight pill for tight article headers." ],
-            "media_panel" => [ "label" => "Media Panel", "description" => "Larger audio-first module with stronger visual weight." ],
-            "minimal_audio" => [ "label" => "Minimal Audio", "description" => "Bare player with minimal border and metadata." ],
-            "quiet_card" => [ "label" => "Quiet Card", "description" => "Soft 1px card, no shadow, neutral label. The sleek default." ],
-            "slim_line" => [ "label" => "Slim Line", "description" => "Borderless player under a thin accent rule. Maximum restraint." ],
-            "ghost" => [ "label" => "Ghost", "description" => "Fully transparent — just a small label and the player." ],
-            "inline_label" => [ "label" => "Inline Label", "description" => "Label and player on one row for tight article headers." ],
-            "dot" => [ "label" => "Dot", "description" => "Small accent dot beside a neutral label, no container." ],
-            "underline" => [ "label" => "Underline", "description" => "Label with an accent underline over a hairline divider." ],
-            "tag" => [ "label" => "Listen Tag", "description" => "Small tinted pill label beside the player." ],
-            "editorial_thin" => [ "label" => "Editorial Thin", "description" => "Refined thin left rule on a soft ground." ],
-            "caption" => [ "label" => "Caption", "description" => "Player first, small caption label beneath — like a figure caption." ],
-            "eyebrow" => [ "label" => "Eyebrow", "description" => "Uppercase letter-spaced label with a short accent tick." ],
-            "framed" => [ "label" => "Framed", "description" => "Thin full border, no shadow, metadata aligned right. Quiet box." ],
-            "rule_between" => [ "label" => "Divider", "description" => "Label, a hairline divider, then the player below." ],
-            "corner" => [ "label" => "Corner Tick", "description" => "Small accent square beside the label, no container." ],
-            "mini" => [ "label" => "Mini", "description" => "Ultra-compact one-row player, smallest footprint." ],
-            "soft_tint" => [ "label" => "Soft Tint", "description" => "Barely-there accent-tinted ground, no border." ],
-            "what_to_know" => [ "label" => "What to Know Match", "description" => "Identical to the What to Know summary block: left blue rule, faint tint, bold label." ],
+            "clean_card" => [ "label" => "Top-accent article card", "description" => "White card with a straight color bar across the top and rounded lower corners." ],
+            "editorial_bar" => [ "label" => "Left-accent editorial card", "description" => "Compact publication-style card with a strong color bar on the left." ],
+            "compact_pill" => [ "label" => "Rounded compact pill", "description" => "Label and audio controls in a small rounded container for tight article headers." ],
+            "media_panel" => [ "label" => "Tinted media panel", "description" => "Larger audio-first panel with a soft color tint and stronger visual weight." ],
+            "minimal_audio" => [ "label" => "Minimal bottom-rule player", "description" => "Bare audio player with only a restrained bottom divider." ],
+            "quiet_card" => [ "label" => "Neutral quiet card", "description" => "Simple one-pixel card with no shadow and a neutral label." ],
+            "slim_line" => [ "label" => "Top accent line", "description" => "Borderless player placed beneath a thin color rule." ],
+            "ghost" => [ "label" => "Transparent player", "description" => "No card or border; only the label and audio controls remain." ],
+            "inline_label" => [ "label" => "Inline label and player", "description" => "Label and audio controls share one row for compact article headers." ],
+            "dot" => [ "label" => "Accent-dot label", "description" => "Small color dot beside a neutral label with no surrounding container." ],
+            "underline" => [ "label" => "Underlined label", "description" => "Label with a short color underline above a hairline divider." ],
+            "tag" => [ "label" => "Pill label and player", "description" => "Small tinted Listen label beside the audio controls." ],
+            "editorial_thin" => [ "label" => "Thin left-rule panel", "description" => "Soft panel with a restrained vertical color rule on the left." ],
+            "caption" => [ "label" => "Caption below player", "description" => "Audio controls first with a small figure-style caption underneath." ],
+            "eyebrow" => [ "label" => "Uppercase eyebrow label", "description" => "Letter-spaced uppercase label led by a short color tick." ],
+            "framed" => [ "label" => "Simple framed box", "description" => "Quiet player inside a thin full border with no shadow." ],
+            "rule_between" => [ "label" => "Label with divider", "description" => "Label, hairline divider, and audio controls arranged vertically." ],
+            "corner" => [ "label" => "Square corner marker", "description" => "Small color square beside the label with no surrounding container." ],
+            "mini" => [ "label" => "Smallest inline player", "description" => "Ultra-compact one-row treatment with the smallest footprint." ],
+            "soft_tint" => [ "label" => "Soft color-tint panel", "description" => "Borderless player on a barely visible color-tinted background." ],
+            "what_to_know" => [ "label" => "Summary-matched left rule", "description" => "Matches the What to know block with a left color rule, faint tint, and bold label." ],
+            "narration_card" => [ "label" => "Dark narration card with timeline", "description" => "Dark reference-style card with a top color rule, large play button, timeline, duration, skip controls, and playback speeds." ],
         ];
     }
 
@@ -2811,12 +2812,27 @@ JS;
         $enhanced = self::truthy_setting( $enhanced_arg );
         $transcript = $post_id > 0 ? self::audio_transcript_for_post( $post_id ) : "";
         $player_key = $post_id > 0 ? "post-" . absint( $post_id ) : substr( hash( "sha256", $url ), 0, 16 );
+        $custom_player = "narration_card" === $template;
         $classes = trim( "hexa-tts-player hexa-tts-player--" . $template . " hexa-tts-player--size-" . $size . ( $enhanced ? " hexa-tts-player--enhanced" : " hexa-tts-player--native" ) . " " . $extra_class );
         ob_start();
         ?>
-        <aside class="<?php echo esc_attr( $classes ); ?>" data-hexa-tts-enhanced="<?php echo esc_attr( $enhanced ? "1" : "0" ); ?>" data-hexa-tts-key="<?php echo esc_attr( $player_key ); ?>" style="--smp-tts-primary: <?php echo esc_attr( $color ); ?>;" aria-label="Article audio narration">
-            <div class="hexa-tts-player__label"><?php echo esc_html( $label ); ?></div>
-            <audio controls preload="<?php echo esc_attr( $preload ); ?>" src="<?php echo esc_url( $url ); ?>"></audio>
+        <aside class="<?php echo esc_attr( $classes ); ?>" data-hexa-tts-enhanced="<?php echo esc_attr( $enhanced ? "1" : "0" ); ?>" data-hexa-tts-custom="<?php echo esc_attr( $custom_player ? "1" : "0" ); ?>" data-hexa-tts-key="<?php echo esc_attr( $player_key ); ?>" style="--smp-tts-primary: <?php echo esc_attr( $color ); ?>;" aria-label="Article audio narration">
+            <?php if ( $custom_player ) : ?>
+                <div class="hexa-tts-narration__eyebrow">Listen</div>
+                <h2 class="hexa-tts-player__label hexa-tts-narration__title"><?php echo esc_html( $label ); ?></h2>
+                <div class="hexa-tts-narration__meta"><span>AI narration</span><span aria-hidden="true">/</span><span data-hexa-tts-duration-label>Loading duration</span></div>
+                <audio preload="<?php echo esc_attr( $preload ); ?>" src="<?php echo esc_url( $url ); ?>"></audio>
+                <div class="hexa-tts-narration__main">
+                    <button type="button" class="hexa-tts-narration__play" data-hexa-tts-play aria-label="Play article narration"><span aria-hidden="true"></span></button>
+                    <div class="hexa-tts-narration__track">
+                        <input type="range" class="hexa-tts-narration__timeline" data-hexa-tts-timeline min="0" max="100" value="0" step="0.1" aria-label="Audio progress" aria-valuetext="0:00 of 0:00">
+                        <div class="hexa-tts-narration__time"><span data-hexa-tts-current>0:00</span><span data-hexa-tts-duration>0:00</span></div>
+                    </div>
+                </div>
+            <?php else : ?>
+                <div class="hexa-tts-player__label"><?php echo esc_html( $label ); ?></div>
+                <audio controls preload="<?php echo esc_attr( $preload ); ?>" src="<?php echo esc_url( $url ); ?>"></audio>
+            <?php endif; ?>
             <?php if ( $enhanced ) : ?>
                 <div class="hexa-tts-player__controls" aria-label="Audio playback controls">
                     <div class="hexa-tts-player__skip">
@@ -2825,17 +2841,22 @@ JS;
                     </div>
                     <div class="hexa-tts-player__speed" aria-label="Playback speed">
                         <?php foreach ( [ "0.75", "1", "1.25", "1.5", "2" ] as $speed ) : ?>
-                            <button type="button" class="hexa-tts-player__button <?php echo "1" === $speed ? "is-active" : ""; ?>" data-hexa-tts-speed="<?php echo esc_attr( $speed ); ?>"><?php echo esc_html( $speed . "x" ); ?></button>
+                            <button type="button" class="hexa-tts-player__button <?php echo "1" === $speed ? "is-active" : ""; ?>" data-hexa-tts-speed="<?php echo esc_attr( $speed ); ?>" aria-pressed="<?php echo esc_attr( "1" === $speed ? "true" : "false" ); ?>"><?php echo esc_html( $speed . "x" ); ?></button>
                         <?php endforeach; ?>
                     </div>
                     <?php if ( "" !== $transcript ) : ?>
                         <button type="button" class="hexa-tts-player__button hexa-tts-player__transcript-toggle" data-hexa-tts-transcript-toggle aria-expanded="false">Transcript</button>
                     <?php endif; ?>
-                    <span class="hexa-tts-player__status" aria-live="polite"></span>
+                    <?php if ( ! $custom_player ) : ?>
+                        <span class="hexa-tts-player__status" aria-live="polite"></span>
+                    <?php endif; ?>
                 </div>
                 <?php if ( "" !== $transcript ) : ?>
                     <div class="hexa-tts-player__transcript" data-hexa-tts-transcript hidden><?php echo wp_kses_post( nl2br( esc_html( $transcript ) ) ); ?></div>
                 <?php endif; ?>
+            <?php endif; ?>
+            <?php if ( $custom_player ) : ?>
+                <span class="hexa-tts-player__status hexa-tts-narration__status" aria-live="polite">Audio ready</span>
             <?php endif; ?>
         </aside>
         <?php

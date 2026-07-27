@@ -2,6 +2,8 @@
 
 Standalone WordPress plugin for converting post/page text into audio with provider-specific settings, AJAX credential validation, editor extraction, and one-click post audio generation.
 
+Version 1.3.20 adds the reference-style Dark Narration Card template with a large play button, timeline, duration, skip controls, playback speeds, and selected-color accents. Player template labels now describe the visible treatment so each design is easy to identify in the settings UI.
+
 Version 1.3.19 makes frontend display changes immediate by centrally invalidating supported page/object caches after global player settings change and after generated or uploaded audio is synchronized to a post. LiteSpeed receives targeted post/URL purges for audio changes and a global purge for template, placement, color, label, size, and control changes; WP Rocket and W3 Total Cache fallbacks are included.
 
 Version 1.3.18 gives the Clean Card player a straight blue top accent by removing its top-left and top-right corner radius while retaining the rounded lower corners. Its release-fingerprinted stylesheet path also prevents stale edge-cache CSS from making the admin preview and frontend disagree.

@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  var ROOT_SELECTOR = '.hexa-tts-player[data-hexa-tts-enhanced="1"]';
+  var ROOT_SELECTOR = '.hexa-tts-player[data-hexa-tts-enhanced="1"], .hexa-tts-player[data-hexa-tts-custom="1"]';
   var STORAGE_PREFIX = 'smp_tts_player_';
 
   function storageGet(key) {
@@ -38,8 +38,53 @@
   function setActiveSpeed(root, speed) {
     var buttons = root.querySelectorAll('[data-hexa-tts-speed]');
     Array.prototype.forEach.call(buttons, function (button) {
-      button.classList.toggle('is-active', button.getAttribute('data-hexa-tts-speed') === String(speed));
+      var active = button.getAttribute('data-hexa-tts-speed') === String(speed);
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
+  }
+
+  function formatTime(seconds) {
+    if (!isFinite(seconds) || seconds < 0) {
+      return '0:00';
+    }
+    var minutes = Math.floor(seconds / 60);
+    var remainder = Math.floor(seconds % 60);
+    return minutes + ':' + (remainder < 10 ? '0' : '') + remainder;
+  }
+
+  function setCustomPlayState(root, playing) {
+    var button = root.querySelector('[data-hexa-tts-play]');
+    if (!button) {
+      return;
+    }
+    button.classList.toggle('is-playing', playing);
+    button.setAttribute('aria-label', playing ? 'Pause article narration' : 'Play article narration');
+  }
+
+  function syncCustomProgress(root, audio) {
+    var timeline = root.querySelector('[data-hexa-tts-timeline]');
+    if (!timeline) {
+      return;
+    }
+    var current = formatTime(audio.currentTime);
+    var duration = formatTime(audio.duration);
+    var progress = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+    timeline.value = String(progress);
+    timeline.setAttribute('aria-valuetext', current + ' of ' + duration);
+
+    var currentLabel = root.querySelector('[data-hexa-tts-current]');
+    var durationLabel = root.querySelector('[data-hexa-tts-duration]');
+    var metaDuration = root.querySelector('[data-hexa-tts-duration-label]');
+    if (currentLabel) {
+      currentLabel.textContent = current;
+    }
+    if (durationLabel) {
+      durationLabel.textContent = duration;
+    }
+    if (metaDuration) {
+      metaDuration.textContent = audio.duration ? duration : 'Duration unavailable';
+    }
   }
 
   function initPlayer(root) {
@@ -53,10 +98,12 @@
       return;
     }
 
+    var enhanced = root.getAttribute('data-hexa-tts-enhanced') === '1';
+    var custom = root.getAttribute('data-hexa-tts-custom') === '1';
     var keyBase = STORAGE_PREFIX + (root.getAttribute('data-hexa-tts-key') || audio.currentSrc || audio.src || 'audio');
     var positionKey = keyBase + '_position';
     var speedKey = keyBase + '_speed';
-    var storedSpeed = parseFloat(storageGet(speedKey) || '1');
+    var storedSpeed = enhanced ? parseFloat(storageGet(speedKey) || '1') : 1;
 
     if (storedSpeed && isFinite(storedSpeed) && storedSpeed > 0) {
       audio.playbackRate = storedSpeed;
@@ -64,25 +111,81 @@
     }
 
     audio.addEventListener('loadedmetadata', function () {
-      var storedPosition = parseFloat(storageGet(positionKey) || '0');
-      if (storedPosition > 5 && (!audio.duration || storedPosition < audio.duration - 5)) {
-        audio.currentTime = storedPosition;
-        setStatus(root, 'Resumed where you left off');
+      if (enhanced) {
+        var storedPosition = parseFloat(storageGet(positionKey) || '0');
+        if (storedPosition > 5 && (!audio.duration || storedPosition < audio.duration - 5)) {
+          audio.currentTime = storedPosition;
+          setStatus(root, 'Resumed where you left off');
+        }
       }
+      syncCustomProgress(root, audio);
     });
 
     audio.addEventListener('timeupdate', function () {
-      if (!audio.duration || audio.currentTime <= 0 || audio.ended) {
-        return;
+      if (enhanced && audio.duration && audio.currentTime > 0 && !audio.ended) {
+        storageSet(positionKey, String(Math.floor(audio.currentTime)));
       }
-      storageSet(positionKey, String(Math.floor(audio.currentTime)));
+      syncCustomProgress(root, audio);
     });
 
     audio.addEventListener('ended', function () {
-      storageSet(positionKey, '0');
+      if (enhanced) {
+        storageSet(positionKey, '0');
+      }
+      setCustomPlayState(root, false);
+      syncCustomProgress(root, audio);
+      setStatus(root, 'Audio finished');
     });
 
+    if (custom) {
+      audio.addEventListener('play', function () {
+        setCustomPlayState(root, true);
+        setStatus(root, 'Audio playing');
+      });
+      audio.addEventListener('pause', function () {
+        setCustomPlayState(root, false);
+        if (!audio.ended) {
+          setStatus(root, 'Audio paused');
+        }
+      });
+      audio.addEventListener('durationchange', function () {
+        syncCustomProgress(root, audio);
+      });
+      audio.addEventListener('error', function () {
+        var playButton = root.querySelector('[data-hexa-tts-play]');
+        if (playButton) {
+          playButton.disabled = true;
+        }
+        setStatus(root, 'Audio unavailable');
+      });
+
+      var timeline = root.querySelector('[data-hexa-tts-timeline]');
+      if (timeline) {
+        timeline.addEventListener('input', function () {
+          if (audio.duration) {
+            audio.currentTime = (parseFloat(timeline.value) / 100) * audio.duration;
+          }
+        });
+      }
+      syncCustomProgress(root, audio);
+    }
+
     root.addEventListener('click', function (event) {
+      var playButton = event.target.closest('[data-hexa-tts-play]');
+      if (playButton && root.contains(playButton)) {
+        if (audio.paused) {
+          var playResult = audio.play();
+          if (playResult && typeof playResult.catch === 'function') {
+            playResult.catch(function () {
+              setStatus(root, 'Audio could not start');
+            });
+          }
+        } else {
+          audio.pause();
+        }
+        return;
+      }
+
       var speedButton = event.target.closest('[data-hexa-tts-speed]');
       if (speedButton && root.contains(speedButton)) {
         var speed = parseFloat(speedButton.getAttribute('data-hexa-tts-speed') || '1');
