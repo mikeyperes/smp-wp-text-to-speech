@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 $root = dirname( __DIR__ );
 $plugin = file_get_contents( $root . "/smp-wp-text-to-speech.php" );
-$css = file_get_contents( $root . "/assets/frontend-1.3.20.css" );
+$css = file_get_contents( $root . "/assets/frontend-1.3.21.css" );
 $js = file_get_contents( $root . "/assets/frontend.js" );
 
 if ( ! is_string( $plugin ) || ! is_string( $css ) || ! is_string( $js ) ) {
@@ -16,6 +16,24 @@ $required_template_labels = [
     '"clean_card" => [ "label" => "Top-accent article card"',
     '"editorial_bar" => [ "label" => "Left-accent editorial card"',
     '"compact_pill" => [ "label" => "Rounded compact pill"',
+    '"media_panel" => [ "label" => "Tinted media panel"',
+    '"minimal_audio" => [ "label" => "Minimal bottom-rule player"',
+    '"quiet_card" => [ "label" => "Neutral quiet card"',
+    '"slim_line" => [ "label" => "Top accent line"',
+    '"ghost" => [ "label" => "Transparent player"',
+    '"inline_label" => [ "label" => "Inline label and player"',
+    '"dot" => [ "label" => "Accent-dot label"',
+    '"underline" => [ "label" => "Underlined label"',
+    '"tag" => [ "label" => "Pill label and player"',
+    '"editorial_thin" => [ "label" => "Thin left-rule panel"',
+    '"caption" => [ "label" => "Caption below player"',
+    '"eyebrow" => [ "label" => "Uppercase eyebrow label"',
+    '"framed" => [ "label" => "Simple framed box"',
+    '"rule_between" => [ "label" => "Label with divider"',
+    '"corner" => [ "label" => "Square corner marker"',
+    '"mini" => [ "label" => "Smallest inline player"',
+    '"soft_tint" => [ "label" => "Soft color-tint panel"',
+    '"what_to_know" => [ "label" => "Summary-matched left rule"',
     '"narration_card" => [ "label" => "Dark narration card with timeline"',
 ];
 foreach ( $required_template_labels as $label ) {
@@ -90,6 +108,21 @@ $required_css = [
 foreach ( $required_css as $token ) {
     if ( ! str_contains( $css, $token ) ) {
         fwrite( STDERR, "FAIL: Narration Card CSS is missing: {$token}.\n" );
+        exit( 1 );
+    }
+}
+
+$frontend_parity_rules = [
+    '.hexa-tts-player--narration_card .hexa-tts-narration__play',
+    'background: var(--smp-tts-primary) !important',
+    'border-radius: 50% !important',
+    '.hexa-tts-player--narration_card .hexa-tts-narration__title::before',
+    'content: none !important',
+    'padding: 0 !important',
+];
+foreach ( $frontend_parity_rules as $rule ) {
+    if ( ! str_contains( $css, $rule ) ) {
+        fwrite( STDERR, "FAIL: Narration Card frontend theme isolation is missing: {$rule}.\n" );
         exit( 1 );
     }
 }
