@@ -2,6 +2,8 @@
 
 Standalone WordPress plugin for converting post/page text into audio with provider-specific settings, AJAX credential validation, editor extraction, and one-click post audio generation.
 
+Version 1.3.22 adds a supported `No design (unstyled)` player template for Elementor-owned presentation. It preserves the shortcode markup, native audio, enhanced controls, transcript behavior, JavaScript hooks, and ARIA attributes while excluding every plugin-owned skin rule and inline design token from that template.
+
 Version 1.3.21 isolates the Dark Narration Card's play button and title from active-theme button and heading decorations so its frontend output matches the admin preview.
 
 Version 1.3.20 adds the reference-style Dark Narration Card template with a large play button, timeline, duration, skip controls, playback speeds, and selected-color accents. Player template labels now describe the visible treatment so each design is easy to identify in the settings UI.
@@ -119,6 +121,7 @@ Post meta:
 ```text
 [hexa_tts_player]
 [hexa_tts_player post_id="123"]
+[smp_tts_player post_id="123" template="unstyled"]
 ```
 
 ## Notes

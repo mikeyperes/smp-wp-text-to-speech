@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.3.21
+ * Version: 1.3.22
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -74,7 +74,7 @@ function register_smp_tts_autoloader(): void {
 register_smp_tts_autoloader();
 
 final class Plugin {
-    const VERSION = "1.3.21";
+    const VERSION = "1.3.22";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -272,7 +272,7 @@ final class Plugin {
             }
         }
         wp_enqueue_style( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.css", [], self::VERSION );
-        wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend-1.3.21.css", [ "hexa-tts-admin" ], self::VERSION );
+        wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend-1.3.22.css", [ "hexa-tts-admin" ], self::VERSION );
         wp_enqueue_script( "smp-tts-frontend-player", plugin_dir_url( __FILE__ ) . "assets/frontend.js", [], self::VERSION, true );
         wp_enqueue_script( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.js", [ "jquery" ], self::VERSION, true );
         wp_localize_script( "hexa-tts-admin", "hexaTts", [ "ajaxUrl" => admin_url( "admin-ajax.php" ), "nonce" => wp_create_nonce( self::NONCE_ACTION ) ] );
@@ -285,7 +285,7 @@ final class Plugin {
         if ( is_admin() ) {
             return;
         }
-        wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend-1.3.21.css", [], self::VERSION );
+        wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend-1.3.22.css", [], self::VERSION );
         wp_enqueue_script( "smp-tts-frontend-player", plugin_dir_url( __FILE__ ) . "assets/frontend.js", [], self::VERSION, true );
     }
 
@@ -1503,6 +1503,7 @@ JS;
 
     private static function template_options(): array {
         return [
+            "unstyled" => [ "label" => "No design (unstyled)", "description" => "Functional player markup and controls with no plugin-owned presentation. Use this before styling the shortcode in Elementor." ],
             "clean_card" => [ "label" => "Top-accent article card", "description" => "White card with a straight color bar across the top and rounded lower corners." ],
             "editorial_bar" => [ "label" => "Left-accent editorial card", "description" => "Compact publication-style card with a strong color bar on the left." ],
             "compact_pill" => [ "label" => "Rounded compact pill", "description" => "Label and audio controls in a small rounded container for tight article headers." ],
@@ -2812,11 +2813,12 @@ JS;
         $enhanced = self::truthy_setting( $enhanced_arg );
         $transcript = $post_id > 0 ? self::audio_transcript_for_post( $post_id ) : "";
         $player_key = $post_id > 0 ? "post-" . absint( $post_id ) : substr( hash( "sha256", $url ), 0, 16 );
+        $styled = "unstyled" !== $template;
         $custom_player = "narration_card" === $template;
         $classes = trim( "hexa-tts-player hexa-tts-player--" . $template . " hexa-tts-player--size-" . $size . ( $enhanced ? " hexa-tts-player--enhanced" : " hexa-tts-player--native" ) . " " . $extra_class );
         ob_start();
         ?>
-        <aside class="<?php echo esc_attr( $classes ); ?>" data-hexa-tts-enhanced="<?php echo esc_attr( $enhanced ? "1" : "0" ); ?>" data-hexa-tts-custom="<?php echo esc_attr( $custom_player ? "1" : "0" ); ?>" data-hexa-tts-key="<?php echo esc_attr( $player_key ); ?>" style="--smp-tts-primary: <?php echo esc_attr( $color ); ?>;" aria-label="Article audio narration">
+        <aside class="<?php echo esc_attr( $classes ); ?>" data-hexa-tts-enhanced="<?php echo esc_attr( $enhanced ? "1" : "0" ); ?>" data-hexa-tts-custom="<?php echo esc_attr( $custom_player ? "1" : "0" ); ?>" data-hexa-tts-skin="<?php echo esc_attr( $styled ? "styled" : "unstyled" ); ?>" data-hexa-tts-key="<?php echo esc_attr( $player_key ); ?>" aria-label="Article audio narration"<?php if ( $styled ) : ?> style="--smp-tts-primary: <?php echo esc_attr( $color ); ?>;"<?php endif; ?>>
             <?php if ( $custom_player ) : ?>
                 <div class="hexa-tts-narration__eyebrow">Listen</div>
                 <h2 class="hexa-tts-player__label hexa-tts-narration__title"><?php echo esc_html( $label ); ?></h2>

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 $root = dirname( __DIR__ );
 $plugin = file_get_contents( $root . "/smp-wp-text-to-speech.php" );
-$css = file_get_contents( $root . "/assets/frontend-1.3.21.css" );
+$css = file_get_contents( $root . "/assets/frontend-1.3.22.css" );
 $js = file_get_contents( $root . "/assets/frontend.js" );
 
 if ( ! is_string( $plugin ) || ! is_string( $css ) || ! is_string( $js ) ) {
@@ -14,6 +14,7 @@ if ( ! is_string( $plugin ) || ! is_string( $css ) || ! is_string( $js ) ) {
 
 $required_template_labels = [
     '"clean_card" => [ "label" => "Top-accent article card"',
+    '"unstyled" => [ "label" => "No design (unstyled)"',
     '"editorial_bar" => [ "label" => "Left-accent editorial card"',
     '"compact_pill" => [ "label" => "Rounded compact pill"',
     '"media_panel" => [ "label" => "Tinted media panel"',
@@ -45,6 +46,7 @@ foreach ( $required_template_labels as $label ) {
 
 $expected_template_keys = [
     "clean_card",
+    "unstyled",
     "editorial_bar",
     "compact_pill",
     "media_panel",
