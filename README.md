@@ -2,6 +2,8 @@
 
 Standalone WordPress plugin for converting post/page text into audio with provider-specific settings, AJAX credential validation, editor extraction, and one-click post audio generation.
 
+Version 1.3.23 lowers the shared styled-player foundation with `:where()` so named templates reliably control their own design and Elementor can override the stable player markup without a specificity fight. The unstyled template remains free of plugin-owned presentation.
+
 Version 1.3.22 adds a supported `No design (unstyled)` player template for Elementor-owned presentation. It preserves the shortcode markup, native audio, enhanced controls, transcript behavior, JavaScript hooks, and ARIA attributes while excluding every plugin-owned skin rule and inline design token from that template.
 
 Version 1.3.21 isolates the Dark Narration Card's play button and title from active-theme button and heading decorations so its frontend output matches the admin preview.

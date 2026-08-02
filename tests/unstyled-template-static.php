@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 $root = dirname( __DIR__ );
 $plugin = file_get_contents( $root . "/smp-wp-text-to-speech.php" );
-$css = file_get_contents( $root . "/assets/frontend-1.3.22.css" );
+$css = file_get_contents( $root . "/assets/frontend-1.3.23.css" );
 $js = file_get_contents( $root . "/assets/frontend.js" );
 
 if ( ! is_string( $plugin ) || ! is_string( $css ) || ! is_string( $js ) ) {
@@ -13,8 +13,8 @@ if ( ! is_string( $plugin ) || ! is_string( $css ) || ! is_string( $js ) ) {
 }
 
 $required_plugin_tokens = [
-    '* Version: 1.3.22',
-    'const VERSION = "1.3.22";',
+    '* Version: 1.3.23',
+    'const VERSION = "1.3.23";',
     '"unstyled" => [ "label" => "No design (unstyled)"',
     '$styled = "unstyled" !== $template;',
     'data-hexa-tts-skin=',
@@ -29,18 +29,23 @@ foreach ( $required_plugin_tokens as $token ) {
 }
 
 $scoped_skin_selectors = [
-    '.hexa-tts-player[data-hexa-tts-skin="styled"] {',
-    '.hexa-tts-player[data-hexa-tts-skin="styled"] .hexa-tts-player__label',
-    '.hexa-tts-player[data-hexa-tts-skin="styled"] audio',
-    '.hexa-tts-player[data-hexa-tts-skin="styled"] .hexa-tts-player__controls',
-    '.hexa-tts-player[data-hexa-tts-skin="styled"] .hexa-tts-player__button',
-    '.hexa-tts-player[data-hexa-tts-skin="styled"] .hexa-tts-player__transcript',
+    ':where(.hexa-tts-player[data-hexa-tts-skin="styled"]) {',
+    ':where(.hexa-tts-player[data-hexa-tts-skin="styled"]) .hexa-tts-player__label',
+    ':where(.hexa-tts-player[data-hexa-tts-skin="styled"]) audio',
+    ':where(.hexa-tts-player[data-hexa-tts-skin="styled"]) .hexa-tts-player__controls',
+    ':where(.hexa-tts-player[data-hexa-tts-skin="styled"]) .hexa-tts-player__button',
+    ':where(.hexa-tts-player[data-hexa-tts-skin="styled"]) .hexa-tts-player__transcript',
 ];
 foreach ( $scoped_skin_selectors as $selector ) {
     if ( ! str_contains( $css, $selector ) ) {
         fwrite( STDERR, "FAIL: A shared player skin rule is not scoped: {$selector}.\n" );
         exit( 1 );
     }
+}
+
+if ( preg_match( '/(?<!:where\()\.hexa-tts-player\[data-hexa-tts-skin="styled"\]/', $css ) ) {
+    fwrite( STDERR, "FAIL: A shared styled-player selector can outrank a named template.\n" );
+    exit( 1 );
 }
 
 $forbidden_unstyled_css = [

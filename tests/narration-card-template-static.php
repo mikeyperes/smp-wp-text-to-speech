@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 $root = dirname( __DIR__ );
 $plugin = file_get_contents( $root . "/smp-wp-text-to-speech.php" );
-$css = file_get_contents( $root . "/assets/frontend-1.3.22.css" );
+$css = file_get_contents( $root . "/assets/frontend-1.3.23.css" );
 $js = file_get_contents( $root . "/assets/frontend.js" );
 
 if ( ! is_string( $plugin ) || ! is_string( $css ) || ! is_string( $js ) ) {
@@ -127,6 +127,11 @@ foreach ( $frontend_parity_rules as $rule ) {
         fwrite( STDERR, "FAIL: Narration Card frontend theme isolation is missing: {$rule}.\n" );
         exit( 1 );
     }
+}
+
+if ( ! str_contains( $css, ':where(.hexa-tts-player[data-hexa-tts-skin="styled"])' ) ) {
+    fwrite( STDERR, "FAIL: Shared skin rules can outrank the Narration Card template.\n" );
+    exit( 1 );
 }
 
 $required_js = [
