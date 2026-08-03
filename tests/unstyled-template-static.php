@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 $root = dirname( __DIR__ );
 $plugin = file_get_contents( $root . "/smp-wp-text-to-speech.php" );
-$css = file_get_contents( $root . "/assets/frontend-1.3.23.css" );
+$css = file_get_contents( $root . "/assets/frontend-1.3.24.css" );
 $js = file_get_contents( $root . "/assets/frontend.js" );
 
 if ( ! is_string( $plugin ) || ! is_string( $css ) || ! is_string( $js ) ) {
@@ -13,10 +13,11 @@ if ( ! is_string( $plugin ) || ! is_string( $css ) || ! is_string( $js ) ) {
 }
 
 $required_plugin_tokens = [
-    '* Version: 1.3.23',
-    'const VERSION = "1.3.23";',
+    '* Version: 1.3.24',
+    'const VERSION = "1.3.24";',
     '"unstyled" => [ "label" => "No design (unstyled)"',
-    '$styled = "unstyled" !== $template;',
+    '"unstyled_controls" => [ "label" => "No design with custom controls"',
+    '$styled = ! in_array( $template, [ "unstyled", "unstyled_controls" ], true );',
     'data-hexa-tts-skin=',
     '$styled ? "styled" : "unstyled"',
     '<?php if ( $styled ) : ?> style="--smp-tts-primary:',
@@ -50,6 +51,7 @@ if ( preg_match( '/(?<!:where\()\.hexa-tts-player\[data-hexa-tts-skin="styled"\]
 
 $forbidden_unstyled_css = [
     '.hexa-tts-player--unstyled',
+    '.hexa-tts-player--unstyled_controls',
     ".hexa-tts-player {",
     "\n.hexa-tts-player__label {",
     "\n.hexa-tts-player__controls {",
@@ -60,6 +62,11 @@ foreach ( $forbidden_unstyled_css as $selector ) {
         fwrite( STDERR, "FAIL: Plugin styling can still reach the unstyled player: {$selector}.\n" );
         exit( 1 );
     }
+}
+
+if ( preg_match( '/^\.hexa-tts-narration__(?!status)/m', $css ) ) {
+    fwrite( STDERR, "FAIL: Custom-control presentation is not scoped to a styled template.\n" );
+    exit( 1 );
 }
 
 foreach ( [ 'data-hexa-tts-enhanced', 'data-hexa-tts-skip', 'data-hexa-tts-speed', 'data-hexa-tts-transcript-toggle', 'aria-live="polite"' ] as $token ) {

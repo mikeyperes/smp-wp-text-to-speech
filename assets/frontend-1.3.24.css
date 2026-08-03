@@ -83,21 +83,23 @@
 .hexa-tts-player--narration_card.hexa-tts-player--size-large { padding: 26px; }
 .hexa-tts-player--narration_card.hexa-tts-player--size-full { width: 100%; }
 .hexa-tts-player--narration_card audio { display: none; }
-.hexa-tts-narration__eyebrow { color: var(--smp-tts-primary); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10.5px; font-weight: 700; letter-spacing: .2em; line-height: 1.4; margin: 0 0 7px; text-transform: uppercase; }
+.hexa-tts-player--narration_card .hexa-tts-narration__eyebrow { color: var(--smp-tts-primary); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10.5px; font-weight: 700; letter-spacing: .2em; line-height: 1.4; margin: 0 0 7px; text-transform: uppercase; }
 .hexa-tts-player--narration_card .hexa-tts-narration__title { border: 0 !important; color: #f2f6f3; font-family: Georgia, "Times New Roman", serif; font-size: 1.12rem; font-weight: 700; letter-spacing: 0; line-height: 1.25; margin: 0 0 5px; padding: 0 !important; text-transform: none; }
 .hexa-tts-player--narration_card .hexa-tts-narration__title::before,
 .hexa-tts-player--narration_card .hexa-tts-narration__title::after { content: none !important; display: none !important; }
-.hexa-tts-narration__meta { align-items: center; color: #98a29a; display: flex; flex-wrap: wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10.5px; gap: 7px; line-height: 1.4; margin: 0 0 18px; }
-.hexa-tts-narration__main { align-items: center; display: grid; gap: 13px; grid-template-columns: 46px minmax(0, 1fr); margin-top: auto; min-width: 0; }
+.hexa-tts-player--narration_card .hexa-tts-narration__meta { align-items: center; color: #98a29a; display: flex; flex-wrap: wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10.5px; gap: 7px; line-height: 1.4; margin: 0 0 18px; }
+.hexa-tts-player--narration_card .hexa-tts-narration__main { align-items: center; display: grid; gap: 13px; grid-template-columns: 46px minmax(0, 1fr); margin-top: auto; min-width: 0; }
 .hexa-tts-player--narration_card .hexa-tts-narration__play { align-items: center !important; appearance: none !important; background: var(--smp-tts-primary) !important; border: 1px solid var(--smp-tts-primary) !important; border-radius: 50% !important; box-shadow: none; color: #050706 !important; cursor: pointer; display: flex !important; height: 46px !important; justify-content: center !important; margin: 0 !important; padding: 0 !important; transition: box-shadow .18s ease, transform .18s ease; width: 46px !important; }
-.hexa-tts-narration__play:hover { box-shadow: 0 0 22px color-mix(in srgb, var(--smp-tts-primary) 25%, transparent); transform: scale(1.035); }
-.hexa-tts-narration__play:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-.hexa-tts-narration__play:disabled { cursor: not-allowed; opacity: .5; }
-.hexa-tts-narration__play > span { display: block; height: 0; margin-left: 3px; width: 0; border-bottom: 8px solid transparent; border-left: 13px solid currentColor; border-top: 8px solid transparent; }
-.hexa-tts-narration__play.is-playing > span { background: currentColor; border: 0; box-shadow: 7px 0 0 currentColor; height: 15px; margin-left: -7px; width: 3px; }
-.hexa-tts-narration__track { min-width: 0; }
-.hexa-tts-narration__timeline { accent-color: var(--smp-tts-primary); cursor: pointer; display: block; height: 3px; margin: 0 0 7px; padding: 0; width: 100%; }
-.hexa-tts-narration__time { color: #98a29a; display: flex; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10px; justify-content: space-between; line-height: 1.4; }
+.hexa-tts-player--narration_card .hexa-tts-narration__play:hover { box-shadow: 0 0 22px color-mix(in srgb, var(--smp-tts-primary) 25%, transparent); transform: scale(1.035); }
+.hexa-tts-player--narration_card .hexa-tts-narration__play:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.hexa-tts-player--narration_card .hexa-tts-narration__play:disabled { cursor: not-allowed; opacity: .5; }
+.hexa-tts-player--narration_card .hexa-tts-narration__play > span { display: block; height: 0; margin-left: 3px; width: 0; border-bottom: 8px solid transparent; border-left: 13px solid currentColor; border-top: 8px solid transparent; }
+.hexa-tts-player--narration_card .hexa-tts-narration__play.is-playing > span { background: currentColor; border: 0; box-shadow: 7px 0 0 currentColor; height: 15px; margin-left: -7px; width: 3px; }
+.hexa-tts-player--narration_card .hexa-tts-narration__track { min-width: 0; }
+.hexa-tts-player--narration_card .hexa-tts-narration__timeline { accent-color: var(--smp-tts-primary); cursor: pointer; display: block; height: 3px; margin: 0 0 7px; padding: 0; width: 100%; }
+.hexa-tts-player--narration_card .hexa-tts-narration__time { color: #98a29a; display: flex; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 10px; justify-content: space-between; line-height: 1.4; }
+.hexa-tts-player--narration_card .hexa-tts-narration__volume { align-items: center; display: flex; gap: 9px; margin-top: 12px; }
+.hexa-tts-player--narration_card .hexa-tts-narration__volume-range { accent-color: var(--smp-tts-primary); cursor: pointer; flex: 1 1 120px; min-width: 90px; }
 .hexa-tts-player--narration_card .hexa-tts-player__controls { align-items: center; display: flex; gap: 6px; margin-top: 15px; }
 .hexa-tts-player--narration_card .hexa-tts-player__skip,
 .hexa-tts-player--narration_card .hexa-tts-player__speed { gap: 4px; }
@@ -110,7 +112,7 @@
 .hexa-tts-narration__status { border: 0; clip: rect(0, 0, 0, 0); height: 1px; margin: -1px; min-height: 0; overflow: hidden; padding: 0; position: absolute; white-space: nowrap; width: 1px; }
 @media (max-width: 640px) {
   .hexa-tts-player--narration_card { padding: 18px; }
-  .hexa-tts-narration__main { gap: 11px; grid-template-columns: 42px minmax(0, 1fr); }
+  .hexa-tts-player--narration_card .hexa-tts-narration__main { gap: 11px; grid-template-columns: 42px minmax(0, 1fr); }
   .hexa-tts-player--narration_card .hexa-tts-narration__play { height: 42px !important; width: 42px !important; }
   .hexa-tts-player--narration_card .hexa-tts-player__controls { align-items: stretch; display: grid; }
   .hexa-tts-player--narration_card .hexa-tts-player__speed { margin-left: 0; }

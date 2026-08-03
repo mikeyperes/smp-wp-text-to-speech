@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 $root = dirname( __DIR__ );
 $plugin = file_get_contents( $root . "/smp-wp-text-to-speech.php" );
-$css = file_get_contents( $root . "/assets/frontend-1.3.23.css" );
+$css = file_get_contents( $root . "/assets/frontend-1.3.24.css" );
 $js = file_get_contents( $root . "/assets/frontend.js" );
 
 if ( ! is_string( $plugin ) || ! is_string( $css ) || ! is_string( $js ) ) {
@@ -15,6 +15,7 @@ if ( ! is_string( $plugin ) || ! is_string( $css ) || ! is_string( $js ) ) {
 $required_template_labels = [
     '"clean_card" => [ "label" => "Top-accent article card"',
     '"unstyled" => [ "label" => "No design (unstyled)"',
+    '"unstyled_controls" => [ "label" => "No design with custom controls"',
     '"editorial_bar" => [ "label" => "Left-accent editorial card"',
     '"compact_pill" => [ "label" => "Rounded compact pill"',
     '"media_panel" => [ "label" => "Tinted media panel"',
@@ -47,6 +48,7 @@ foreach ( $required_template_labels as $label ) {
 $expected_template_keys = [
     "clean_card",
     "unstyled",
+    "unstyled_controls",
     "editorial_bar",
     "compact_pill",
     "media_panel",
@@ -84,13 +86,16 @@ foreach ( [ "framed", "rule_between", "corner", "mini", "soft_tint", "what_to_kn
 }
 
 $required_markup = [
-    '"narration_card" === $template',
+    'in_array( $template, [ "narration_card", "unstyled_controls" ], true )',
     'data-hexa-tts-custom=',
     'data-hexa-tts-play',
     'data-hexa-tts-timeline',
     'data-hexa-tts-current',
     'data-hexa-tts-duration',
     'aria-label="Audio progress"',
+    'data-hexa-tts-mute',
+    'data-hexa-tts-volume',
+    'aria-label="Volume"',
 ];
 foreach ( $required_markup as $token ) {
     if ( ! str_contains( $plugin, $token ) ) {
@@ -140,6 +145,9 @@ $required_js = [
     "audio.addEventListener('loadedmetadata'",
     "timeline.addEventListener('input'",
     "var playResult = audio.play()",
+    "function syncCustomVolume(root, audio)",
+    "audio.addEventListener('volumechange'",
+    "data-hexa-tts-mute",
 ];
 foreach ( $required_js as $token ) {
     if ( ! str_contains( $js, $token ) ) {

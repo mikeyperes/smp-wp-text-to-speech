@@ -87,6 +87,23 @@
     }
   }
 
+  function syncCustomVolume(root, audio) {
+    var volume = root.querySelector('[data-hexa-tts-volume]');
+    var mute = root.querySelector('[data-hexa-tts-mute]');
+    var effectiveVolume = audio.muted ? 0 : audio.volume;
+    var percentage = Math.round(effectiveVolume * 100);
+
+    if (volume) {
+      volume.value = String(effectiveVolume);
+      volume.setAttribute('aria-valuetext', percentage + '%');
+    }
+    if (mute) {
+      mute.setAttribute('aria-pressed', audio.muted ? 'true' : 'false');
+      mute.setAttribute('aria-label', audio.muted ? 'Unmute audio' : 'Mute audio');
+      mute.textContent = audio.muted ? 'Unmute' : 'Mute';
+    }
+  }
+
   function initPlayer(root) {
     if (!root || root.getAttribute('data-hexa-tts-ready') === '1') {
       return;
@@ -151,6 +168,9 @@
       audio.addEventListener('durationchange', function () {
         syncCustomProgress(root, audio);
       });
+      audio.addEventListener('volumechange', function () {
+        syncCustomVolume(root, audio);
+      });
       audio.addEventListener('error', function () {
         var playButton = root.querySelector('[data-hexa-tts-play]');
         if (playButton) {
@@ -167,7 +187,19 @@
           }
         });
       }
+
+      var volume = root.querySelector('[data-hexa-tts-volume]');
+      if (volume) {
+        volume.addEventListener('input', function () {
+          var nextVolume = Math.max(0, Math.min(1, parseFloat(volume.value) || 0));
+          audio.muted = false;
+          audio.volume = nextVolume;
+          setStatus(root, 'Volume ' + Math.round(nextVolume * 100) + '%');
+        });
+      }
+
       syncCustomProgress(root, audio);
+      syncCustomVolume(root, audio);
     }
 
     root.addEventListener('click', function (event) {
@@ -183,6 +215,14 @@
         } else {
           audio.pause();
         }
+        return;
+      }
+
+      var muteButton = event.target.closest('[data-hexa-tts-mute]');
+      if (muteButton && root.contains(muteButton)) {
+        audio.muted = !audio.muted;
+        syncCustomVolume(root, audio);
+        setStatus(root, audio.muted ? 'Audio muted' : 'Audio unmuted');
         return;
       }
 
