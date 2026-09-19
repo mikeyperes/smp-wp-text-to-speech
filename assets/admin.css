@@ -385,7 +385,7 @@
 
 .hexa-tts-simple-status {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -407,6 +407,77 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+.hexa-tts-credit-state.is-unknown {
+  color: #646970;
+}
+
+.hexa-tts-diagnostics {
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px solid #c3c4c7;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.hexa-tts-diagnostics-head,
+.hexa-tts-diagnostics-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hexa-tts-diagnostics-head h3,
+.hexa-tts-diagnostics-head p,
+.hexa-tts-health-checklist p {
+  margin: 0;
+}
+
+.hexa-tts-diagnostics-head p,
+.hexa-tts-diagnostics-note,
+.hexa-tts-health-checklist p {
+  color: #646970;
+}
+
+.hexa-tts-credit-result {
+  display: none;
+  margin-top: 14px;
+  padding: 11px 12px;
+  border: 1px solid #dcdcde;
+  border-radius: 8px;
+  background: #f6f7f7;
+}
+
+.hexa-tts-credit-result.is-success,
+.hexa-tts-credit-result.is-error,
+.hexa-tts-credit-result.is-warning {
+  display: block;
+}
+
+.hexa-tts-credit-result.is-success { border-color: #68de7c; background: #edfaef; color: #00450c; }
+.hexa-tts-credit-result.is-error { border-color: #ff8085; background: #fcf0f1; color: #691c1c; }
+.hexa-tts-credit-result.is-warning { border-color: #dba617; background: #fcf9e8; color: #614200; }
+.hexa-tts-credit-result span { display: block; margin-top: 3px; }
+
+.hexa-tts-health-checklist {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hexa-tts-health-checklist[hidden] { display: none; }
+.hexa-tts-health-checklist li { display: flex; gap: 10px; padding: 10px 12px; border: 1px solid #dcdcde; border-radius: 8px; background: #f9fafb; }
+.hexa-tts-health-checklist li.is-pass { border-color: #68de7c; }
+.hexa-tts-health-checklist li.is-fail { border-color: #ff8085; }
+.hexa-tts-health-checklist li.is-warning { border-color: #dba617; }
+.hexa-tts-check-icon { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; flex: 0 0 22px; border-radius: 999px; background: #646970; color: #fff; font-weight: 800; }
+.hexa-tts-health-checklist .is-pass .hexa-tts-check-icon { background: #008a20; }
+.hexa-tts-health-checklist .is-fail .hexa-tts-check-icon { background: #b32d2e; }
+.hexa-tts-health-checklist .is-warning .hexa-tts-check-icon { background: #996800; }
+.hexa-tts-diagnostics-note { margin: 12px 0 0; font-size: 12px; }
 
 .hexa-tts-one-click-card {
   display: flex;
@@ -479,9 +550,15 @@
 
 @media (max-width: 960px) {
   .hexa-tts-simple-status,
-  .hexa-tts-one-click-card {
+  .hexa-tts-one-click-card,
+  .hexa-tts-diagnostics-head {
     grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .hexa-tts-diagnostics-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

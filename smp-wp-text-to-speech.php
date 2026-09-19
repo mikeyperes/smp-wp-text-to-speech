@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.3.24
+ * Version: 1.3.25
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -74,7 +74,7 @@ function register_smp_tts_autoloader(): void {
 register_smp_tts_autoloader();
 
 final class Plugin {
-    const VERSION = "1.3.24";
+    const VERSION = "1.3.25";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -97,6 +97,8 @@ final class Plugin {
         add_action( "wp_ajax_smp_tts_load_tab", [ __CLASS__, "ajax_load_tab" ] );
         add_action( "wp_ajax_hexa_tts_validate_central_api", [ __CLASS__, "ajax_validate_central_api" ] );
         add_action( "wp_ajax_hexa_tts_validate_provider", [ __CLASS__, "ajax_validate_central_api" ] );
+        add_action( "wp_ajax_hexa_tts_check_credits", [ __CLASS__, "ajax_check_credits" ] );
+        add_action( "wp_ajax_hexa_tts_check_health", [ __CLASS__, "ajax_check_health" ] );
         add_action( "wp_ajax_hexa_tts_fetch_source_api_key", [ __CLASS__, "ajax_fetch_source_api_key" ] );
         add_action( "wp_ajax_hexa_tts_extract_post_content", [ __CLASS__, "ajax_extract_post_content" ] );
         add_action( "wp_ajax_hexa_tts_generate_audio", [ __CLASS__, "ajax_generate_audio" ] );
@@ -1077,6 +1079,7 @@ JS;
                 </div>
                 <div class="hexa-tts-test-result hexa-tts-central-result" data-provider-result="central" aria-live="polite"></div>
                 <?php if ( ! empty( $last_status["message"] ) ) : ?><div class="hexa-tts-status-card"><strong><?php echo esc_html( $last_status["message"] ); ?></strong><?php if ( ! empty( $last_status["usage"] ) ) : ?><span>Requests: <?php echo esc_html( $last_status["usage"]["requests"] ?? 0 ); ?> · Characters: <?php echo esc_html( $last_status["usage"]["characters"] ?? 0 ); ?> · Est. cost: $<?php echo esc_html( $last_status["usage"]["estimated_cost_usd"] ?? 0 ); ?></span><?php endif; ?></div><?php endif; ?>
+                <?php self::render_diagnostics_panel(); ?>
             </section>
             <section class="hexa-tts-panel">
                 <div class="hexa-tts-panel-head"><div><h2>Generation Defaults</h2><p>Defaults for the one-click post and press-release workflow.</p></div></div>
@@ -1853,6 +1856,106 @@ JS;
         wp_send_json_success( $result );
     }
 
+    public static function ajax_check_credits() {
+        check_ajax_referer( self::NONCE_ACTION, "nonce" );
+        $post_id = absint( $_POST["post_id"] ?? 0 );
+        if ( ! self::can_run_diagnostics( $post_id ) ) {
+            wp_send_json_error( [ "message" => "You do not have permission to check text-to-speech credits." ], 403 );
+        }
+
+        $result = self::api_request( "/credits", [], 120 );
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( [ "message" => $result->get_error_message() ] );
+        }
+
+        wp_send_json_success( $result );
+    }
+
+    public static function ajax_check_health() {
+        check_ajax_referer( self::NONCE_ACTION, "nonce" );
+        $post_id = absint( $_POST["post_id"] ?? 0 );
+        if ( ! self::can_run_diagnostics( $post_id ) ) {
+            wp_send_json_error( [ "message" => "You do not have permission to run text-to-speech health checks." ], 403 );
+        }
+
+        $result = self::api_request( "/health", [], 120 );
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( [ "message" => $result->get_error_message() ] );
+        }
+
+        $checks = array_merge( self::local_health_checks( $post_id ), is_array( $result["checks"] ?? null ) ? $result["checks"] : [] );
+        $healthy = true;
+        foreach ( $checks as $check ) {
+            if ( "pass" !== ( $check["status"] ?? "" ) ) {
+                $healthy = false;
+                break;
+            }
+        }
+
+        $result["checks"] = $checks;
+        $result["healthy"] = $healthy;
+        $result["message"] = $healthy
+            ? "The text-to-speech integration passed every health check."
+            : "One or more text-to-speech health checks need attention.";
+        wp_send_json_success( $result );
+    }
+
+    private static function can_run_diagnostics( int $post_id ): bool {
+        return $post_id > 0 ? current_user_can( "edit_post", $post_id ) : current_user_can( "manage_options" );
+    }
+
+    private static function local_health_checks( int $post_id ): array {
+        $settings = self::get_settings();
+        $upload = wp_upload_dir();
+        $upload_dir = (string) ( $upload["basedir"] ?? "" );
+        $upload_ready = empty( $upload["error"] ) && "" !== $upload_dir && is_dir( $upload_dir ) && is_writable( $upload_dir );
+        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
+        $checks = [
+            [
+                "id" => "wordpress_api_key",
+                "label" => "WordPress API key",
+                "status" => "" !== self::api_key() ? "pass" : "fail",
+                "message" => "" !== self::api_key() ? "A Publish Scale site key is configured." : "The Publish Scale site key is missing.",
+            ],
+            [
+                "id" => "media_storage",
+                "label" => "Media Library storage",
+                "status" => $upload_ready ? "pass" : "fail",
+                "message" => $upload_ready ? "The WordPress uploads directory is writable." : "The WordPress uploads directory is not writable.",
+            ],
+            [
+                "id" => "audio_field",
+                "label" => "Audio field configuration",
+                "status" => "" !== $acf_field ? "pass" : "fail",
+                "message" => "" !== $acf_field ? "Generated audio will sync to " . $acf_field . "." : "No audio field is configured.",
+            ],
+        ];
+
+        if ( $post_id > 0 ) {
+            $post = get_post( $post_id );
+            $supported = $post && in_array( get_post_type( $post_id ), [ "post", "press-release" ], true );
+            $checks[] = [
+                "id" => "article_post",
+                "label" => "Article post",
+                "status" => $supported ? "pass" : "fail",
+                "message" => $supported ? "This article is supported by the integration." : "This post is not a supported article type.",
+            ];
+
+            $extract = $supported ? self::extract_post_text( $post_id ) : new WP_Error( "hexa_tts_unsupported_post", "Unsupported post type." );
+            $characters = is_wp_error( $extract ) ? 0 : absint( $extract["characters"] ?? 0 );
+            $checks[] = [
+                "id" => "narration_text",
+                "label" => "Narration text",
+                "status" => $characters > 0 ? "pass" : "fail",
+                "message" => $characters > 0
+                    ? number_format_i18n( $characters ) . " narratable characters are available."
+                    : ( is_wp_error( $extract ) ? $extract->get_error_message() : "No narratable article text was found." ),
+            ];
+        }
+
+        return $checks;
+    }
+
     public static function ajax_fetch_source_api_key() {
         if ( ! current_user_can( "manage_options" ) ) {
             wp_send_json_error( [ "message" => "You do not have permission to fetch the TTS API key." ], 403 );
@@ -2011,7 +2114,10 @@ JS;
                 <div><span class="hexa-tts-kicker">Connection</span><strong class="hexa-tts-api-state <?php echo $api_ready ? "is-ready" : "is-missing"; ?>"><?php echo $api_ready ? "API connected" : "Missing API key"; ?></strong></div>
                 <div><span class="hexa-tts-kicker">Audio</span><strong class="hexa-tts-post-status"><?php echo esc_html( $status ?: ( $audio_url ? "Ready" : "Not generated" ) ); ?></strong></div>
                 <div><span class="hexa-tts-kicker">ACF audio file</span><strong><?php echo esc_html( $acf_field ); ?></strong></div>
+                <div><span class="hexa-tts-kicker">Credits</span><strong class="hexa-tts-credit-state is-unknown">Not checked</strong></div>
             </div>
+
+            <?php self::render_diagnostics_panel( (int) $post->ID ); ?>
 
             <div class="hexa-tts-one-click-card">
                 <div>
@@ -2074,6 +2180,26 @@ JS;
                 </div>
             </details>
         </div>
+        <?php
+    }
+
+    private static function render_diagnostics_panel( int $post_id = 0 ): void {
+        ?>
+        <section class="hexa-tts-diagnostics" data-post-id="<?php echo esc_attr( $post_id ); ?>">
+            <div class="hexa-tts-diagnostics-head">
+                <div>
+                    <h3>Text-to-speech diagnostics</h3>
+                    <p>Check current provider credit availability or run the full integration checklist.</p>
+                </div>
+                <div class="hexa-tts-diagnostics-actions">
+                    <button type="button" class="button button-secondary hexa-tts-check-credits">Check credits</button>
+                    <button type="button" class="button button-secondary hexa-tts-check-health">Check health</button>
+                </div>
+            </div>
+            <div class="hexa-tts-credit-result" aria-live="polite"></div>
+            <ul class="hexa-tts-health-checklist" aria-live="polite" hidden></ul>
+            <p class="hexa-tts-diagnostics-note">Credit and provider-health checks send one small production-sized synthesis probe because UnrealSpeech does not provide a read-only balance endpoint.</p>
+        </section>
         <?php
     }
 
