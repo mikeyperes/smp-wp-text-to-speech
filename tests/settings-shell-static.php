@@ -56,8 +56,8 @@ if (
     exit( 1 );
 }
 
-if ( '0.19.73' !== $core_version ) {
-    fwrite( STDERR, "FAIL: Expected vendored Hexa WP Core 0.19.73; found {$core_version}.\n" );
+if ( '3.4.5' !== $core_version ) {
+    fwrite( STDERR, "FAIL: Expected vendored Hexa WP Core 3.4.5; found {$core_version}.\n" );
     exit( 1 );
 }
 

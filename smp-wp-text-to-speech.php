@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.3.25
+ * Version: 1.4.0
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -74,7 +74,7 @@ function register_smp_tts_autoloader(): void {
 register_smp_tts_autoloader();
 
 final class Plugin {
-    const VERSION = "1.3.25";
+    const VERSION = "1.4.0";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -269,9 +269,7 @@ final class Plugin {
         }
         if ( $is_post ) {
             wp_enqueue_media();
-            if ( function_exists( "acf_enqueue_scripts" ) ) {
-                acf_enqueue_scripts();
-            }
+            \Hexa\PluginCore\Fields\Form::enqueue();
         }
         wp_enqueue_style( "hexa-tts-admin", plugin_dir_url( __FILE__ ) . "assets/admin.css", [], self::VERSION );
         wp_enqueue_style( "smp-tts-frontend", plugin_dir_url( __FILE__ ) . "assets/frontend-1.3.24.css", [ "hexa-tts-admin" ], self::VERSION );
@@ -798,27 +796,23 @@ JS;
         if ( ! $attachment_id ) {
             $attachment_id = (int) get_post_meta( $post_id, "_hexa_tts_attachment_id", true );
         }
-        if ( function_exists( "acf_render_field_wrap" ) ) {
-            $field = [
-                "key" => AcfAudioFieldResolver::renderFieldKey( $acf_field ),
-                "label" => "Article Audio",
-                "name" => $acf_field,
-                "type" => "file",
-                "instructions" => "Upload or select the audio file for this article. Generated TTS audio is saved here automatically.",
-                "required" => 0,
-                "value" => $attachment_id ?: "",
-                "prefix" => "acf",
-                "return_format" => "url",
-                "library" => "all",
-                "mime_types" => "mp3,m4a,wav,aac,ogg",
-                "wrapper" => [ "width" => "", "class" => "hexa-tts-embedded-acf-file", "id" => "" ],
-            ];
-            echo '<div class="hexa-tts-embedded-acf">';
-            acf_render_field_wrap( $field );
-            echo '</div>';
-            return;
-        }
-        echo '<p class="hexa-tts-acf-missing">ACF file field UI is unavailable. Confirm ACF Pro is active.</p>';
+        $field = [
+            "key" => AcfAudioFieldResolver::renderFieldKey( $acf_field ),
+            "label" => "Article Audio",
+            "name" => $acf_field,
+            "type" => "file",
+            "instructions" => "Upload or select the audio file for this article. Generated TTS audio is saved here automatically.",
+            "required" => 0,
+            "value" => $attachment_id ?: "",
+            "prefix" => "acf",
+            "return_format" => "url",
+            "library" => "all",
+            "mime_types" => "mp3,m4a,wav,aac,ogg",
+            "wrapper" => [ "width" => "", "class" => "hexa-tts-embedded-acf-file", "id" => "" ],
+        ];
+        echo '<div class="hexa-tts-embedded-acf">';
+        \Hexa\PluginCore\Fields\Form::field( $field );
+        echo '</div>';
     }
 
     public static function default_settings() {
