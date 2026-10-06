@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.4.0
+ * Version: 1.4.1
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -74,7 +74,7 @@ function register_smp_tts_autoloader(): void {
 register_smp_tts_autoloader();
 
 final class Plugin {
-    const VERSION = "1.4.0";
+    const VERSION = "1.4.1";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -108,6 +108,7 @@ final class Plugin {
         add_filter( "plugin_action_links_" . plugin_basename( __FILE__ ), [ __CLASS__, "plugin_action_links" ] );
         add_filter( "the_content", [ __CLASS__, "maybe_insert_player" ], 12 );
         add_filter( "post_thumbnail_html", [ __CLASS__, "maybe_insert_player_around_featured_image" ], 20, 5 );
+        add_filter( "smp_tts_site_api_key", [ __CLASS__, "site_api_key_filter" ] );
         add_shortcode( "hexa_tts_player", [ __CLASS__, "render_player_shortcode" ] );
         add_shortcode( "smp_tts_player", [ __CLASS__, "render_player_shortcode" ] );
     }
@@ -2992,6 +2993,16 @@ JS;
 
     private static function truthy_setting( $value ): bool {
         return ! in_array( strtolower( trim( (string) $value ) ), [ "0", "false", "no", "off" ], true );
+    }
+
+    /**
+     * The site's working Publish Scale key (decrypted), for other SMP plugins
+     * that use the same key, e.g. SMP content generation:
+     * apply_filters( "smp_tts_site_api_key", "" ).
+     */
+    public static function site_api_key_filter( $value ) {
+        $key = (string) self::api_key();
+        return "" !== $key ? $key : $value;
     }
 
     private static function api_key() {

@@ -2,6 +2,8 @@
 
 Standalone WordPress plugin for converting post/page text into audio with provider-specific settings, AJAX credential validation, editor extraction, and one-click post audio generation.
 
+Version 1.4.1 exposes the site's working (decrypted) Publish Scale key through the `smp_tts_site_api_key` filter so SMP content generation can use the same key.
+
 Version 1.4.0 removes the ACF Pro requirement: the embedded Article Audio file field, field-key lookup and audio saving run on Hexa WP Core 3.4.5 `Fields`, which uses ACF when it is active and renders and stores the same field natively when it is not. The vendored Hexa WP Core package is updated to 3.4.5.
 
 Version 1.3.25 adds on-demand provider credit detection and a readable integration-health checklist in both the article editor and API settings. Credit checks use a small production-sized synthesis probe because UnrealSpeech does not publish a read-only balance endpoint.
