@@ -38,6 +38,23 @@ Main file:
 smp-wp-text-to-speech.php
 ```
 
+> Feature base for HWS Skills. Read before building on this plugin; use or
+> extend these features instead of rebuilding them.
+
+**Purpose:** turns a post's text into an audio file and plays it on the page. **Admin:** WP Admin → SMP Text To Speech settings (provider, voice, player defaults); one-click generation from the post editor.
+
+## Features
+
+### Audio player
+- **Does:** an audio player for the post's generated audio.
+- **Switch:** player defaults in settings: `player_label`, `show_player_meta`, `player_template` (default `clean_card`), `player_size`, `primary_color`, `enable_player_controls`.
+- **Use:** `[hexa_tts_player post_id="" label="Listen to this article" show_meta="" preload="metadata" class="" template="clean_card" size="default" color="#3657e3" controls="" enhanced_controls=""]` (alias `[smp_tts_player]`). Place it in the single-post template with a Shortcode widget.
+- **Code:** `smp-wp-text-to-speech.php`
+
+### Audio generation
+- **Does:** extracts the article text, sends it to the chosen provider and stores the audio on the post.
+- **Use:** "Generate audio" in the post editor; credentials validated in settings.
+
 ## Providers
 
 - Kokoro-82M local service
