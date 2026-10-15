@@ -51,13 +51,17 @@ data moves freely between the two modes. ACF Pro is never a requirement.
 - Native hooks fire only as `hexa_fields/*`, never `acf/*`, so third-party ACF
   add-ons are never called without ACF.
 
+## Groups built in the ACF admin screen
+
+ACF stores groups created in its admin screen as `acf-field-group` and `acf-field` posts. Without ACF, `Fields\Database` reads them on first need (one query per request): their fields resolve and format like code-registered ones, active groups render on their screens, and a code-registered group with the same key takes precedence, as in ACF.
+
 ## Migrating a host plugin
 
 | ACF | Fields |
 | --- | --- |
 | `acf_add_local_field_group( $g )` | `FieldGroups::add( $g )` |
 | `add_action( 'acf/init', $cb, $p )` | `FieldGroups::ready( $cb, $p )` or `Hooks::on( 'init', $cb, $p )` |
-| `add_filter( 'acf/<hook>', ... )` | `Hooks::on( '<hook>', ... )` |
+| `add_filter( 'acf/<hook>', ... )` | `hexa_fields_on( '<hook>', ... )` (defined in `bootstrap.php`; safe while plugins load, equal to `Hooks::on()` afterwards) |
 | `get_field()` / `update_field()` / `have_rows()` ... | `Field::get()` / `Field::update()` / `Field::have_rows()` ... |
 | `acf_add_options_page()` / `acf_add_options_sub_page()` | `OptionsPages::add()` / `OptionsPages::add_sub()` |
 | `acf_form_head()` / `acf_form()` | `Form::head()` / `Form::render()` |

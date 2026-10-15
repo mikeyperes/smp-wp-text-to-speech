@@ -9,7 +9,8 @@
  * It autoloads the Fields classes from this Core copy and runs them in ACF
  * mode, so Field::get(), FieldGroups::add() and friends delegate to the test's
  * get_field()/update_field() stubs exactly as they delegate to ACF on a live
- * site. Only functions the test did not define are stubbed.
+ * site. Only functions the test did not define are stubbed. Core's
+ * bootstrap.php is loaded too, for hexa_fields_on().
  */
 
 spl_autoload_register(
@@ -70,3 +71,5 @@ if ( ! function_exists( 'acf_add_local_field_group' ) ) {
 		return true;
 	}
 }
+
+require_once dirname( __DIR__, 2 ) . '/bootstrap.php';

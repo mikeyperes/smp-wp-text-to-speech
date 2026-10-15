@@ -138,20 +138,27 @@ final class Storage {
      */
     public static function referenced( array $context ): array {
         [ $type, $id ] = $context;
-        $names = [];
+        // As acf_get_meta(): every stored value that has a `_<name>` reference, in stored-value order.
+        $all = [];
         if ( 'option' === $type ) {
             global $wpdb;
-            $prefix = '_' . $id . '_';
-            $rows = $wpdb->get_results( $wpdb->prepare( "SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s AND option_value LIKE %s", $wpdb->esc_like( $prefix ) . '%', 'field\\_%' ) );
+            $prefix = $id . '_';
+            // The same query as acf_get_option_meta(), so rows arrive in the same order.
+            $rows = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s", $wpdb->esc_like( $prefix ) . '%', $wpdb->esc_like( '_' . $prefix ) . '%' ) );
             foreach ( (array) $rows as $row ) {
-                $names[ substr( (string) $row->option_name, strlen( $prefix ) ) ] = (string) $row->option_value;
+                $name = (string) $row->option_name;
+                $all[ str_starts_with( $name, '_' ) ? '_' . substr( $name, strlen( $prefix ) + 1 ) : substr( $name, strlen( $prefix ) ) ] = (string) $row->option_value;
             }
-            return $names;
+        } else {
+            foreach ( (array) get_metadata( $type, (int) $id ) as $key => $values ) {
+                $all[ (string) $key ] = is_array( $values ) ? (string) ( $values[0] ?? '' ) : '';
+            }
         }
-        foreach ( (array) get_metadata( $type, (int) $id ) as $key => $values ) {
-            $reference = is_array( $values ) ? (string) ( $values[0] ?? '' ) : '';
-            if ( str_starts_with( (string) $key, '_' ) && str_starts_with( $reference, 'field_' ) ) {
-                $names[ substr( (string) $key, 1 ) ] = $reference;
+        $names = [];
+        foreach ( $all as $key => $value ) {
+            $reference = $all[ '_' . $key ] ?? '';
+            if ( '' !== $reference ) {
+                $names[ (string) $key ] = $reference;
             }
         }
         return $names;

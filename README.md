@@ -2,6 +2,8 @@
 
 Standalone WordPress plugin for converting post/page text into audio with provider-specific settings, AJAX credential validation, editor extraction, and one-click post audio generation.
 
+Version 1.5.0 adds the article's AudioObject to Hexa WP Core 3.22.0's shared schema block, linked to the article as its `audio`, instead of printing a separate schema block. Bundles Hexa WP Core 3.22.0.
+
 Version 1.4.1 exposes the site's working (decrypted) Publish Scale key through the `smp_tts_site_api_key` filter so SMP content generation can use the same key.
 
 Version 1.4.0 removes the ACF Pro requirement: the embedded Article Audio file field, field-key lookup and audio saving run on Hexa WP Core 3.4.5 `Fields`, which uses ACF when it is active and renders and stores the same field natively when it is not. The vendored Hexa WP Core package is updated to 3.4.5.
@@ -54,6 +56,11 @@ smp-wp-text-to-speech.php
 ### Audio generation
 - **Does:** extracts the article text, sends it to the chosen provider and stores the audio on the post.
 - **Use:** "Generate audio" in the post editor; credentials validated in settings.
+
+### Audio schema
+- **Does:** adds the article's AudioObject to Hexa WP Core's shared `hexa-schema` block and links it from the article as `audio` and `hasPart`.
+- **Use:** automatic on posts and press releases with generated audio.
+- **Code:** `smp-wp-text-to-speech.php` (`current_schema_nodes`, `link_audio_to_article`)
 
 ## Providers
 

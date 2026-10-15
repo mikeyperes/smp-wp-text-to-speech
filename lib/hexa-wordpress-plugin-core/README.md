@@ -4,6 +4,47 @@ Shared WordPress plugin core for Hexa plugins.
 
 This package exists to stop each plugin from re-implementing the same admin tabs, activity logs, updater wiring, shortcode lists, and setup patterns differently.
 
+> Feature base for HWS Skills. Read before building on this plugin; use or
+> extend these features instead of rebuilding them.
+
+**Purpose:** shared library bundled inside every Hexa plugin (admin tabs, updater, fields, search, public components). It has no admin screen of its own; the bundling plugin exposes its features.
+
+## Features
+
+### Site search display
+- **Use:** `[hexa_search style="icon-reveal|overlay|pill|underline|command" placeholder="" accent="" radius=""]` (registered by HWS Base Tools).
+- **Code:** `src/SearchDisplay/SearchDisplayRenderer.php`, results tuning in `src/SearchQuery/`, live results in `src/SmartSearch/`.
+- **Extend:** `hexa_plugin_core_search_query_should_handle`, `hexa_plugin_core_smart_search_results`.
+
+### Search results page (Elementor)
+- **Does:** turns an Elementor Pro Search widget into a full search page: live results appear in the page under the field instead of a dropdown, the current results stay in place (faded) under the spinner while the next ones load, and the page's default content (for example a "recent posts" grid) fades while the first results load and hides while results show. Outside clicks no longer close the results.
+- **Use:** register `ElementorSearchAdapter` for the widget's Query ID, then in Elementor add the CSS class `hexa-search-page-results` to the Search widget and `hexa-search-default` to the default content. Design stays in the site: native widget controls plus the optional `--hexa-search-field-max-width`, `--hexa-search-loading-opacity`, `--hexa-search-loader-*` properties.
+- **Code:** `src/SearchQuery/ElementorSearchAdapter.php`, `src/SearchQuery/assets/elementor-search.js|css`
+
+### Calendar
+- **Does:** a month calendar of posts from a registered profile.
+- **Use:** register a profile with `CalendarRegistry::register( 'id', [...] )` in a plugin, then `[hexa_calendar id="id"]`. Public data at REST `hexa-plugin-core/v1/calendar/...`.
+- **Code:** `src/Calendar/`
+
+### Full-text search index
+- **Does:** fast live search on large sites: one MySQL FULLTEXT row per published post with the configured search sources; the search engine uses it instead of scanning posts and postmeta.
+- **Use:** `( new SearchIndex( $settings_provider ) )->register()`, `'index' => true` in the search settings, then build once with `rebuild()` pages.
+- **Code:** `src/SearchQuery/SearchIndex.php`
+
+### Directory search
+- **Does:** a searchable, filterable directory from a registered profile.
+- **Use:** `DirectorySearchRegistry::register( 'id', [...] )`, then `[hexa_directory id="id"]`.
+- **Code:** `src/DirectorySearch/`
+
+### Map
+- **Does:** a map of addresses geocoded without an API key.
+- **Use:** `MapRegistry::register( 'id', [...] )`, then `[hexa_map id="id"]`.
+- **Code:** `src/Map/`
+
+### Shared building blocks
+- Content types (`src/ContentTypes/`), ACF field factory (`src/AcfFieldFactory/`), front-end form fields (`src/FrontendForms/`), FAQ sets (`src/FaqSets/`), typography and brand colours (`src/Typography/`, `src/BrandColors/`).
+- **Extend:** `hexa_fields/load_field_groups`, `hexa_plugin_core_recommended_plugin_definitions`, `hexa_plugin_core/plugin_bridge_owners`.
+
 ## Package Identity
 
 These names are fixed. Do not rename them in plugin implementations.
@@ -61,6 +102,7 @@ hexa-wordpress-plugin-core/
     SchemaTools/        -> Hexa\PluginCore\SchemaTools
     DirectorySearch/    -> Hexa\PluginCore\DirectorySearch
     Calendar/           -> Hexa\PluginCore\Calendar
+    Map/                -> Hexa\PluginCore\Map
     QueryFilter/        -> Hexa\PluginCore\QueryFilter
     PublicComponents/   -> Hexa\PluginCore\PublicComponents
     SearchDisplay/      -> Hexa\PluginCore\SearchDisplay
@@ -105,6 +147,104 @@ Version 3.0.0 establishes the coordinated major release for the expanded Core da
 
 Version 3.2.1 renames the DirectorySearch URL-owner parameter from `dir` to `hds` (the old name is still read), because common web firewalls such as ModSecurity/Imunify360 reject any request carrying `dir=`, which broke live search and pagination.
 
+Version 3.7.2 keeps every `Map` item card fully inside the map, including on phones: the card always opens above its pin, its width and height are capped to the map (taller content scrolls inside the card), and the map glides just enough to fit the whole card. Before, a card opened near the bottom of a small map could run off the map.
+
+Version 3.15.1 adds the lightbox `media` layout: a large dialog with the original-quality photo filling the left and the details scrolling on the right (stacked on phones), through `ItemLightbox::media()` and `'layout' => 'media'`.
+
+Version 3.21.0 makes site search public-only for everyone: `SearchQueryEngine::restrict_to_public()` limits every prepared search (the regular search page and the Elementor Search widget) to published, non-password items, drops anything marked noindex (Rank Math `rank_math_robots`, Yoast `_yoast_wpseo_meta-robots-noindex`) and never returns the site's front or posts page. Before, the regular search page used WordPress's default, which shows private posts to signed-in editors.
+
+Version 3.22.0 makes Core the one schema library: `SchemaNodes` builders, `SchemaSources` WordPress adapters, `SchemaIds`, the shared per-page graph `SchemaPage` (one `hexa-schema` block merged from every plugin) and `RankMathSchemaControl`. Plugins decide where they output; Core builds, merges and prints.
+
+Version 3.21.1 fixes a search hang from 3.21.0: the noindex rule was a `meta_query` that WordPress compiles into unkeyed postmeta joins, and Elementor searches applied it twice, so one query multiplied every post by its meta rows and ran for minutes. `restrict_to_public()` now only marks the query (`hexa_search_public_only`), and the search SQL excludes noindex with one indexed postmeta subquery (`SearchQueryEngine::noindex_exclusion_sql()`). Calling it twice changes nothing.
+
+Version 3.20.0 adds the Elementor search results page mode (`hexa-search-page-results` and `hexa-search-default` CSS classes): results in the page, the spinner over the current results while loading, default content hidden while results show.
+
+Version 3.19.1 makes short words such as "5G" or the "1" in "GLP-1" fast with the search index: they are matched on the indexed text, narrowed by the query's longer words.
+
+Version 3.19.0 adds `SearchQuery\SearchIndex`, an optional MySQL full-text index the search engine uses with `'index' => true`, so live search on sites with tens of thousands of posts answers in milliseconds instead of seconds.
+
+Version 3.18.3 keeps theme and page-builder image rules (such as `height: auto`) from shrinking the ImageZoom thumbnail inside its box.
+
+Version 3.18.2 adds the ImageZoom `fit => contain` option (the whole image over a blurred fill of itself, nothing cropped) and keeps an explicit `sizes` list from being overridden by lazy `auto` sizing, so tall thumbnails stay sharp.
+
+Version 3.18.1 keeps page-builder lightboxes (Elementor) from opening on top of the ImageZoom viewer.
+
+Version 3.18.0 adds `PublicComponents\ImageZoom`, a reusable flyer/poster viewer: `ImageZoom::html( $attachment_id )` prints the thumbnail; hovering shows the original image large in a centered preview that fades out when the pointer leaves, and a click or tap opens a full-screen viewer with pinch, wheel and double-tap zoom, finger panning, and swipe-down, Escape or backdrop to close. Docs: `docs/image-zoom.md`.
+
+Version 3.17.0 adds `SearchQuery\ResultTypeLabels`, host-declared labels that flag each search result's kind (for example Press Release, External PR or Site Content), the matching **Result Type** Elementor dynamic tag for search-result Loop Items, and `SearchQueryConfiguration::searchable_post_types()` / `searchable_taxonomies()` for full-site search scopes.
+
+Version 3.16.0 lets any cleanup option apply only to non-administrators (`audience` => `non_admins`, with `audience_capability`), removes list-table columns (`columns` + `column_hooks`) and admin-bar nodes (`admin_bar_nodes`), adds the `rankmath_lock_modified_date()` and `litespeed_ui()` presets, and adds `Taxonomies\TermChoiceLimits`, which limits how many terms users without a capability may pick (radio buttons when the limit is one), enforced again on save.
+
+Version 3.15.0 adds the `meta_box_remove` cleanup mode, which removes editor meta boxes through WordPress's `remove_meta_box()` after every plugin has added its boxes (optionally per post type), an `auto_enabled` condition that turns an option on by itself with a shown reason, and `CleanupPresets` with the shared Comments box (on automatically while comments are closed) and FIFU box options, so host plugins stop re-implementing them.
+
+Version 3.14.4 synchronizes the registered native Elementor Search input's collapsed state when an outside click closes its result list, while preserving inside clicks and unregistered widgets. It includes the 3.14.3 native reopen lifecycle bridge.
+
+Version 3.14.3 synchronizes the native Elementor Search input's expanded state when Elementor reopens a visible result list after Escape. The lifecycle bridge applies only to registered widgets and preserves native rendering, keyboard behavior, and the existing natural search and map features.
+
+Version 3.14.2 moves the map's zoom controls beside the open selection panel on desktop so the panel never covers them.
+
+Version 3.14.0 redesigns the map selection panel as a sectioned overlay that slides in over the map (a bottom sheet on narrow screens) instead of resizing it, glides the camera so the selected pin stays clear, and organizes entries as compact rows with date badges, meta lines, tags and thumbnails, a featured card for a single entry, a loading skeleton, and a "Show more" footer that appends pages in one scrolling list.
+
+Version 3.14.1 adds bounded natural search time windows to the shared QueryFilter/SearchQuery contract, including duration-only and keyword-plus-window searches while preserving native WordPress and Elementor query handling.
+
+Version 3.13.4 keeps native Elementor Search keyboard and icon behavior intact when results are nested inside another keyboard component or intentionally rendered in normal document flow.
+
+Version 3.13.3 clears a registered Elementor Search widget's old result markup as soon as its current input falls below the widget's native minimum character setting, while preserving native rendering at and above that threshold.
+
+Version 3.13.2 keeps host-owned upcoming-event eligibility in the generic Core search contract through bounded correlated meta constraints, avoiding row-multiplying `WP_Meta_Query` joins while preserving native Elementor listing grids and ordering.
+
+Version 3.13.1 keeps live-search status announcements out of Elementor result grids by hiding non-error status content accessibly, and replaces stale result cards with one full-width visible error state when a request fails.
+
+Version 3.13.0 adds the generic `SearchQuery\\ElementorSearchAdapter` for trusted native Elementor Search widgets, including bounded public matching, exact Query ID provenance, live REST-safe query preparation, cancellation and stale-response protection, accessible request states, and preserved Loop Item listing grids. `ElementorPublicTextIndex` adds a separate bounded index of anonymously rendered public Elementor text, including reusable templates, without searching raw document data or rewriting `post_content`.
+
+Version 3.12.0 adds an opt-in Map selection sidebar with lazy, paginated detail REST responses, rich image/title/fact/action entries, responsive placement, request cancellation, focus management, and related-content cache invalidation.
+
+Version 3.11.0 adds stable per-day multi-criterion calendar sorting with field paths, value callbacks, type-aware comparison, and explicit missing-value placement. Hosts can sort by any item data, including nested `data.*` values, while preserving stable ties.
+
+Version 3.10.0 removes `Hexa\PluginCore\DraftPreview`. Public draft links are an HWS Base Tools feature, not a shared Core module.
+
+Version 3.8.1 closes the item lightbox cleanly on a quick close and reopen: unlocking page scroll, clearing the dialog, and returning focus now happen as the dialog closes instead of in the later close event.
+
+Version 3.8.0 adds one `link_behavior` setting to the `Calendar` and `Map` components: `page` (follow the link, the default), `new_tab`, or `lightbox`, which shows the linked post in an in-page dialog (`ItemLink`, `ItemLightbox`, `GET /wp-json/hexa-plugin-core/v1/lightbox/{component}/{profile}/{post}`), so visitors can click through a calendar or a map without leaving the page. Docs: `docs/item-link.md`.
+
+Version 3.7.3 serializes `wp-config.php` INI and constant values with PHP literals, preventing quote-bearing input from escaping the generated assignment while preserving numeric and boolean scalar behavior.
+
+Version 3.7.1 sets the Map asset budget to 6.5 KB gzipped (the 3.7.0 selection code added about 0.8 KB), so the Core suite passes again.
+
+Version 3.7.0 makes choosing a location on a `Map` smooth: each pin has an invisible 22px target and clicks pick the nearest pin, hovering enlarges the pin with a ring and shows the location's name, the chosen pin stays highlighted, clicking another pin swaps the card in place, clicking empty map closes it, and the map glides so the card opens fully in view. Cached map payloads are keyed by a payload version so shape changes never serve stale data.
+
+Version 3.6.2 hardens the Map filter chips against theme button styles (hover, focus and active states no longer inherit a theme's button colors, such as Hello Elementor's pink) and shows chip counts as aligned tabular-number badges.
+
+Version 3.6.1 adds `Hexa\PluginCore\Users\UserProfileBridge`: `GET/POST hexa-plugin-core/v1/users/{id}/profile` reads one user with safe meta and the avatar provider, and writes native profile fields, meta, fields and the avatar for a user with `list_users` and `edit_user`. It never changes role, login, password or session data, and serves a local avatar when no avatar plugin is active. Host plugins switch it on with `UserProfileBridge::register()`, so Application Password and signed HWS Base Tools connections can manage author profiles.
+
+Version 3.6.0 adds a date filter to `Hexa\PluginCore\Map`: profiles that supply `next` (each item's next dated start) get "Any time · 24 hours · 48 hours · 1 week · 2 weeks" chips with live counts, applied in the browser against the visitor's clock and combined with the group filter. Windows are configurable. Docs: `docs/map.md`.
+
+Version 3.5.1 adds `Hexa\PluginCore\PublicComponents\RelativeTime`, a cache-safe "5 min ago / 2 days ago" `<time>` element whose age is recomputed in the browser, for "last updated" lines on public pages. Docs: `docs/relative-time.md`.
+
+Version 3.5.0 adds `Hexa\PluginCore\Map`, a brandable public location map (`[hexa_map id="…"]`). Hosts register a profile of posts or users with a street address field; Core geocodes new and changed addresses in the background with keyless services (US Census, OpenStreetMap Nominatim), stores the coordinates on each item, and renders a lazily loaded MapLibre map on free OpenFreeMap tiles with clustered pins, highlighted pins, a group filter, item cards, and a plain link list. Every color, including the base map, comes from `--hmap-*` CSS tokens. Full protocol: `docs/map.md`.
+
+Version 3.4.16 refreshes WordPress's URL rules once whenever a `ContentTypeRegistry`'s post types, their URL bases or the permalink structure change, including right after the host plugin is activated through REST, WP-CLI or an updater. Before, new post type URLs returned 404 until Settings > Permalinks was re-saved.
+
+Version 3.4.15 makes `PluginBridge` choose the release zip for the running PHP: the `-php74.zip` build below PHP 8.2, the normal zip otherwise, installed into the same plugin folder.
+
+Version 3.4.14 lets Hexa plugins run on PHP 7.4 without giving up modern source. `bin/build-php74-release.sh <plugin-git-dir> <ref> <folder> <out.zip>` rewrites a plugin and its bundled Core to PHP 7.4 syntax with Rector (`bin/rector-php74.php`), lints every file on PHP 7.4 and zips it; attach it to the release as `<folder>-<version>-php74.zip`. The GitHub updater reads the branch source's `Requires PHP`: sites on older PHP get that PHP 7.4 build, or, when a release has none, an offer that states the real requirement so WordPress refuses it instead of installing code the site cannot parse. Sites on current PHP keep the branch source.
+
+Version 3.4.13 makes `PluginBridge` load on PHP 8.1 (its install step returned a PHP 8.2-only `true` type).
+
+Version 3.4.12 adds `PluginBridge`: once any Hexa plugin that bundles Core is on a site, an administrator Application Password can install or update other allowed plugins from their GitHub release zips over REST (`hexa-plugin-core/v1/plugins/github`), without wp-admin.
+
+Version 3.4.11 makes the migration tool emit `hexa_fields_on()` for every ACF hook registration, since a registration inside a function can still run while plugins load, before Core's classes are autoloadable. Runtime code is unchanged from 3.4.10.
+
+Version 3.4.10 fires ACF's `include_fields` registration moment natively (just before `init`, as ACF does), so groups registered with `Hooks::on( 'include_fields', ... )` or `hexa_fields_on()` exist without ACF.
+
+Version 3.4.9 resolves the published fields of trashed ACF admin-screen groups by key or name, as `acf_get_field()` does, while never listing or rendering those groups.
+
+Version 3.4.8 passes every native location-rule result through ACF's location filters (`location/match_rule/type=<param>`, `location/match_rule`, `location/rule_match/<param>`, `location/rule_match`), as `acf_match_location_rule()` does, so host visibility filters work without ACF.
+
+Version 3.4.7 adds `hexa_fields_on()` to `bootstrap.php` for field hooks registered while plugins load (before Core's classes can be autoloaded; the migration tool emits it for file-level hooks), and applies the `load_field_groups` filter to native group lists as ACF does.
+
+Version 3.4.6 reads field groups created in the ACF admin screen (`acf-field-group`/`acf-field` posts) when ACF is not active, exactly as ACF does: their fields resolve and format, active ones render on their screens, and code-registered groups with the same key win. A missing value now takes the field's or its type's `default_value`, as `acf_get_value()` does. `Field::all()` follows `get_field_objects()` exactly (stored-value order; a value is listed when its reference resolves to a field of the same name), page-link and post fields resolve only posts `acf_get_posts()` returns, and WYSIWYG output runs ACF's `acf_the_content` filter chain.
+
 Version 3.4.5 adds `Form::field()`, the equivalent of `acf_render_field_wrap()`: one field outside a form, posted under `acf[<key>]` in both modes, and maps it in `bin/migrate-to-fields.php`.
 
 Version 3.4.4 makes native Fields read exactly as ACF reads: a name resolves through its stored field-key reference (a never-saved name returns the raw value or null, as `get_field()` does; only `update()` also matches registered names), and option references use ACF's `_options_<name>` storage name.
@@ -141,7 +281,9 @@ Version 3.0.1 preserves explicit `@id` and `@type` relationship summaries when s
 
 ## Schema Tools
 
-The 1.x line includes reusable schema graph helpers and a generic schema dashboard renderer. Host plugins can build their own schema objects, normalize independently detectable graph nodes with `SchemaGraph::standalone_nodes()`, opt into explicit `@id` and `@type` relationship summaries for linked top-level nodes, expose debug JSON, show ideal-vs-actual graph examples, provide validator links, render collapsed shortcode cards, and pass plugin-specific schema action panels through HexaWP Core instead of duplicating dashboard UI.
+Every Hexa plugin builds schema with `SchemaNodes` and `SchemaSources` and adds it to `SchemaPage`, which merges all plugins' nodes into one `hexa-schema` block per page. Each plugin decides which pages it covers. HWS Base Tools owns the Rank Math schema switch (`RankMathSchemaControl`). See `docs/schema-tools.md`.
+
+The schema tools also include reusable schema graph helpers and a generic schema dashboard renderer. Host plugins can build their own schema objects, normalize independently detectable graph nodes with `SchemaGraph::standalone_nodes()`, opt into explicit `@id` and `@type` relationship summaries for linked top-level nodes, expose debug JSON, show ideal-vs-actual graph examples, provide validator links, render collapsed shortcode cards, and pass plugin-specific schema action panels through HexaWP Core instead of duplicating dashboard UI.
 
 Do not create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core`, or plugin-specific namespaces inside this package. Consuming plugins may have their own namespaces, but this shared package always stays under `Hexa\PluginCore`.
 
@@ -178,17 +320,18 @@ Do not create `HWS\BaseTools\PluginCore`, `HexaWordPressPluginCore`, `Hexa\Core`
 - `ShortcodeRegistry`: shortcode definition registry, dashboard display renderer, examples, live output, and test runner contracts.
 - `SiteStructure`: reusable critical page blueprint management, assigned page storage, WordPress navigation menu creation, custom menu-item creation, add-all-assigned-pages actions, menu structure attachment, and page-to-menu-item tools.
 - `SchemaDetection`: reusable JSON-LD URL scans, source detection, semantic property validation, duplicate schema conflict checks, FAQ validation, and dark admin report rendering.
-- `SchemaTools`: shared schema-document normalization, typed HTTP(S) URL guards, fail-closed URL-property sanitization, graph-node deduplication, JSON-LD rendering, and one-shot WordPress output injection while host plugins retain their schema builders.
+- `SchemaTools`: the one schema library for every Hexa plugin: generic node builders (`SchemaNodes`), WordPress data adapters (`SchemaSources`), shared `@id` conventions (`SchemaIds`), one merged graph per page (`SchemaPage`), the Rank Math schema switch (`RankMathSchemaControl`), URL guards, normalization and JSON-LD rendering. Host plugins decide which pages they cover; Core builds and prints.
 - `SearchDisplay`: five reusable front-end WordPress search-form templates with shared markup, CSS, and accessible interactions.
-- `SearchQuery`: bounded native WordPress result matching for all/any/exact terms, whole/prefix/contains word modes, selected post types and sources, one-query-only SQL hooks, and guarded JetEngine search-template bridging.
+- `SearchQuery`: bounded native WordPress result matching for all/any/exact terms, whole/prefix/contains word modes, optional natural time windows from shared QueryFilter rules, selected post types and sources, one-query-only SQL hooks, guarded JetEngine and native Elementor Search bridging, and a safe public Elementor text index.
 - `SmartSearch`: smart search/X-Search AJAX endpoint and reusable typeahead renderer.
 - `DirectorySearch`: declarative public directory search over posts or users with filters, sorts, card templates, a public REST endpoint, and a server-rendered shortcode that upgrades to live search.
 - `Calendar`: lightweight public month-grid calendar profiles over dated posts (or a host provider) with linked items, shared filters, bounded month navigation, a public REST endpoint, and a server-rendered shortcode.
-- `QueryFilter`: the shared declarative visitor-filter structure (taxonomy, custom field/ACF, date range, callback, extensible types) with SQL, parsing, controls, and URL arguments.
+- `Map`: brandable public location maps over posts or users with background geocoding, clustered pins, a group filter, item cards, and a shortcode.
+- `QueryFilter`: the shared declarative visitor-filter structure (taxonomy, custom field/ACF, date range, callback, extensible types) plus bounded natural search time-window parsing, with SQL, parsing, controls, and URL arguments.
 - `PublicComponents`: shared profile sanitizers, profile stores, URL/base-path helpers, shortcode-inert output, and public REST caching for public components.
 - `SystemEnvironment`: safe constants, INI, shell wrappers, size parsing, CPU/memory detection, and byte formatting.
 - `Taxonomies`: reusable taxonomy definitions, callback-backed registration, and shared reference UI for host-owned editorial taxonomies.
-- `WpAdminUiCleanup`: shared admin UI cleanup definitions, AJAX toggles, target-screen CSS/JS, postbox hide/collapse behavior, and footer filters.
+- `WpAdminUiCleanup`: shared admin UI cleanup definitions, AJAX toggles, target-screen CSS/JS, postbox hide/collapse behavior, PHP meta box removal (`meta_box_remove`), conditional auto-enable, shared `CleanupPresets`, and footer filters.
 - `WpAdminComponents`: shared visual primitives such as cards, subcards, buttons, pills, tooltips, collapsible sections, dynamic save notices, three-column visual template selectors, selectable media gallery details, color controls, font-family controls, and scoped CSS override editors and references.
 - `WpAdminAjax`: WordPress admin-AJAX nonce, capability, request parsing, action registration, and handler guards.
 - `WpAdminTabs`: admin tab definitions, registry, host hook integration, and the automatic Hexa core documentation tab.
@@ -255,7 +398,8 @@ $context = new PluginContext(
 
 ## Development
 
-Run the complete standalone suite with `php tests/run.php`.
+Run the complete PHP suite with `php tests/run.php` and the native Elementor
+client regression with `node tests/elementor-search-client.js`.
 
 ## Agent Rule
 
@@ -321,7 +465,7 @@ This panel compares the vendored `VERSION` in the host plugin with the public Gi
 
 Version 0.19.60 adds a guarded JetEngine listing-grid adapter to `Hexa\PluginCore\SearchQuery`. Version 0.19.59 introduced the reusable native WordPress search-results engine, separating all/any/exact term logic from whole/prefix/contains word matching, supporting selected public post types and explicit native or advanced sources, and keeping display options outside the behavior contract.
 
-Its `pre_get_posts` coordination is deliberately narrow: unrelated, admin, WP-CLI, AJAX, REST, cron, feed, unmarked nested, disabled, and empty queries are rejected before host settings are loaded. A trusted adapter may explicitly mark a secondary query created by a search-results template; one permanent dispatcher consumes weak state bound to that exact `WP_Query` object without retaining abandoned queries or stacking callbacks. See `docs/search-query.md` for the host protocol and mandatory performance guards.
+Its `pre_get_posts` coordination is deliberately narrow: unrelated, admin, WP-CLI, AJAX, REST, cron, feed, unmarked nested, disabled, and empty queries are rejected before host settings are loaded. A trusted adapter may explicitly mark a secondary query created by a search-results template; one permanent dispatcher consumes weak state bound to that exact `WP_Query` object without retaining abandoned queries or stacking callbacks. The Elementor adapter requires an exact registered Query ID on a native Search widget and preserves Elementor's live Loop Item grid. Hosts may opt their dated post types into QueryFilter's bounded natural time windows, including duration-only and mixed keyword-plus-duration searches. See `docs/search-query.md` for the host protocol and mandatory performance guards.
 
 ## Collection Filters and Sidebar Header
 
@@ -731,6 +875,10 @@ Use `Hexa\PluginCore\DirectorySearch` for public listing pages (directories of p
 ## Calendar
 
 Use `Hexa\PluginCore\Calendar` for a lightweight public month-grid calendar. Register a profile with `CalendarRegistry::register()` (post types, start/end date fields, link, filters), add `CalendarModule` to `CoreBootstrap`, and place `[hexa_calendar id="…"]`. Days are not interactive; each item links to the URL the profile defines. Full protocol: `docs/calendar.md`.
+
+## Map
+
+Use `Hexa\PluginCore\Map` for a brandable location map. Register a profile with `MapRegistry::register()` (posts or users, address field, geocoders, group, card data), add `MapModule` to `CoreBootstrap`, place `[hexa_map id="…"]`, and set the `--hmap-*` color tokens in the page builder. Addresses are geocoded in the background and stored on each item. Full protocol: `docs/map.md`.
 
 ## Query Filters
 

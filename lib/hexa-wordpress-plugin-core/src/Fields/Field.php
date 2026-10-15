@@ -22,6 +22,9 @@ final class Field {
         if ( Acf::active() ) {
             return get_field( $selector, $context, $format, $escape_html );
         }
+        if ( '' === $selector ) {
+            return null;
+        }
         $context = Storage::context( $context );
         [ $field, $name ] = Values::resolve( $selector, $context );
         if ( null === $field ) {
@@ -97,12 +100,13 @@ final class Field {
         if ( Acf::active() ) {
             return get_field_objects( $context, $format, $load_value );
         }
-        // Like ACF: every top-level field with a stored `_name` reference on this object.
+        // As get_field_objects(): each stored value whose `_name` reference resolves to a
+        // field of that same name (which leaves out sub-field values).
         $resolved = Storage::context( $context );
         $objects = [];
         foreach ( Storage::referenced( $resolved ) as $name => $key ) {
             $field = FieldGroups::get_field( $key );
-            if ( null === $field || null === FieldGroups::get_group( (string) ( $field['parent'] ?? '' ) ) ) {
+            if ( null === $field || (string) $field['name'] !== (string) $name ) {
                 continue;
             }
             if ( $load_value ) {

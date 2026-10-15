@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.4.1
+ * Version: 1.5.0
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -74,7 +74,7 @@ function register_smp_tts_autoloader(): void {
 register_smp_tts_autoloader();
 
 final class Plugin {
-    const VERSION = "1.4.1";
+    const VERSION = "1.5.0";
     const OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "hexa_tts_admin_nonce";
     const SETTINGS_SLUG = "smp-wp-text-to-speech";
@@ -88,7 +88,8 @@ final class Plugin {
         add_action( "admin_menu", [ __CLASS__, "register_admin_menu" ] );
         add_action( "admin_enqueue_scripts", [ __CLASS__, "enqueue_admin_assets" ] );
         add_action( "wp_enqueue_scripts", [ __CLASS__, "enqueue_frontend_assets" ] );
-        add_action( "wp_head", [ __CLASS__, "inject_schema" ], 2 );
+        \Hexa\PluginCore\SchemaTools\SchemaPage::register( "smp-tts-audio", [ __CLASS__, "current_schema_nodes" ], 30 );
+        add_filter( "hexa_plugin_core_schema_graph", [ __CLASS__, "link_audio_to_article" ] );
         add_action( "rest_api_init", [ __CLASS__, "register_rest_routes" ] );
         add_action( "admin_post_hexa_tts_save_settings", [ __CLASS__, "handle_save_settings" ] );
         add_action( "admin_post_hexa_tts_import_elementor_color", [ __CLASS__, "handle_import_elementor_color" ] );
@@ -398,22 +399,48 @@ final class Plugin {
         );
     }
 
-    public static function inject_schema(): void {
+    /**
+     * The AudioObject for the article being viewed, added to HexaWP Core's
+     * shared schema block.
+     *
+     * @return list<array<string,mixed>>
+     */
+    public static function current_schema_nodes(): array {
         if ( is_admin() || ! is_singular( [ "post", "press-release" ] ) ) {
-            return;
+            return [];
         }
 
-        $post_id = (int) get_queried_object_id();
-        if ( $post_id <= 0 ) {
-            return;
-        }
+        $audio = self::audio_schema_entity( (int) get_queried_object_id() );
+        return $audio ? [ $audio ] : [];
+    }
 
-        $schema = self::generate_audio_schema_array( $post_id );
-        if ( empty( $schema ) ) {
-            return;
+    /**
+     * Links the audio to the page's article when another plugin printed one.
+     *
+     * @param list<array<string,mixed>> $nodes
+     * @return list<array<string,mixed>>
+     */
+    public static function link_audio_to_article( $nodes ) {
+        if ( ! is_array( $nodes ) || ! is_singular() ) {
+            return $nodes;
         }
-
-        echo "\n<script type=\"application/ld+json\" id=\"smp-tts-audio-schema-jsonld\">" . wp_json_encode( $schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT ) . "</script>\n";
+        $permalink = (string) get_permalink( get_queried_object_id() );
+        $audio_id = $permalink . "#audio";
+        $has_audio = false;
+        foreach ( $nodes as $node ) {
+            $has_audio = $has_audio || ( is_array( $node ) && $audio_id === ( $node["@id"] ?? "" ) );
+        }
+        if ( ! $has_audio ) {
+            return $nodes;
+        }
+        foreach ( $nodes as &$node ) {
+            if ( is_array( $node ) && \Hexa\PluginCore\SchemaTools\SchemaIds::article( $permalink ) === ( $node["@id"] ?? "" ) ) {
+                $node["audio"] = [ "@id" => $audio_id ];
+                $node["hasPart"] = self::append_schema_reference( $node["hasPart"] ?? [], $audio_id );
+            }
+        }
+        unset( $node );
+        return $nodes;
     }
 
     private static function admin_inline_script() {
@@ -1570,35 +1597,6 @@ JS;
         return [ "@context" => "https://schema.org", "@graph" => [ $entity ] ];
     }
 
-    public static function link_audio_to_publication_schema( array $schema, int $post_id ): array {
-        $audio = self::audio_schema_entity( $post_id );
-        $audio_id = is_array( $audio ) ? (string) ( $audio["@id"] ?? "" ) : "";
-        if ( "" === $audio_id || empty( $schema["@graph"] ) || ! is_array( $schema["@graph"] ) ) {
-            return $schema;
-        }
-
-        $permalink = get_permalink( $post_id );
-        if ( ! $permalink ) {
-            return $schema;
-        }
-
-        $article_id = $permalink . "#article";
-        foreach ( $schema["@graph"] as &$node ) {
-            if ( ! is_array( $node ) ) {
-                continue;
-            }
-
-            $node_id = (string) ( $node["@id"] ?? "" );
-            if ( $article_id === $node_id ) {
-                $node["audio"] = [ "@id" => $audio_id ];
-                $node["hasPart"] = self::append_schema_reference( $node["hasPart"] ?? [], $audio_id );
-            }
-        }
-        unset( $node );
-
-        return $schema;
-    }
-
     private static function audio_schema_entity( int $post_id ): array {
         $post = get_post( $post_id );
         if ( ! $post || ! in_array( $post->post_type, [ "post", "press-release" ], true ) ) {
@@ -1636,9 +1634,7 @@ JS;
         $upload_date = "" !== $generated ? mysql2date( DATE_W3C, $generated, false ) : "";
         $transcript = self::audio_transcript_for_post( $post_id );
 
-        $entity = [
-            "@type" => "AudioObject",
-            "@id" => $permalink . "#audio",
+        return \Hexa\PluginCore\SchemaTools\SchemaNodes::node( "AudioObject", [
             "name" => "Audio version of " . get_the_title( $post ),
             "description" => "Audio narration for " . get_the_title( $post ) . ".",
             "url" => esc_url_raw( $url ),
@@ -1646,12 +1642,10 @@ JS;
             "encodingFormat" => $mime,
             "duration" => $duration,
             "uploadDate" => $upload_date,
-            "inLanguage" => get_bloginfo( "language" ) ?: "en-US",
-            "isPartOf" => $permalink,
+            "inLanguage" => \Hexa\PluginCore\SchemaTools\SchemaSources::language(),
+            "isPartOf" => [ "@id" => \Hexa\PluginCore\SchemaTools\SchemaIds::article( (string) $permalink ) ],
             "transcript" => $transcript,
-        ];
-
-        return self::clean_schema( $entity );
+        ], $permalink . "#audio" );
     }
 
     private static function append_schema_reference( $value, string $id ): array {
@@ -1684,34 +1678,11 @@ JS;
     }
 
     private static function schema_duration_from_seconds( int $seconds ): string {
-        if ( class_exists( "\\Hexa\\PluginCore\\SchemaTools\\SchemaGraph" ) ) {
-            return \Hexa\PluginCore\SchemaTools\SchemaGraph::duration_from_seconds( $seconds );
-        }
-
-        if ( $seconds <= 0 ) {
-            return "";
-        }
-
-        $hours = intdiv( $seconds, HOUR_IN_SECONDS );
-        $seconds -= $hours * HOUR_IN_SECONDS;
-        $minutes = intdiv( $seconds, MINUTE_IN_SECONDS );
-        $seconds -= $minutes * MINUTE_IN_SECONDS;
-        return "PT" . ( $hours ? $hours . "H" : "" ) . ( $minutes ? $minutes . "M" : "" ) . ( $seconds ? $seconds . "S" : "" );
+        return \Hexa\PluginCore\SchemaTools\SchemaGraph::duration_from_seconds( $seconds );
     }
 
     private static function schema_types( array $schema ): array {
-        if ( class_exists( "\\Hexa\\PluginCore\\SchemaTools\\SchemaGraph" ) ) {
-            return \Hexa\PluginCore\SchemaTools\SchemaGraph::types( $schema );
-        }
-
-        $nodes = isset( $schema["@graph"] ) && is_array( $schema["@graph"] ) ? $schema["@graph"] : [ $schema ];
-        $types = [];
-        foreach ( $nodes as $node ) {
-            if ( is_array( $node ) && isset( $node["@type"] ) ) {
-                $types[] = (string) $node["@type"];
-            }
-        }
-        return array_values( array_unique( array_filter( $types ) ) );
+        return \Hexa\PluginCore\SchemaTools\SchemaGraph::types( $schema );
     }
 
     private static function schema_integrity_report( int $post_id ): array {
@@ -1736,24 +1707,6 @@ JS;
         ];
     }
 
-    private static function clean_schema( array $schema ): array {
-        if ( class_exists( "\\Hexa\\PluginCore\\SchemaTools\\SchemaGraph" ) ) {
-            return \Hexa\PluginCore\SchemaTools\SchemaGraph::clean( $schema );
-        }
-
-        foreach ( $schema as $key => $value ) {
-            if ( is_array( $value ) ) {
-                $value = self::clean_schema( $value );
-            }
-            if ( null === $value || false === $value || "" === $value || [] === $value ) {
-                unset( $schema[ $key ] );
-            } else {
-                $schema[ $key ] = $value;
-            }
-        }
-
-        return $schema;
-    }
 
     private static function sample_audio_url(): string {
         global $wpdb;
