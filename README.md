@@ -47,11 +47,17 @@ smp-wp-text-to-speech.php
 
 ## Features
 
+### Design examples and styling
+- **Examples:** [Player HTML, Elementor CSS and selector map](docs/player-design-examples.md).
+- **Visual previews:** Settings > SMP WP Text To Speech > Display, `/wp-admin/options-general.php?page=smp-wp-text-to-speech&tab=display`. The template picker previews every named skin using the player renderer.
+- **Related features:** [Summary, Contents and FAQ examples](https://github.com/mikeyperes/smp-publication-integration/blob/main/docs/article-design-examples.md) belong to SMP Publication Integration.
+
 ### Audio player
 - **Does:** an audio player for the post's generated audio.
 - **Switch:** player defaults in settings: `player_label`, `show_player_meta`, `player_template` (default `clean_card`), `player_size`, `primary_color`, `enable_player_controls`.
 - **Use:** `[hexa_tts_player post_id="" label="Listen to this article" show_meta="" preload="metadata" class="" template="clean_card" size="default" color="#3657e3" controls="" enhanced_controls=""]` (alias `[smp_tts_player]`). Place it in the single-post template with a Shortcode widget.
 - **Code:** `smp-wp-text-to-speech.php`
+- **Custom Elementor skin:** use `template="unstyled_controls"` for the full custom control surface. Plain `unstyled` keeps browser-native audio controls. See the [HTML/CSS example](docs/player-design-examples.md#listen-player).
 
 ### Audio generation
 - **Does:** extracts the article text, sends it to the chosen provider and stores the audio on the post.
