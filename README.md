@@ -17,6 +17,7 @@
 - **Does:** turns the whole article audio feature on or off for the site.
 - **Switch:** `article_audio_enabled` (Features tab, "Listen to this article"; on by default). Off: no player on articles, no player CSS or JS, no AudioObject in the schema, no "Listen to this article" box or audio field in the post editor (a site's own `article_audio` field is hidden too), and generation is refused. Saved audio stays in the Media Library. Shortcodes stay registered and print nothing.
 - **Read it from another plugin:** `apply_filters( "smp_wp_text_to_speech_article_audio_enabled", false )`.
+- **Read it remotely (Publish, skills):** `GET https://<site>/wp-json/smpi/v1/publication-manifest`, field `delivery_capabilities.article_audio` (served by SMP Publication Integration; `false` when this switch is off or this plugin is missing). Quick read: `curl -s https://<site>/wp-json/smpi/v1/publication-manifest | jq .delivery_capabilities.article_audio`
 - **Code:** `src/Plugin.php` (`article_audio_enabled`), `src/Modules/PlayerModule.php`, `src/Modules/SchemaModule.php`, `src/Modules/PostEditorModule.php`
 
 ### Audio player
