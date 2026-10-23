@@ -2,24 +2,13 @@
 
 namespace smp_text_to_speech\Concerns;
 
-use Hexa\PluginCore\CoreBootstrap\CoreBootstrap;
-use Hexa\PluginCore\CorePackageUpdates\CorePackageAjaxController;
-use Hexa\PluginCore\CorePackageUpdates\CorePackageStatus;
-use Hexa\PluginCore\CoreRuntime\PluginContext;
-use Hexa\PluginCore\PluginUpdates\GitHubPluginUpdater;
-use Hexa\PluginCore\PluginUpdates\PluginUpdateStatus;
-use Hexa\PluginCore\PluginUpdates\UpdaterAjaxController;
-use Hexa\PluginCore\WpAdminTabs\CoreTabConfig;
-use Hexa\PluginCore\WpAdminTabs\CoreTabModule;
-use Hexa\PluginCore\WpAdminTabs\HostTabsRenderer;
-use Hexa\PluginCore\WpAdminTabs\TabDefinition;
-use Hexa\PluginCore\WpAdminTabs\TabRegistry;
-use Smp\TextToSpeech\Admin\SettingsNavigation;
 use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
-use Smp\TextToSpeech\Support\AudioAttachmentGuard;
-use Smp\TextToSpeech\Support\PostVisibility;
 use Smp\TextToSpeech\Support\Text;
 use WP_Error;
+
+use Hexa\PluginCore\ActivityLog\ActivityLogConfig;
+use Hexa\PluginCore\ActivityLog\ActivityLogEntry;
+use Hexa\PluginCore\ActivityLog\ActivityLogger;
 
 if ( ! defined( "ABSPATH" ) ) {
     exit;
@@ -106,7 +95,6 @@ trait GeneratesAudio {
     }
 
     public static function ajax_generate_audio() {
-        check_ajax_referer( self::NONCE_ACTION, "nonce" );
         $post_id = absint( $_POST["post_id"] ?? 0 );
         if ( ! $post_id || ! current_user_can( "edit_post", $post_id ) ) {
             wp_send_json_error( [ "message" => "You do not have permission to generate audio for this post." ], 403 );
@@ -373,25 +361,63 @@ trait GeneratesAudio {
         return "tts_wp_" . strtolower( wp_generate_password( 20, false, false ) );
     }
 
+    /**
+     * One Hexa WP Core activity log per post, kept for a week. It records
+     * each step of an editor generation for the post editor's log panel.
+     */
+    private static function generation_logger( int $post_id ): ActivityLogger {
+        return new ActivityLogger(
+            new ActivityLogConfig(
+                [
+                    "id"            => \smp_text_to_speech\PluginMetadata::hook( "generation_log" ),
+                    "title"         => "Audio generation",
+                    "storage"       => ActivityLogConfig::STORAGE_TRANSIENT,
+                    "storage_key"   => \smp_text_to_speech\PluginMetadata::hook( "generation_log_" . $post_id ),
+                    "max_entries"   => 100,
+                    "transient_ttl" => 7 * DAY_IN_SECONDS,
+                ]
+            )
+        );
+    }
+
     private static function reset_generation_log( int $post_id, string $client_request_id ): void {
         update_post_meta( $post_id, "_hexa_tts_generation_client_id", $client_request_id );
-        update_post_meta( $post_id, "_hexa_tts_activity_log", wp_json_encode( [] ) );
+        self::generation_logger( $post_id )->clear();
         self::add_generation_log( $post_id, "WordPress accepted the generation request.", "working", [ "client_request_id" => $client_request_id ] );
     }
 
     private static function add_generation_log( int $post_id, string $message, string $state = "info", array $context = [] ): array {
-        $log = self::generation_log( $post_id );
-        $log[] = [
-            "time" => current_time( "H:i:s" ),
-            "state" => sanitize_key( $state ?: "info" ),
-            "message" => sanitize_text_field( $message ),
-            "context" => $context,
-        ];
-        update_post_meta( $post_id, "_hexa_tts_activity_log", wp_json_encode( $log ) );
-        return $log;
+        self::generation_logger( $post_id )->add(
+            new ActivityLogEntry(
+                sanitize_text_field( $message ),
+                $context,
+                null,
+                \smp_text_to_speech\PluginMetadata::SLUG,
+                current_time( "H:i:s" ),
+                sanitize_key( $state ?: "info" )
+            )
+        );
+
+        return self::generation_log( $post_id );
     }
 
+    /**
+     * Entries in the shape the editor log panel reads. Posts generated before
+     * 1.6.1 keep their log in post meta, which is shown until a new run.
+     */
     private static function generation_log( int $post_id ): array {
+        $entries = self::generation_logger( $post_id )->all();
+        if ( [] !== $entries ) {
+            return array_map(
+                static fn( ActivityLogEntry $entry ): array => [
+                    "time"    => (string) $entry->timestamp,
+                    "state"   => $entry->level,
+                    "message" => $entry->message,
+                    "context" => $entry->context,
+                ],
+                $entries
+            );
+        }
         $raw = get_post_meta( $post_id, "_hexa_tts_activity_log", true );
         if ( is_array( $raw ) ) {
             return $raw;

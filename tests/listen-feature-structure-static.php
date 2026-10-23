@@ -38,7 +38,7 @@ $checks = [
     'Stored settings option name is unchanged.' => str_contains( $plugin, 'const OPTION = "hexa_tts_settings";' ),
     'The switch defaults on and is saved from the Features tab.' => str_contains( $settings, '"article_audio_enabled" => 1,' )
         && str_contains( $settings, '$clean["article_audio_enabled"] = array_key_exists( "article_audio_enabled", $incoming )' )
-        && str_contains( $features, 'name="hexa_tts[article_audio_enabled]"' ) && str_contains( $features, '<h2>Listen to this article</h2>' ),
+        && str_contains( $features, 'CoreUi::toggle( "hexa_tts[article_audio_enabled]"' ) && str_contains( $features, '"title" => "Listen to this article"' ),
     'Off: no automatic player, assets or content filters.' => (bool) preg_match( '/add_shortcode\( "smp_tts_player".*?if \( ! Plugin::article_audio_enabled\(\) \) \{\s+return;\s+\}\s+add_action\( "wp_enqueue_scripts"/s', $player ),
     'Off: shortcodes print nothing.' => (bool) preg_match( '/function render_player_shortcode\( \$atts = \[\] \) \{\s+if \( ! self::article_audio_enabled\(\) \) \{\s+return "";/', $player_code ),
     'Off: no audio schema.' => str_contains( $schema, 'if ( ! Plugin::article_audio_enabled() ) {' ) && str_contains( $schema_code, '! self::article_audio_enabled()' ),
@@ -50,6 +50,15 @@ $checks = [
         && str_contains( $player_code, "if ( ! is_admin() ) {\n            self::enqueue_player_assets();" ),
     'Update Center tab is registered.' => str_contains( $read( 'src/Admin/SettingsNavigation.php' ), '"update-center" => "Update Center"' )
         && str_contains( $read( 'src/Modules/UpdateCenterModule.php' ), 'UpdaterPanelRenderer' ) && str_contains( $read( 'src/Modules/UpdateCenterModule.php' ), 'CorePackagePanelRenderer' ),
+    'AJAX actions go through Hexa WP Core with capability and nonce checks.' => str_contains( $plugin, 'AjaxActionRegistry::create(' )
+        && ! preg_match( '/check_ajax_referer|add_action\( "wp_ajax_/', $read( 'src/Modules/AdminModule.php' ) . $read( 'src/Modules/DiagnosticsModule.php' ) . $read( 'src/Modules/PostEditorModule.php' ) . $generation . $settings . $features . $read( 'src/Concerns/RunsDiagnostics.php' ) . $read( 'src/Concerns/RendersPostEditor.php' ) ),
+    'The site key lives in Hexa WP Core CredentialVault.' => str_contains( $settings, 'new CredentialStore()' ) && str_contains( $plugin, 'const VAULT_MARKER' ) && ! str_contains( $settings, 'openssl_encrypt' ),
+    'The generation log uses Hexa WP Core ActivityLogger.' => str_contains( $generation, 'new ActivityLogger(' ) && ! str_contains( $generation, 'update_post_meta( $post_id, "_hexa_tts_activity_log"' ),
+    'The Shortcodes tab uses Hexa WP Core ShortcodeBreakdown.' => str_contains( $features, 'ShortcodeBreakdown::render(' ),
+    'Features cards and toggles come from Hexa WP Core.' => str_contains( $features, 'CoreUi::card(' ) && str_contains( $features, 'CoreUi::toggle( "hexa_tts[article_audio_enabled]"' ) && ! str_contains( $features, 'hexa-tts-switch' ),
+    'Settings fields are one column.' => ! preg_match( '/\.(hexa-tts-(grid-4|grid-2|profile-grid|provider-fields|editor-grid|feature-grid|placement-map|template-grid)|httf-grid)[^{}]*\{[^}]*grid-template-columns:\s*repeat\([2-5]/', $read( 'assets/admin.css' ) . $read( 'src/Concerns/LoadsAdminAssets.php' ) . $features ),
+    'Root Core guide matches the bundled Core.' => $read( 'HEXA_PLUGIN_CORE_LIBRARY.md' ) === $read( 'lib/hexa-wordpress-plugin-core/HEXA_PLUGIN_CORE_LIBRARY.md' ),
+    'README follows the feature-base shape.' => (bool) preg_match( '/^# [^\n]+\n\n> Feature base for HWS Skills\./', $read( 'README.md' ) ) && str_contains( $read( 'README.md' ), '**Depends on:**' ) && str_contains( $read( 'README.md' ), "\n## Changelog\n" ),
     'Repository docs exist.' => is_readable( $root . '/AGENTS.md' ) && is_readable( $root . '/docs/asset-loading.md' ),
 ];
 

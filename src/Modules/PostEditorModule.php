@@ -22,9 +22,13 @@ final class PostEditorModule {
         }
         add_action( "add_meta_boxes", [ Plugin::class, "register_post_metabox" ] );
         add_action( "save_post", [ Plugin::class, "save_embedded_acf_audio" ], 20, 2 );
-        add_action( "wp_ajax_" . PluginMetadata::hook( "extract_post_content" ), [ Plugin::class, "ajax_extract_post_content" ] );
-        add_action( "wp_ajax_" . PluginMetadata::hook( "generate_audio" ), [ Plugin::class, "ajax_generate_audio" ] );
-        add_action( "wp_ajax_" . PluginMetadata::hook( "generation_status" ), [ Plugin::class, "ajax_generation_status" ] );
-        add_action( "wp_ajax_" . PluginMetadata::hook( "save_manual_audio" ), [ Plugin::class, "ajax_save_manual_audio" ] );
+        Plugin::register_ajax(
+            [
+                "extract_post_content" => [ "callback" => [ Plugin::class, "ajax_extract_post_content" ], "capability" => "edit_posts" ],
+                "generate_audio"       => [ "callback" => [ Plugin::class, "ajax_generate_audio" ], "capability" => "edit_posts" ],
+                "generation_status"    => [ "callback" => [ Plugin::class, "ajax_generation_status" ], "capability" => "edit_posts" ],
+                "save_manual_audio"    => [ "callback" => [ Plugin::class, "ajax_save_manual_audio" ], "capability" => "edit_posts" ],
+            ]
+        );
     }
 }

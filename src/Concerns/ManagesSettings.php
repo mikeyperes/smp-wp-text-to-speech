@@ -2,24 +2,9 @@
 
 namespace smp_text_to_speech\Concerns;
 
-use Hexa\PluginCore\CoreBootstrap\CoreBootstrap;
-use Hexa\PluginCore\CorePackageUpdates\CorePackageAjaxController;
-use Hexa\PluginCore\CorePackageUpdates\CorePackageStatus;
-use Hexa\PluginCore\CoreRuntime\PluginContext;
-use Hexa\PluginCore\PluginUpdates\GitHubPluginUpdater;
-use Hexa\PluginCore\PluginUpdates\PluginUpdateStatus;
-use Hexa\PluginCore\PluginUpdates\UpdaterAjaxController;
-use Hexa\PluginCore\WpAdminTabs\CoreTabConfig;
-use Hexa\PluginCore\WpAdminTabs\CoreTabModule;
-use Hexa\PluginCore\WpAdminTabs\HostTabsRenderer;
-use Hexa\PluginCore\WpAdminTabs\TabDefinition;
-use Hexa\PluginCore\WpAdminTabs\TabRegistry;
-use Smp\TextToSpeech\Admin\SettingsNavigation;
 use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
-use Smp\TextToSpeech\Support\AudioAttachmentGuard;
-use Smp\TextToSpeech\Support\PostVisibility;
-use Smp\TextToSpeech\Support\Text;
-use WP_Error;
+
+use Hexa\PluginCore\CredentialVault\CredentialStore;
 
 if ( ! defined( "ABSPATH" ) ) {
     exit;
@@ -184,9 +169,27 @@ trait ManagesSettings {
         return "" !== $key ? $key : $value;
     }
 
+    /**
+     * The working site key. It lives in Hexa WP Core's CredentialVault; the
+     * settings option holds only VAULT_MARKER, which Publish reads as
+     * "configured". A key saved by 1.6.0 or earlier (an "enc:" value in the
+     * option) is moved into the vault the first time it is read.
+     */
     private static function api_key() {
         $settings = self::get_settings();
-        return self::decrypt_secret( $settings["api_key"] ?? "" );
+        $stored = (string) ( $settings["api_key"] ?? "" );
+        if ( self::VAULT_MARKER === $stored ) {
+            return (string) self::credential_store()->get( \smp_text_to_speech\PluginMetadata::SLUG, "api_key" );
+        }
+        if ( "" === $stored ) {
+            return "";
+        }
+        $plain = self::decrypt_secret( $stored );
+        if ( "" !== $plain && self::VAULT_MARKER === self::encrypt_secret( $plain ) ) {
+            $settings["api_key"] = self::VAULT_MARKER;
+            update_option( self::OPTION, $settings, false );
+        }
+        return $plain;
     }
 
     private static function sanitize_secret( $value ) {
@@ -194,23 +197,35 @@ trait ManagesSettings {
         return preg_replace( "/[\\x00-\\x1F\\x7F]/", "", $value );
     }
 
+    /** Key material for reading keys saved by 1.6.0 and earlier only. */
     private static function secret_key() {
         $material = ( defined( "AUTH_KEY" ) ? AUTH_KEY : "" ) . ( defined( "SECURE_AUTH_KEY" ) ? SECURE_AUTH_KEY : "" ) . ( defined( "LOGGED_IN_KEY" ) ? LOGGED_IN_KEY : "" );
         return hash( "sha256", "" === $material ? wp_salt( "auth" ) : $material, true );
     }
 
-    private static function encrypt_secret( $value ) {
-        if ( "" === $value || ! function_exists( "openssl_encrypt" ) ) {
-            return $value;
-        }
-        $iv = function_exists( "random_bytes" ) ? random_bytes( 16 ) : substr( hash( "sha256", wp_rand() . microtime( true ), true ), 0, 16 );
-        $cipher = openssl_encrypt( $value, "AES-256-CBC", self::secret_key(), OPENSSL_RAW_DATA, $iv );
-        return false === $cipher ? $value : "enc:" . base64_encode( $iv . $cipher );
+    private static function credential_store(): CredentialStore {
+        return new CredentialStore();
     }
 
+    /**
+     * Stores a site key in Hexa WP Core's CredentialVault and returns the
+     * non-secret marker to keep in settings. Publish calls this method by name
+     * over SSH when it pushes a key, so its name and return contract stay.
+     */
+    private static function encrypt_secret( $value ) {
+        $value = self::sanitize_secret( $value );
+        if ( "" === $value ) {
+            return "";
+        }
+        $store = self::credential_store();
+        $store->store( \smp_text_to_speech\PluginMetadata::SLUG, "api_key", $value );
+        return $value === $store->get( \smp_text_to_speech\PluginMetadata::SLUG, "api_key" ) ? self::VAULT_MARKER : "";
+    }
+
+    /** Reads a key saved by 1.6.0 and earlier ("enc:" AES value). */
     private static function decrypt_secret( $value ) {
         if ( ! is_string( $value ) || 0 !== strpos( $value, "enc:" ) || ! function_exists( "openssl_decrypt" ) ) {
-            return (string) $value;
+            return self::VAULT_MARKER === $value ? "" : (string) $value;
         }
         $raw = base64_decode( substr( $value, 4 ), true );
         if ( false === $raw || strlen( $raw ) < 17 ) {
@@ -221,10 +236,6 @@ trait ManagesSettings {
     }
 
     private static function mask_secret( $value ) {
-        $value = (string) $value;
-        if ( "" === $value ) {
-            return "";
-        }
-        return str_repeat( "*", min( 8, max( 4, strlen( $value ) - 4 ) ) ) . substr( $value, -4 );
+        return self::credential_store()->mask( (string) $value );
     }
 }

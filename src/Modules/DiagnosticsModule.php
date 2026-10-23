@@ -12,10 +12,16 @@ if ( ! defined( "ABSPATH" ) ) {
 /** API key, credit and health checks on the settings page and post editor. */
 final class DiagnosticsModule {
     public function register(): void {
-        add_action( "wp_ajax_" . PluginMetadata::hook( "validate_central_api" ), [ Plugin::class, "ajax_validate_central_api" ] );
-        add_action( "wp_ajax_" . PluginMetadata::hook( "validate_provider" ), [ Plugin::class, "ajax_validate_central_api" ] );
-        add_action( "wp_ajax_" . PluginMetadata::hook( "check_credits" ), [ Plugin::class, "ajax_check_credits" ] );
-        add_action( "wp_ajax_" . PluginMetadata::hook( "check_health" ), [ Plugin::class, "ajax_check_health" ] );
-        add_action( "wp_ajax_" . PluginMetadata::hook( "fetch_source_api_key" ), [ Plugin::class, "ajax_fetch_source_api_key" ] );
+        // Credit and health checks also run from the post editor, so they need
+        // edit_posts; each handler then checks the exact post or settings page.
+        Plugin::register_ajax(
+            [
+                "validate_central_api" => [ "callback" => [ Plugin::class, "ajax_validate_central_api" ], "capability" => PluginMetadata::CAPABILITY ],
+                "validate_provider"    => [ "callback" => [ Plugin::class, "ajax_validate_central_api" ], "capability" => PluginMetadata::CAPABILITY ],
+                "fetch_source_api_key" => [ "callback" => [ Plugin::class, "ajax_fetch_source_api_key" ], "capability" => PluginMetadata::CAPABILITY ],
+                "check_credits"        => [ "callback" => [ Plugin::class, "ajax_check_credits" ], "capability" => "edit_posts" ],
+                "check_health"         => [ "callback" => [ Plugin::class, "ajax_check_health" ], "capability" => "edit_posts" ],
+            ]
+        );
     }
 }

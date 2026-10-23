@@ -2,6 +2,7 @@
 
 namespace smp_text_to_speech;
 
+use Hexa\PluginCore\WpAdminAjax\AjaxActionRegistry;
 use smp_text_to_speech\Concerns\BootsPlugin;
 use smp_text_to_speech\Concerns\BuildsAudioSchema;
 use smp_text_to_speech\Concerns\GeneratesAudio;
@@ -54,6 +55,8 @@ final class Plugin {
     const GITHUB_REPO = PluginMetadata::REPO;
     const GITHUB_BRANCH = PluginMetadata::BRANCH;
     const REST_NS = "smp-tts/v1";
+    // Kept in settings["api_key"] once the key is in Hexa WP Core's CredentialVault.
+    const VAULT_MARKER = "vault:hexa-credential-store";
 
     public static function init(): void {
         self::boot_hexa_core();
@@ -74,6 +77,23 @@ final class Plugin {
             new SchemaModule(),
             new PostEditorModule(),
         ];
+    }
+
+    /**
+     * Registers AJAX actions through Hexa WP Core's AjaxActionRegistry, which
+     * prefixes the action name and checks the capability and nonce before the
+     * handler runs. Handlers keep only their per-post checks.
+     *
+     * @param array<string,array<string,mixed>> $actions
+     */
+    public static function register_ajax( array $actions ): void {
+        AjaxActionRegistry::create(
+            [
+                "action_prefix" => PluginMetadata::PREFIX,
+                "nonce_action"  => self::NONCE_ACTION,
+                "nonce_field"   => "nonce",
+            ]
+        )->register( $actions );
     }
 
     /**

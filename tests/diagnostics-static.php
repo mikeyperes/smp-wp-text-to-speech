@@ -14,8 +14,8 @@ if ( ! is_string( $plugin ) || ! is_string( $script ) || ! is_string( $style ) )
 }
 
 $required = [
-    'PluginMetadata::hook( "check_credits" )',
-    'PluginMetadata::hook( "check_health" )',
+    '"check_credits"        => [ "callback" => [ Plugin::class, "ajax_check_credits" ]',
+    '"check_health"         => [ "callback" => [ Plugin::class, "ajax_check_health" ]',
     'self::api_request( "/credits", [], 120 )',
     'self::api_request( "/health", [], 120 )',
     'private static function local_health_checks',

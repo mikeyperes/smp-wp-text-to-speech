@@ -2,24 +2,16 @@
 
 namespace smp_text_to_speech\Concerns;
 
-use Hexa\PluginCore\CoreBootstrap\CoreBootstrap;
-use Hexa\PluginCore\CorePackageUpdates\CorePackageAjaxController;
 use Hexa\PluginCore\CorePackageUpdates\CorePackageStatus;
-use Hexa\PluginCore\CoreRuntime\PluginContext;
-use Hexa\PluginCore\PluginUpdates\GitHubPluginUpdater;
 use Hexa\PluginCore\PluginUpdates\PluginUpdateStatus;
-use Hexa\PluginCore\PluginUpdates\UpdaterAjaxController;
-use Hexa\PluginCore\WpAdminTabs\CoreTabConfig;
-use Hexa\PluginCore\WpAdminTabs\CoreTabModule;
 use Hexa\PluginCore\WpAdminTabs\HostTabsRenderer;
 use Hexa\PluginCore\WpAdminTabs\TabDefinition;
 use Hexa\PluginCore\WpAdminTabs\TabRegistry;
 use Smp\TextToSpeech\Admin\SettingsNavigation;
 use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
-use Smp\TextToSpeech\Support\AudioAttachmentGuard;
-use Smp\TextToSpeech\Support\PostVisibility;
 use Smp\TextToSpeech\Support\Text;
-use WP_Error;
+
+use Hexa\PluginCore\WpAdminComponents\CoreUi;
 
 if ( ! defined( "ABSPATH" ) ) {
     exit;
@@ -142,10 +134,6 @@ trait RendersSettingsPage {
     }
 
     public static function ajax_load_tab() {
-        if ( ! current_user_can( "manage_options" ) ) {
-            wp_send_json_error( [ "message" => "Unauthorized." ], 403 );
-        }
-        check_ajax_referer( self::NONCE_ACTION, "nonce" );
         $tab = isset( $_POST["tab"] ) ? sanitize_key( wp_unslash( $_POST["tab"] ) ) : "overview";
         wp_send_json_success( self::tab_fragment( $tab ) );
     }
@@ -316,15 +304,10 @@ trait RendersSettingsPage {
         ?>
         <style>
         .httf{max-width:1000px}
-        .httf-card{border:1px solid #e3e5e9;border-radius:14px;background:#fff;box-shadow:0 1px 3px rgba(16,24,40,.05);overflow:hidden}
-        .httf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap;padding:18px 22px;background:#f8f9fb;border-bottom:1px solid #e7e9ee}
-        .httf-head h2{margin:0 0 4px;font-size:18px;color:#101828}
-        .httf-head p{margin:0;font-size:12.5px;color:#667085;max-width:64ch;line-height:1.5}
-        .httf-head code{background:#eef0f3;border-radius:4px;padding:1px 6px;font-size:12px}
         .httf-section{padding:18px 22px;border-top:1px solid #f0f1f3}
         .httf-section h3{margin:0 0 3px;font-size:13px;font-weight:700;color:#1d2327;text-transform:none}
         .httf-hint{margin:0 0 14px;font-size:12px;color:#667085;line-height:1.5;max-width:78ch}
-        .httf-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+        .httf-grid{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}
         .httf-field{display:grid !important;gap:6px;align-content:start;margin:0;font-weight:400}
         .httf-field>span{font-size:12px;font-weight:600;color:#344054}
         .httf-field input[type=text],.httf-field select{width:100%;box-sizing:border-box;height:36px;min-height:36px;max-width:100%;padding:0 11px;border:1px solid #cfd3da;border-radius:8px;font-size:13px;background:#fff;margin:0}
@@ -343,7 +326,7 @@ trait RendersSettingsPage {
         .httf .hexa-tts-shortcode-card{margin:0}
         .httf .hexa-tts-selected-pill,.httf .hexa-tts-template-live-choice em{display:none}
         .httf .hexa-tts-choice-card.is-selected .hexa-tts-selected-pill,.httf .hexa-tts-template-live-row.is-selected .hexa-tts-template-live-choice em{display:inline-flex}
-        @media(max-width:980px){.httf-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:980px){.httf-grid{grid-template-columns:1fr}}
         @media(max-width:600px){.httf-grid{grid-template-columns:1fr}}
         </style>
         <form method="post" action="<?php echo esc_url( admin_url( "admin-post.php" ) ); ?>" class="hexa-tts-settings-form hexa-tts-features-form hexa-tts-display-live-form httf">
@@ -351,37 +334,23 @@ trait RendersSettingsPage {
             <input type="hidden" name="action" value="smp_wp_text_to_speech_save_settings">
             <input type="hidden" name="hexa_tts_tab" value="features">
 
-            <?php $audio_on = self::article_audio_enabled(); ?>
-            <div class="httf-card httf-listen" style="margin-bottom:18px">
-                <header class="httf-head">
-                    <div>
-                        <h2>Listen to this article</h2>
-                        <p>The whole article audio feature. When it is off, nothing from it reaches the site: no player on articles, no player styles or scripts, no audio in the article schema, no audio box or <code><?php echo esc_html( $acf_field ); ?></code> field in the post editor, and no new audio generation. Saved audio files stay in the Media Library and come back when it is turned on again.</p>
-                    </div>
-                    <label class="hexa-tts-switch">
-                        <input type="checkbox" name="hexa_tts[article_audio_enabled]" value="1" <?php checked( $audio_on ); ?>>
-                        <span></span>
-                        <strong><?php echo $audio_on ? esc_html__( "Enabled", "smp-wp-text-to-speech" ) : esc_html__( "Disabled", "smp-wp-text-to-speech" ); ?></strong>
-                    </label>
-                </header>
+            <?php
+            $audio_on = self::article_audio_enabled();
+            ob_start();
+            ?>
+                <p class="httf-hint">The whole article audio feature. When it is off, nothing from it reaches the site: no player on articles, no player styles or scripts, no audio in the article schema, no audio box or <code><?php echo esc_html( $acf_field ); ?></code> field in the post editor, and no new audio generation. Saved audio files stay in the Media Library and come back when it is turned on again.</p>
+                <?php echo CoreUi::toggle( "hexa_tts[article_audio_enabled]", $audio_on, $audio_on ? "Enabled" : "Disabled", [ "id" => "hexa-tts-article-audio-enabled" ] ); ?>
                 <?php if ( ! $audio_on ) : ?>
-                    <section class="httf-section"><p class="httf-hint" style="margin:0">Listen to this article is off. The player settings below are kept and apply again when it is turned on.</p></section>
+                    <p class="httf-hint">Listen to this article is off. The player settings below are kept and apply again when it is turned on.</p>
                 <?php endif; ?>
                 <p class="submit httf-save"><button type="submit" class="button button-primary">Save</button></p>
-            </div>
+            <?php
+            echo CoreUi::card( [ "title" => "Listen to this article", "body_html" => (string) ob_get_clean() ] );
 
-            <div class="httf-card">
-                <header class="httf-head">
-                    <div>
-                        <h2>Article audio player</h2>
-                        <p>Generated or uploaded audio is stored in the Media Library and synced to <code><?php echo esc_html( $acf_field ); ?></code>. Configure the player, choose where it renders, pick a design, and copy the shortcode.</p>
-                    </div>
-                    <label class="hexa-tts-switch">
-                        <input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[auto_insert_player]" value="1" <?php checked( $enabled ); ?>>
-                        <span></span>
-                        <strong><?php echo $enabled ? esc_html__( "Enabled", "smp-wp-text-to-speech" ) : esc_html__( "Disabled", "smp-wp-text-to-speech" ); ?></strong>
-                    </label>
-                </header>
+            ob_start();
+            ?>
+                <p class="httf-hint">Generated or uploaded audio is stored in the Media Library and synced to <code><?php echo esc_html( $acf_field ); ?></code>. Configure the player, choose where it renders, pick a design, and copy the shortcode.</p>
+                <?php echo CoreUi::toggle( "hexa_tts[auto_insert_player]", $enabled, "Place the player automatically", [ "id" => "hexa-tts-auto-insert-player", "input_class" => "hexa-tts-live-control" ] ); ?>
 
                 <section class="httf-section">
                     <h3>Core controls</h3>
@@ -393,8 +362,8 @@ trait RendersSettingsPage {
                     <div class="httf-color"><?php echo self::primary_color_control_html( $settings, "hexa-tts-features-primary-color" ); ?></div>
                     <?php echo self::elementor_palette_detector_html( "hexa-tts-features-elementor-palette" ); ?>
                     <div class="httf-checks">
-                        <label class="httf-check"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[include_title]" value="1" <?php checked( ! empty( $settings["include_title"] ) ); ?>><span>Include post title in narration</span></label>
-                        <label class="httf-check"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[enable_player_controls]" value="1" <?php checked( ! empty( $settings["enable_player_controls"] ) ); ?>><span>Show speed, skip, transcript, and resume controls</span></label>
+                        <?php echo CoreUi::toggle( "hexa_tts[include_title]", ! empty( $settings["include_title"] ), "Include post title in narration", [ "id" => "hexa-tts-include-title", "input_class" => "hexa-tts-live-control" ] ); ?>
+                        <?php echo CoreUi::toggle( "hexa_tts[enable_player_controls]", ! empty( $settings["enable_player_controls"] ), "Show speed, skip, transcript, and resume controls", [ "id" => "hexa-tts-player-controls", "input_class" => "hexa-tts-live-control" ] ); ?>
                     </div>
                 </section>
 
@@ -422,7 +391,9 @@ trait RendersSettingsPage {
                 </section>
 
                 <p class="submit httf-save"><button type="submit" class="button button-primary button-hero">Save feature controls</button><span class="hexa-tts-live-save-state" aria-live="polite"></span></p>
-            </div>
+            <?php
+            echo CoreUi::card( [ "title" => "Article audio player", "body_html" => (string) ob_get_clean() ] );
+            ?>
         </form>
         <?php
     }
@@ -465,22 +436,31 @@ trait RendersSettingsPage {
 
     private static function render_shortcodes_tab(): void {
         $settings = self::get_settings();
-        $shortcode = '[smp_tts_player post_id="560368" label="' . sanitize_text_field( $settings["player_label"] ) . '" template="' . sanitize_key( $settings["player_template"] ) . '" size="' . sanitize_key( $settings["player_size"] ) . '" enhanced_controls="' . ( ! empty( $settings["enable_player_controls"] ) ? "1" : "0" ) . '" preload="metadata"]';
-        ?>
-        <section class="hexa-tts-panel">
-            <div class="hexa-tts-panel-head"><div><h2>Shortcodes</h2><p>Manual placement remains available when automatic placement is set to Manual shortcode.</p></div></div>
-            <div class="hexa-tts-shortcode-card"><code><?php echo esc_html( $shortcode ); ?></code><button type="button" class="button hexa-tts-copy" data-copy-text="<?php echo esc_attr( $shortcode ); ?>">Copy shortcode</button></div>
-            <table class="widefat striped hexa-tts-shortcode-table"><tbody>
-                <tr><th>post_id</th><td>Optional. Defaults to the current post when inside the loop.</td></tr>
-                <tr><th>label</th><td>Overrides the configured player label.</td></tr>
-                <tr><th>template</th><td><?php echo esc_html( implode( ", ", array_keys( self::template_options() ) ) ); ?></td></tr>
-                <tr><th>size</th><td><?php echo esc_html( implode( ", ", array_keys( self::size_options() ) ) ); ?></td></tr>
-                <tr><th>enhanced_controls</th><td>Use <code>0</code> to disable speed buttons, skip buttons, transcript toggle, and resume storage for this shortcode/template placement. Alias: <code>controls</code>.</td></tr>
-                <tr><th>show_meta</th><td>Legacy flag accepted for old shortcodes. Provider/date text is no longer displayed in the player templates.</td></tr>
-                <tr><th>preload</th><td><code>none</code>, <code>metadata</code>, or <code>auto</code>.</td></tr>
-            </tbody></table>
-        </section>
-        <?php
+        $templates = array_keys( self::template_options() );
+        $sizes = array_keys( self::size_options() );
+        echo '<section class="hexa-tts-panel">';
+        echo \Hexa\PluginCore\ShortcodeRegistry\ShortcodeBreakdown::render( [
+            "tag"         => "hexa_tts_player",
+            "title"       => "Listen to this article player",
+            "description" => "Shows the article's audio player. Place it in the single-post template with a Shortcode widget, or anywhere else with post_id. While Listen to this article is off it prints nothing.",
+            "aliases"     => [ "smp_tts_player" ],
+            "attributes"  => [
+                "post_id"           => [ "default" => "current post", "description" => "The post whose audio plays." ],
+                "label"             => [ "default" => (string) $settings["player_label"], "description" => "The player's title." ],
+                "template"          => [ "default" => (string) $settings["player_template"], "description" => "Player design. unstyled and unstyled_controls print the same markup with no plugin styling.", "options" => $templates ],
+                "size"              => [ "default" => (string) $settings["player_size"], "description" => "Player size.", "options" => $sizes ],
+                "enhanced_controls" => [ "default" => ! empty( $settings["enable_player_controls"] ) ? "1" : "0", "description" => "0 turns off speed, skip, transcript and resume. Alias: controls.", "options" => [ "1", "0" ] ],
+                "preload"           => [ "default" => "metadata", "description" => "How much audio the browser loads before play.", "options" => [ "none", "metadata", "auto" ] ],
+                "class"             => [ "default" => "", "description" => "Extra CSS class on the player." ],
+                "color"             => [ "default" => (string) $settings["primary_color"], "description" => "Accent colour for styled templates." ],
+                "show_meta"         => [ "default" => "", "description" => "Accepted for old shortcodes; no longer shown." ],
+            ],
+            "examples"    => [
+                [ "label" => "Another post", "shortcode" => '[hexa_tts_player post_id="123"]' ],
+                [ "label" => "No plugin styling", "shortcode" => '[hexa_tts_player template="unstyled"]' ],
+            ],
+        ] );
+        echo '</section>';
     }
 
     private static function render_schema_tab(): void {
@@ -746,10 +726,6 @@ trait RendersSettingsPage {
     }
 
     public static function ajax_preview_display() {
-        if ( ! current_user_can( "manage_options" ) ) {
-            wp_send_json_error( [ "message" => "Unauthorized." ], 403 );
-        }
-        check_ajax_referer( self::NONCE_ACTION, "nonce" );
         $incoming = isset( $_POST["hexa_tts"] ) && is_array( $_POST["hexa_tts"] ) ? wp_unslash( $_POST["hexa_tts"] ) : [];
         $settings = self::sanitize_display_settings( $incoming, self::get_settings(), true );
         wp_send_json_success( [

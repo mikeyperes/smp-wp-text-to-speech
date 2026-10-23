@@ -16,8 +16,12 @@ final class AdminModule {
         add_action( "admin_enqueue_scripts", [ Plugin::class, "enqueue_admin_assets" ] );
         add_action( "admin_post_" . PluginMetadata::hook( "save_settings" ), [ Plugin::class, "handle_save_settings" ] );
         add_action( "admin_post_" . PluginMetadata::hook( "import_elementor_color" ), [ Plugin::class, "handle_import_elementor_color" ] );
-        add_action( "wp_ajax_" . PluginMetadata::hook( "load_tab" ), [ Plugin::class, "ajax_load_tab" ] );
-        add_action( "wp_ajax_" . PluginMetadata::hook( "preview_display" ), [ Plugin::class, "ajax_preview_display" ] );
+        Plugin::register_ajax(
+            [
+                "load_tab"        => [ "callback" => [ Plugin::class, "ajax_load_tab" ], "capability" => PluginMetadata::CAPABILITY ],
+                "preview_display" => [ "callback" => [ Plugin::class, "ajax_preview_display" ], "capability" => PluginMetadata::CAPABILITY ],
+            ]
+        );
         add_filter( "plugin_action_links_" . plugin_basename( PluginMetadata::main_file() ), [ Plugin::class, "plugin_action_links" ] );
     }
 }

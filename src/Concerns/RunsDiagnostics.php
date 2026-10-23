@@ -2,22 +2,7 @@
 
 namespace smp_text_to_speech\Concerns;
 
-use Hexa\PluginCore\CoreBootstrap\CoreBootstrap;
-use Hexa\PluginCore\CorePackageUpdates\CorePackageAjaxController;
-use Hexa\PluginCore\CorePackageUpdates\CorePackageStatus;
-use Hexa\PluginCore\CoreRuntime\PluginContext;
-use Hexa\PluginCore\PluginUpdates\GitHubPluginUpdater;
-use Hexa\PluginCore\PluginUpdates\PluginUpdateStatus;
-use Hexa\PluginCore\PluginUpdates\UpdaterAjaxController;
-use Hexa\PluginCore\WpAdminTabs\CoreTabConfig;
-use Hexa\PluginCore\WpAdminTabs\CoreTabModule;
-use Hexa\PluginCore\WpAdminTabs\HostTabsRenderer;
-use Hexa\PluginCore\WpAdminTabs\TabDefinition;
-use Hexa\PluginCore\WpAdminTabs\TabRegistry;
-use Smp\TextToSpeech\Admin\SettingsNavigation;
 use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
-use Smp\TextToSpeech\Support\AudioAttachmentGuard;
-use Smp\TextToSpeech\Support\PostVisibility;
 use Smp\TextToSpeech\Support\Text;
 use WP_Error;
 
@@ -27,10 +12,6 @@ if ( ! defined( "ABSPATH" ) ) {
 
 trait RunsDiagnostics {
     public static function ajax_validate_central_api() {
-        if ( ! current_user_can( "manage_options" ) ) {
-            wp_send_json_error( [ "message" => "You do not have permission to validate the TTS API." ], 403 );
-        }
-        check_ajax_referer( self::NONCE_ACTION, "nonce" );
         $result = self::api_request( "/status", [] );
         if ( is_wp_error( $result ) ) {
             wp_send_json_error( [ "message" => $result->get_error_message() ] );
@@ -42,7 +23,6 @@ trait RunsDiagnostics {
     }
 
     public static function ajax_check_credits() {
-        check_ajax_referer( self::NONCE_ACTION, "nonce" );
         $post_id = absint( $_POST["post_id"] ?? 0 );
         if ( ! self::can_run_diagnostics( $post_id ) ) {
             wp_send_json_error( [ "message" => "You do not have permission to check text-to-speech credits." ], 403 );
@@ -57,7 +37,6 @@ trait RunsDiagnostics {
     }
 
     public static function ajax_check_health() {
-        check_ajax_referer( self::NONCE_ACTION, "nonce" );
         $post_id = absint( $_POST["post_id"] ?? 0 );
         if ( ! self::can_run_diagnostics( $post_id ) ) {
             wp_send_json_error( [ "message" => "You do not have permission to run text-to-speech health checks." ], 403 );
@@ -142,11 +121,6 @@ trait RunsDiagnostics {
     }
 
     public static function ajax_fetch_source_api_key() {
-        if ( ! current_user_can( "manage_options" ) ) {
-            wp_send_json_error( [ "message" => "You do not have permission to fetch the TTS API key." ], 403 );
-        }
-        check_ajax_referer( self::NONCE_ACTION, "nonce" );
-
         try {
             $challenge = bin2hex( random_bytes( 32 ) );
         } catch ( \Throwable $exception ) {

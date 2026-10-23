@@ -2,24 +2,7 @@
 
 namespace smp_text_to_speech\Concerns;
 
-use Hexa\PluginCore\CoreBootstrap\CoreBootstrap;
-use Hexa\PluginCore\CorePackageUpdates\CorePackageAjaxController;
-use Hexa\PluginCore\CorePackageUpdates\CorePackageStatus;
-use Hexa\PluginCore\CoreRuntime\PluginContext;
-use Hexa\PluginCore\PluginUpdates\GitHubPluginUpdater;
-use Hexa\PluginCore\PluginUpdates\PluginUpdateStatus;
-use Hexa\PluginCore\PluginUpdates\UpdaterAjaxController;
-use Hexa\PluginCore\WpAdminTabs\CoreTabConfig;
-use Hexa\PluginCore\WpAdminTabs\CoreTabModule;
-use Hexa\PluginCore\WpAdminTabs\HostTabsRenderer;
-use Hexa\PluginCore\WpAdminTabs\TabDefinition;
-use Hexa\PluginCore\WpAdminTabs\TabRegistry;
-use Smp\TextToSpeech\Admin\SettingsNavigation;
 use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
-use Smp\TextToSpeech\Support\AudioAttachmentGuard;
-use Smp\TextToSpeech\Support\PostVisibility;
-use Smp\TextToSpeech\Support\Text;
-use WP_Error;
 
 if ( ! defined( "ABSPATH" ) ) {
     exit;

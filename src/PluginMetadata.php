@@ -19,7 +19,7 @@ final class PluginMetadata {
     public const MAIN_FILE = "smp-wp-text-to-speech.php";
     public const REPO = "mikeyperes/smp-wp-text-to-speech";
     public const BRANCH = "main";
-    public const VERSION = "1.6.0";
+    public const VERSION = "1.6.1";
 
     public static function main_file(): string {
         return self::dir() . "/" . self::MAIN_FILE;
