@@ -2,6 +2,8 @@
 
 Release notes moved from the README (3.31.1). Newest first; each Core release adds its line here.
 
+Version 3.34.2 makes the Core fleet sync check the site after copying: it loads the home page once and restores every copied Core package when the site returns a server error or WordPress's critical-error page (`hexa_core_sync_site_broken`). An older host plugin that still used code a newer Core removed (Base Tools 13.13.2 with Core 3.34.1, missing `DirectorySearch`) took americasgoneviral.com down with HTTP 500 on 2026-10-23.
+
 Version 3.34.1 draws `ScopedCssOverride`'s HTML structure and CSS examples and `SchemaScanRenderer`'s "View full JSON" in `CodeDisplay`.
 
 Version 3.34.0 shows the schema graph JSON (`SchemaTools\SchemaDashboardRenderer`) and each snippet's readme (`SnippetRegistry\SnippetsTableRenderer`) in `CodeDisplay` instead of plain grey blocks.

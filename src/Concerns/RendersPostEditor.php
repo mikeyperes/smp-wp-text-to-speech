@@ -4,6 +4,9 @@ namespace smp_text_to_speech\Concerns;
 
 use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
 
+use Hexa\PluginCore\WpAdminComponents\CoreUi;
+use Hexa\PluginCore\WpAdminComponents\DynamicButton;
+
 if ( ! defined( "ABSPATH" ) ) {
     exit;
 }
@@ -82,7 +85,7 @@ trait RendersPostEditor {
                     <p>This uses the post title and body automatically. No copy, paste, or extra fields are required for the normal workflow.</p>
                     <?php if ( $provider_label ) : ?><p class="hexa-tts-muted">Default voice: <?php echo esc_html( $provider_label ); ?></p><?php endif; ?>
                 </div>
-                <button type="button" class="hpc-button hexa-tts-generate-post">Generate audio from article</button>
+                <?php echo DynamicButton::render( [ "label" => "Generate audio from article", "working_label" => "Generating audio...", "class" => "hpc-button hexa-tts-generate-post" ] ); ?>
             </div>
 
             <div class="hexa-tts-acf-card">
@@ -118,19 +121,19 @@ trait RendersPostEditor {
             <details class="hexa-tts-advanced-box">
                 <summary>Optional: preview or customize narration text</summary>
                 <p>Leave this closed for the normal one-click flow. Open it only when the narration needs manual editing.</p>
-                <div class="hexa-tts-post-actions hexa-tts-post-actions-left"><button type="button" class="button hexa-tts-extract-post">Import article text for editing</button></div>
+                <div class="hexa-tts-post-actions hexa-tts-post-actions-left"><?php echo DynamicButton::render( [ "label" => "Import article text for editing", "working_label" => "Importing...", "class" => "hpc-button secondary hexa-tts-extract-post" ] ); ?></div>
                 <div class="hexa-tts-grid hexa-tts-grid-2">
                     <label><span>Add before article</span><textarea class="hexa-tts-post-prepend" rows="2" placeholder="Optional intro"></textarea></label>
                     <label><span>Add after article</span><textarea class="hexa-tts-post-append" rows="2" placeholder="Optional outro"></textarea></label>
                 </div>
-                <label class="hexa-tts-check-row"><input type="checkbox" class="hexa-tts-post-shorten"><span>Shorten automatically if the article is over the limit</span></label>
+                <?php echo CoreUi::toggle( "smp_wp_text_to_speech_shorten", false, "Shorten automatically if the article is over the limit", [ "input_class" => "hexa-tts-post-shorten" ] ); ?>
                 <label><span>Narration text</span><textarea class="hexa-tts-extracted-preview" placeholder="Click Import article text for editing, or leave blank to use the article automatically."></textarea></label>
             </details>
             <details class="hexa-tts-technical-box">
                 <summary>Technical details</summary>
                 <div class="hexa-tts-tech-grid">
-                    <div><span>Shortcode</span><code>[smp_tts_player post_id="<?php echo esc_attr( $post->ID ); ?>" label="Listen to this article" enhanced_controls="1" preload="metadata"]</code><button type="button" class="button hexa-tts-copy" data-copy-text="<?php echo esc_attr( '[smp_tts_player post_id="' . $post->ID . '" label="Listen to this article" enhanced_controls="1" preload="metadata"]' ); ?>">Copy shortcode</button></div>
-                    <div><span>Legacy shortcode</span><code>[hexa_tts_player post_id="<?php echo esc_attr( $post->ID ); ?>"]</code><button type="button" class="button hexa-tts-copy" data-copy-text="<?php echo esc_attr( '[hexa_tts_player post_id="' . $post->ID . '"]' ); ?>">Copy legacy</button></div>
+                    <div><span>Shortcode</span><code>[smp_tts_player post_id="<?php echo esc_attr( $post->ID ); ?>" label="Listen to this article" enhanced_controls="1" preload="metadata"]</code><?php echo CoreUi::copy_button( '[smp_tts_player post_id="' . $post->ID . '" label="Listen to this article" enhanced_controls="1" preload="metadata"]', "Copy shortcode" ); ?></div>
+                    <div><span>Legacy shortcode</span><code>[hexa_tts_player post_id="<?php echo esc_attr( $post->ID ); ?>"]</code><?php echo CoreUi::copy_button( '[hexa_tts_player post_id="' . $post->ID . '"]', "Copy legacy" ); ?></div>
                     <div><span>ACF field</span><code><?php echo esc_html( $acf_field ); ?></code></div>
                     <div><span>Attachment ID</span><code><?php echo esc_html( $attachment_id ?: 'none' ); ?></code></div>
                     <div><span>Audio URL</span><code><?php echo esc_html( $audio_url ?: 'none' ); ?></code></div>

@@ -154,7 +154,7 @@
 - **Code:** `src/PluginUpdates/` (docs: `docs/updater.md`)
 
 ### Core package panel and fleet sync
-- **Does:** shows the bundled Core against Core on GitHub with an update button, and copies the newest verified Core into every Hexa plugin on the site after plugin installs, updates and activations.
+- **Does:** shows the bundled Core against Core on GitHub with an update button, and copies the newest verified Core into every Hexa plugin on the site after plugin installs, updates and activations. After copying it loads the home page once and puts every copy back when the site no longer loads (server error or WordPress's critical-error page).
 - **Use:** `$core = CorePackageConfig::from_core_root( <core root>, [ github_repo, github_branch, nonce_action, ajax_action_prefix ] )`, `( new CorePackageAjaxController( $core ) )->register()`, `( new CorePackagePanelRenderer( $core ) )->render()`; `CorePackageFleetSyncModule` runs the sync.
 - **Extend:** `hexa_plugin_core_package_synchronized`, `hexa_plugin_core_package_sync_failed`.
 - **Code:** `src/CorePackageUpdates/` (docs: `docs/core-package-runtime.md`)

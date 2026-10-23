@@ -14,8 +14,8 @@ if ( ! is_string( $plugin ) || ! is_string( $css ) || ! is_string( $js ) ) {
 }
 
 $required_plugin_tokens = [
-    '* Version: 1.6.1',
-    'public const VERSION = "1.6.1";',
+    '* Version: 1.6.2',
+    'public const VERSION = "1.6.2";',
     '"unstyled" => [ "label" => "No design (unstyled)"',
     '"unstyled_controls" => [ "label" => "No design with custom controls"',
     '$styled = ! in_array( $template, [ "unstyled", "unstyled_controls" ], true );',

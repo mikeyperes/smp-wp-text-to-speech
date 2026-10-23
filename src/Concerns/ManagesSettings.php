@@ -34,12 +34,32 @@ trait ManagesSettings {
         ];
     }
 
+    /**
+     * Moves settings saved under the pre-1.6.1 name into the prefixed name.
+     * A key Publish pushed to the old name after the move is carried over.
+     */
+    private static function migrate_legacy_settings(): void {
+        $legacy = get_option( self::LEGACY_OPTION, null );
+        if ( ! is_array( $legacy ) ) {
+            return;
+        }
+        $current = get_option( self::OPTION, null );
+        if ( ! is_array( $current ) ) {
+            $current = $legacy;
+        } elseif ( "" !== (string) ( $legacy["api_key"] ?? "" ) ) {
+            $current["api_key"] = $legacy["api_key"];
+        }
+        update_option( self::OPTION, $current, false );
+        delete_option( self::LEGACY_OPTION );
+    }
+
     /** The post field that holds the article's audio file. */
     public static function audio_field_name(): string {
         return AcfAudioFieldResolver::fieldName( self::get_settings() );
     }
 
     public static function get_settings() {
+        self::migrate_legacy_settings();
         $stored = get_option( self::OPTION, [] );
         return self::merge_settings( self::default_settings(), is_array( $stored ) ? $stored : [] );
     }

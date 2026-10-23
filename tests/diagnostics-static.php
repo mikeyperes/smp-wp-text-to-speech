@@ -19,8 +19,8 @@ $required = [
     'self::api_request( "/credits", [], 120 )',
     'self::api_request( "/health", [], 120 )',
     'private static function local_health_checks',
-    'class="button button-secondary hexa-tts-check-credits"',
-    'class="button button-secondary hexa-tts-check-health"',
+    '"class" => "hpc-button secondary hexa-tts-check-credits"',
+    '"class" => "hpc-button secondary hexa-tts-check-health"',
     'class="hexa-tts-health-checklist"',
 ];
 

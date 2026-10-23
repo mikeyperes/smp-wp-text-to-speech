@@ -96,6 +96,11 @@ trait LoadsAdminAssets {
   }
 
   function buttonState(button, state, text) {
+    var core = window.HexaWpCoreDynamicButton, el = button.get(0);
+    if (core && el && el.hasAttribute("data-hpc-dynamic-button")) {
+      if (state === "working") { core.start(el, text); } else if (state === "ok") { core.success(el, text); } else if (state === "error") { core.error(el, text); } else { core.reset(el); }
+      return;
+    }
     var original = button.data("hexaTtsOriginalText") || button.text();
     if (!button.data("hexaTtsOriginalText")) {
       button.data("hexaTtsOriginalText", original);
@@ -373,7 +378,7 @@ CSS;
             }
             if (response.data.shortcode) {
               form.find(".hexa-tts-dynamic-shortcode code").text(response.data.shortcode);
-              form.find(".hexa-tts-dynamic-shortcode .hexa-tts-copy").attr("data-copy-text", response.data.shortcode).data("copy-text", response.data.shortcode);
+              form.find(".hexa-tts-dynamic-shortcode [data-hpc-copy]").attr("data-hpc-copy", response.data.shortcode);
             }
             initLiveChoices(form);
             state.removeClass("is-loading is-error").addClass("is-success").text(response.data.message || "Saved.");

@@ -45,6 +45,7 @@
 ## Internals
 
 - Update Center tab: plugin version against GitHub with an update button, and bundled Hexa WP Core against Core on GitHub (`src/Modules/UpdateCenterModule.php`).
+- Settings: option `smp_wp_text_to_speech_settings`; the pre-1.6.2 `hexa_tts_settings` is moved into it on first read.
 - Site key: stored in Hexa WP Core's CredentialVault; the settings option keeps only a marker. Keys saved by 1.6.0 and earlier move into the vault when first read.
 - Editor generation log: Hexa WP Core activity log, one per post, kept for a week.
 - Settings actions: registered through Hexa WP Core's AJAX registry (capability and nonce checks).
@@ -151,6 +152,8 @@ Post meta:
 This initial version performs single-request generation up to the configured character limit. For very long articles, the next production step should add chunking plus ffmpeg stitching/normalization.
 
 ## Changelog
+
+Version 1.6.2 finishes the guidelines check: settings are stored under the prefixed `smp_wp_text_to_speech_settings` option (the old `hexa_tts_settings` moves across on first read; Publish 0.4.2 reads the new name and falls back for older plugins), every settings panel is a Hexa WP Core card, action and copy buttons are Core buttons, checkboxes are Core toggles, the audio-field hide uses Core's field hooks, and Hexa WP Core 3.34.2 is bundled.
 
 Version 1.6.1 completes `hexa-plugin-guidelines` compliance: settings actions through Hexa WP Core's AJAX registry, the site key in Core's CredentialVault (older keys move on first read; Publish's key push is unchanged), the editor generation log on Core's activity log, the Shortcodes tab on Core's shortcode breakdown, Core cards and toggles on the Features tab, one-column settings, this README in the feature-base shape, and the root Core guide matching bundled Hexa WP Core 3.34.1.
 

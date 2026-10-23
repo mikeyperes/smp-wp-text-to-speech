@@ -18,7 +18,7 @@ Orientation for a new thread. It does not start an agent or a fixed workflow.
 
 ## Contracts other systems depend on
 
-- Publish calls `\smp_text_to_speech\Plugin::generate_for_post()`, `get_settings()`, `prepare_generation_content()` and `encrypt_secret()` over SSH, and writes the `hexa_tts_settings` option. Keep the class name, these methods and the option name.
+- Publish calls `\smp_text_to_speech\Plugin::generate_for_post()`, `get_settings()`, `prepare_generation_content()` and `encrypt_secret()` over SSH, and reads `Plugin::OPTION` (falling back to the legacy `hexa_tts_settings` for older plugins). Keep the class name, these methods and that constant.
 - REST routes `smp-tts/v1/key-claim` and `smp-tts/v1/schema` are called by Publish.
 - Post meta `_hexa_tts_*` and the `article_audio` field hold stored audio; never rename them.
 - `smp_tts_site_api_key` is read by SMP Publication Integration (legacy name, kept beside `smp_wp_text_to_speech_site_api_key`). `smp_wp_text_to_speech_article_audio_enabled` reports the Listen switch to other plugins.

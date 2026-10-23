@@ -17,6 +17,7 @@ if ( ! defined( "ABSPATH" ) ) {
 
 trait BootsPlugin {
     public static function activate() {
+        self::migrate_legacy_settings();
         if ( ! get_option( self::OPTION ) ) {
             add_option( self::OPTION, self::default_settings(), "", false );
         }

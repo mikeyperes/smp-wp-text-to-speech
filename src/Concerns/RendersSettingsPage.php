@@ -13,6 +13,8 @@ use Smp\TextToSpeech\Support\Text;
 
 use Hexa\PluginCore\WpAdminComponents\CoreUi;
 
+use Hexa\PluginCore\WpAdminComponents\DynamicButton;
+
 if ( ! defined( "ABSPATH" ) ) {
     exit;
 }
@@ -180,8 +182,9 @@ trait RendersSettingsPage {
             <h2>One-click article narration with Media Library storage, ACF syncing, and front-end player placement.</h2>
             <p>The browser talks to WordPress only. WordPress performs the API request server-side, stores the MP3, and writes the configured ACF audio file field.</p>
         </section>
-        <section class="hexa-tts-panel">
-            <div class="hexa-tts-panel-head"><div><h2>System</h2><p>Current plugin identity and runtime wiring.</p></div><a class="button" href="<?php echo esc_url( admin_url( "plugins.php" ) ); ?>">Plugins dashboard</a></div>
+        <?php ob_start(); ?>
+        <div class="hexa-tts-panel-body">
+            <div class="hexa-tts-panel-head"><div><p>Current plugin identity and runtime wiring.</p></div><a class="hpc-button secondary" href="<?php echo esc_url( admin_url( "plugins.php" ) ); ?>">Plugins dashboard</a></div>
             <div class="hexa-tts-system-grid">
                 <div><span>Plugin slug</span><code><?php echo esc_html( self::SETTINGS_SLUG ); ?></code></div>
                 <div><span>Namespace</span><code>smp_text_to_speech</code></div>
@@ -190,9 +193,11 @@ trait RendersSettingsPage {
                 <div><span>API key</span><strong><?php echo $api_key ? "Configured" : "Missing"; ?></strong></div>
                 <div><span>Auto placement</span><strong><?php echo esc_html( self::placement_options()[ $settings["auto_player_placement"] ] ?? "Above article" ); ?></strong></div>
             </div>
-        </section>
-        <section class="hexa-tts-panel hexa-tts-core-panels">
-            <div class="hexa-tts-panel-head"><div><h2>Plugin &amp; Hexa WP Core reporting dashboard</h2><p>Updater/status panels are rendered by the vendored Hexa WordPress Plugin Core.</p></div></div>
+        </div>
+        <?php echo CoreUi::card( [ "title" => "System", "body_html" => (string) ob_get_clean() ] ); ?>
+        <?php ob_start(); ?>
+        <div class="hexa-tts-panel-body hexa-tts-core-panels">
+            <div class="hexa-tts-panel-head"><div><p>Updater/status panels are rendered by the vendored Hexa WordPress Plugin Core.</p></div></div>
             <?php
             $updater_config = self::updater_config();
             $core_config = self::core_package_config();
@@ -207,7 +212,8 @@ trait RendersSettingsPage {
                 echo '<div class="notice notice-warning inline"><p>Hexa core package panel is not available.</p></div>';
             }
             ?>
-        </section>
+        </div>
+        <?php echo CoreUi::card( [ "title" => "Plugin & Hexa WP Core reporting dashboard", "body_html" => (string) ob_get_clean() ] ); ?>
         <?php
     }
 
@@ -220,12 +226,13 @@ trait RendersSettingsPage {
             <?php wp_nonce_field( self::NONCE_ACTION, "smp_wp_text_to_speech_nonce" ); ?>
             <input type="hidden" name="action" value="smp_wp_text_to_speech_save_settings">
             <input type="hidden" name="hexa_tts_tab" value="api">
-            <section class="hexa-tts-panel" data-provider-card="central">
+            <?php ob_start(); ?>
+            <div class="hexa-tts-panel-body" data-provider-card="central">
                 <div class="hexa-tts-panel-head">
-                    <div><h2>Publish Scale API Connection</h2><p>Enter the assigned site key manually, or securely fetch an existing assignment after this WordPress site proves control of its own domain. The upstream API base is never printed into browser JavaScript.</p></div>
+                    <div><p>Enter the assigned site key manually, or securely fetch an existing assignment after this WordPress site proves control of its own domain. The upstream API base is never printed into browser JavaScript.</p></div>
                     <div class="hexa-tts-panel-actions">
-                        <button type="button" class="button button-secondary hexa-tts-fetch-source-api-key">Fetch Assigned API Key</button>
-                        <button type="button" class="button button-secondary hexa-tts-test-central-api hexa-tts-test-provider" data-provider="central">Test API Key</button>
+                        <?php echo DynamicButton::render( [ "label" => "Fetch Assigned API Key", "working_label" => "Verifying this domain...", "class" => "hpc-button secondary hexa-tts-fetch-source-api-key" ] ); ?>
+                        <?php echo DynamicButton::render( [ "label" => "Test API Key", "working_label" => "Testing...", "class" => "hpc-button secondary hexa-tts-test-central-api hexa-tts-test-provider", "attrs" => [ "data-provider" => "central" ] ] ); ?>
                     </div>
                 </div>
                 <div class="hexa-tts-grid hexa-tts-grid-2">
@@ -235,21 +242,24 @@ trait RendersSettingsPage {
                 <div class="hexa-tts-test-result hexa-tts-central-result" data-provider-result="central" aria-live="polite"></div>
                 <?php if ( ! empty( $last_status["message"] ) ) : ?><div class="hexa-tts-status-card"><strong><?php echo esc_html( $last_status["message"] ); ?></strong><?php if ( ! empty( $last_status["usage"] ) ) : ?><span>Requests: <?php echo esc_html( $last_status["usage"]["requests"] ?? 0 ); ?> · Characters: <?php echo esc_html( $last_status["usage"]["characters"] ?? 0 ); ?> · Est. cost: $<?php echo esc_html( $last_status["usage"]["estimated_cost_usd"] ?? 0 ); ?></span><?php endif; ?></div><?php endif; ?>
                 <?php self::render_diagnostics_panel(); ?>
-            </section>
-            <section class="hexa-tts-panel">
-                <div class="hexa-tts-panel-head"><div><h2>Generation Defaults</h2><p>Defaults for the one-click post and press-release workflow.</p></div></div>
+            </div>
+            <?php echo CoreUi::card( [ "title" => "Publish Scale API Connection", "body_html" => (string) ob_get_clean() ] ); ?>
+            <?php ob_start(); ?>
+            <div class="hexa-tts-panel-body">
+                <div class="hexa-tts-panel-head"><div><p>Defaults for the one-click post and press-release workflow.</p></div></div>
                 <div class="hexa-tts-grid hexa-tts-grid-4">
                     <label><span>Default API source</span><input type="text" name="hexa_tts[default_provider]" value="<?php echo esc_attr( $settings["default_provider"] ); ?>"></label>
                     <label><span>Default profile</span><input type="text" name="hexa_tts[default_profile]" value="<?php echo esc_attr( $settings["default_profile"] ); ?>"></label>
                     <label><span>Default voice</span><input type="text" name="hexa_tts[default_voice]" value="<?php echo esc_attr( $settings["default_voice"] ); ?>"></label>
                     <label><span>Generation speed</span><input type="number" step="0.05" name="hexa_tts[default_speed]" value="<?php echo esc_attr( $settings["default_speed"] ); ?>"></label>
                     <label><span>Max characters</span><input type="number" name="hexa_tts[max_characters]" value="<?php echo esc_attr( $settings["max_characters"] ); ?>" min="500" step="500"></label>
-                    <label class="hexa-tts-check-row"><input type="checkbox" name="hexa_tts[auto_insert_player]" value="1" <?php checked( ! empty( $settings["auto_insert_player"] ) ); ?>><span>Auto-insert player</span></label>
-                    <label class="hexa-tts-check-row"><input type="checkbox" name="hexa_tts[include_title]" value="1" <?php checked( ! empty( $settings["include_title"] ) ); ?>><span>Include post title in generated narration</span></label>
-                    <label class="hexa-tts-check-row"><input type="checkbox" name="hexa_tts[enable_player_controls]" value="1" <?php checked( ! empty( $settings["enable_player_controls"] ) ); ?>><span>Show enhanced frontend controls</span></label>
+                    <?php echo CoreUi::toggle( "hexa_tts[auto_insert_player]", ! empty( $settings["auto_insert_player"] ), "Auto-insert player" ); ?>
+                    <?php echo CoreUi::toggle( "hexa_tts[include_title]", ! empty( $settings["include_title"] ), "Include post title in generated narration" ); ?>
+                    <?php echo CoreUi::toggle( "hexa_tts[enable_player_controls]", ! empty( $settings["enable_player_controls"] ), "Show enhanced frontend controls" ); ?>
                 </div>
-            </section>
-            <p class="submit hexa-tts-submit"><button type="submit" class="button button-primary button-hero">Save API settings</button></p>
+            </div>
+            <?php echo CoreUi::card( [ "title" => "Generation Defaults", "body_html" => (string) ob_get_clean() ] ); ?>
+            <p class="submit hexa-tts-submit"><button type="submit" class="hpc-button">Save API settings</button></p>
         </form>
         <?php
     }
@@ -343,7 +353,7 @@ trait RendersSettingsPage {
                 <?php if ( ! $audio_on ) : ?>
                     <p class="httf-hint">Listen to this article is off. The player settings below are kept and apply again when it is turned on.</p>
                 <?php endif; ?>
-                <p class="submit httf-save"><button type="submit" class="button button-primary">Save</button></p>
+                <p class="submit httf-save"><button type="submit" class="hpc-button">Save</button></p>
             <?php
             echo CoreUi::card( [ "title" => "Listen to this article", "body_html" => (string) ob_get_clean() ] );
 
@@ -382,7 +392,7 @@ trait RendersSettingsPage {
                 <section class="httf-section">
                     <h3>Shortcode</h3>
                     <p class="httf-hint">For Elementor or exact manual placement.</p>
-                    <div class="hexa-tts-shortcode-card hexa-tts-dynamic-shortcode"><code><?php echo esc_html( $shortcode ); ?></code><button type="button" class="button hexa-tts-copy" data-copy-text="<?php echo esc_attr( $shortcode ); ?>">Copy shortcode</button></div>
+                    <div class="hexa-tts-shortcode-card hexa-tts-dynamic-shortcode"><code><?php echo esc_html( $shortcode ); ?></code><?php echo CoreUi::copy_button( (string) $shortcode, "Copy shortcode" ); ?></div>
                     <div class="httf-proof">
                         <div><small>ACF field</small><code><?php echo esc_html( $acf_field ); ?></code></div>
                         <div><small>Current placement</small><strong><?php echo esc_html( $placements[ $settings["auto_player_placement"] ] ?? "Above article" ); ?></strong></div>
@@ -390,7 +400,7 @@ trait RendersSettingsPage {
                     </div>
                 </section>
 
-                <p class="submit httf-save"><button type="submit" class="button button-primary button-hero">Save feature controls</button><span class="hexa-tts-live-save-state" aria-live="polite"></span></p>
+                <p class="submit httf-save"><button type="submit" class="hpc-button">Save feature controls</button><span class="hexa-tts-live-save-state" aria-live="polite"></span></p>
             <?php
             echo CoreUi::card( [ "title" => "Article audio player", "body_html" => (string) ob_get_clean() ] );
             ?>
@@ -402,8 +412,9 @@ trait RendersSettingsPage {
         $settings = self::get_settings();
         $shortcode = self::display_shortcode( $settings );
         ?>
-        <section class="hexa-tts-panel">
-            <div class="hexa-tts-panel-head"><div><h2>Display Settings</h2><p>Choose the exact live player design and automatic placement. Previews below use the same renderer and CSS as the frontend.</p></div></div>
+        <?php ob_start(); ?>
+        <div class="hexa-tts-panel-body">
+            <div class="hexa-tts-panel-head"><div><p>Choose the exact live player design and automatic placement. Previews below use the same renderer and CSS as the frontend.</p></div></div>
             <form method="post" action="<?php echo esc_url( admin_url( "admin-post.php" ) ); ?>" class="hexa-tts-settings-form hexa-tts-display-form hexa-tts-display-live-form">
                 <?php wp_nonce_field( self::NONCE_ACTION, "smp_wp_text_to_speech_nonce" ); ?>
                 <input type="hidden" name="action" value="smp_wp_text_to_speech_save_settings">
@@ -413,8 +424,8 @@ trait RendersSettingsPage {
                     <label><span>Player label</span><input type="text" class="hexa-tts-live-control" name="hexa_tts[player_label]" value="<?php echo esc_attr( $settings["player_label"] ); ?>"></label>
                     <label><span>Player size</span><select class="hexa-tts-live-control" name="hexa_tts[player_size]"><?php self::render_options( self::size_options(), $settings["player_size"] ); ?></select></label>
                     <label><span>ACF audio file field</span><input type="text" class="hexa-tts-live-control" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( AcfAudioFieldResolver::fieldName( $settings ) ); ?>"></label>
-                    <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[auto_insert_player]" value="1" <?php checked( ! empty( $settings["auto_insert_player"] ) ); ?>><span>Enable automatic player placement</span></label>
-                    <label class="hexa-tts-check-row"><input class="hexa-tts-live-control" type="checkbox" name="hexa_tts[enable_player_controls]" value="1" <?php checked( ! empty( $settings["enable_player_controls"] ) ); ?>><span>Show enhanced frontend controls</span></label>
+                    <?php echo CoreUi::toggle( "hexa_tts[auto_insert_player]", ! empty( $settings["auto_insert_player"] ), "Enable automatic player placement", [ "input_class" => "hexa-tts-live-control" ] ); ?>
+                    <?php echo CoreUi::toggle( "hexa_tts[enable_player_controls]", ! empty( $settings["enable_player_controls"] ), "Show enhanced frontend controls", [ "input_class" => "hexa-tts-live-control" ] ); ?>
                 </div>
                 <?php echo self::elementor_palette_detector_html( "hexa-tts-display-elementor-palette" ); ?>
 
@@ -426,11 +437,12 @@ trait RendersSettingsPage {
                 <div class="hexa-tts-live-preview-target"><?php echo self::template_preview_rows_html( $settings ); ?></div>
 
                 <h3>Shortcode</h3>
-                <div class="hexa-tts-shortcode-card hexa-tts-dynamic-shortcode"><code><?php echo esc_html( $shortcode ); ?></code><button type="button" class="button hexa-tts-copy" data-copy-text="<?php echo esc_attr( $shortcode ); ?>">Copy shortcode</button></div>
+                <div class="hexa-tts-shortcode-card hexa-tts-dynamic-shortcode"><code><?php echo esc_html( $shortcode ); ?></code><?php echo CoreUi::copy_button( (string) $shortcode, "Copy shortcode" ); ?></div>
                 <div class="hexa-tts-live-save-state" aria-live="polite"></div>
-                <p class="submit hexa-tts-submit"><button type="submit" class="button button-primary button-hero">Save display settings</button></p>
+                <p class="submit hexa-tts-submit"><button type="submit" class="hpc-button">Save display settings</button></p>
             </form>
-        </section>
+        </div>
+        <?php echo CoreUi::card( [ "title" => "Display Settings", "body_html" => (string) ob_get_clean() ] ); ?>
         <?php
     }
 
@@ -438,7 +450,6 @@ trait RendersSettingsPage {
         $settings = self::get_settings();
         $templates = array_keys( self::template_options() );
         $sizes = array_keys( self::size_options() );
-        echo '<section class="hexa-tts-panel">';
         echo \Hexa\PluginCore\ShortcodeRegistry\ShortcodeBreakdown::render( [
             "tag"         => "hexa_tts_player",
             "title"       => "Listen to this article player",
@@ -460,7 +471,6 @@ trait RendersSettingsPage {
                 [ "label" => "No plugin styling", "shortcode" => '[hexa_tts_player template="unstyled"]' ],
             ],
         ] );
-        echo '</section>';
     }
 
     private static function render_schema_tab(): void {
@@ -555,9 +565,10 @@ trait RendersSettingsPage {
             return;
         }
 
-        echo '<section class="hexa-tts-panel"><div class="hexa-tts-panel-head"><div><h2>AudioObject Schema</h2><p>HexaWP Core schema dashboard renderer is unavailable.</p></div></div><pre>';
-        echo esc_html( wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) );
-        echo '</pre></section>';
+        echo CoreUi::card( [
+            "title"     => "AudioObject Schema",
+            "body_html" => '<p>HexaWP Core schema dashboard renderer is unavailable.</p>' . \Hexa\PluginCore\WpAdminComponents\CodeDisplay::render( (string) wp_json_encode( $schema, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ), [ "language" => "json" ] ),
+        ] );
     }
 
     private static function render_options( array $options, string $selected ): void {

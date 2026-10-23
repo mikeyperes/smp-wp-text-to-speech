@@ -35,14 +35,17 @@ $checks = [
     'Publish contract methods stay on smp_text_to_speech\\Plugin.' => str_contains( $plugin, 'namespace smp_text_to_speech;' ) && str_contains( $plugin, 'final class Plugin {' )
         && str_contains( $generation, 'public static function generate_for_post(' ) && str_contains( $generation, 'function prepare_generation_content(' )
         && str_contains( $settings, 'public static function get_settings()' ) && str_contains( $settings, 'function encrypt_secret(' ),
-    'Stored settings option name is unchanged.' => str_contains( $plugin, 'const OPTION = "hexa_tts_settings";' ),
+    'Settings use the prefixed option and move the old one across.' => str_contains( $plugin, 'const OPTION = "smp_wp_text_to_speech_settings";' ) && str_contains( $plugin, 'const LEGACY_OPTION = "hexa_tts_settings";' ) && str_contains( $settings, 'function migrate_legacy_settings()' ),
+    'Settings panels are Hexa WP Core cards.' => ! str_contains( $features, '<section class="hexa-tts-panel' ) && substr_count( $features, 'CoreUi::card(' ) >= 8,
+    'Action and copy buttons are Hexa WP Core buttons.' => ! preg_match( '/class="button[ "]/', $features . $read( 'src/Concerns/RendersPostEditor.php' ) . $read( 'src/Concerns/RunsDiagnostics.php' ) ) && str_contains( $read( 'src/Concerns/RunsDiagnostics.php' ), 'DynamicButton::render(' ) && str_contains( $features, 'CoreUi::copy_button(' ),
+    'Checkboxes are Hexa WP Core toggles.' => ! str_contains( $features . $read( 'src/Concerns/RendersPostEditor.php' ), 'hexa-tts-check-row' ),
     'The switch defaults on and is saved from the Features tab.' => str_contains( $settings, '"article_audio_enabled" => 1,' )
         && str_contains( $settings, '$clean["article_audio_enabled"] = array_key_exists( "article_audio_enabled", $incoming )' )
         && str_contains( $features, 'CoreUi::toggle( "hexa_tts[article_audio_enabled]"' ) && str_contains( $features, '"title" => "Listen to this article"' ),
     'Off: no automatic player, assets or content filters.' => (bool) preg_match( '/add_shortcode\( "smp_tts_player".*?if \( ! Plugin::article_audio_enabled\(\) \) \{\s+return;\s+\}\s+add_action\( "wp_enqueue_scripts"/s', $player ),
     'Off: shortcodes print nothing.' => (bool) preg_match( '/function render_player_shortcode\( \$atts = \[\] \) \{\s+if \( ! self::article_audio_enabled\(\) \) \{\s+return "";/', $player_code ),
     'Off: no audio schema.' => str_contains( $schema, 'if ( ! Plugin::article_audio_enabled() ) {' ) && str_contains( $schema_code, '! self::article_audio_enabled()' ),
-    'Off: no editor box, and the audio field is hidden.' => str_contains( $editor, 'add_filter( "acf/prepare_field/name=" . Plugin::audio_field_name(), "__return_false" );' ),
+    'Off: no editor box, and the audio field is hidden.' => str_contains( $editor, '\\Hexa\\PluginCore\\Fields\\Hooks::on( "prepare_field/name=" . Plugin::audio_field_name(), "__return_false" );' ),
     'Off: generation is refused.' => str_contains( $generation, '"hexa_tts_feature_disabled"' ) && substr_count( $generation, 'self::article_audio_enabled()' ) >= 2,
     'Other plugins can read the switch.' => str_contains( $site_key, 'PluginMetadata::hook( "article_audio_enabled" )' ),
     'Front-end assets load only where a player is shown.' => str_contains( $player_code, 'is_singular( [ "post", "press-release" ] )' )

@@ -47,8 +47,11 @@ final class Plugin {
     use HandlesRestRoutes;
 
     const VERSION = PluginMetadata::VERSION;
-    // Stored data name shared with Publish (config smp-text-to-speech.wordpress_option); never rename.
-    const OPTION = "hexa_tts_settings";
+    // Publish reads this constant (falling back to LEGACY_OPTION for plugins
+    // older than 1.6.1) when it pushes the site key or checks the connection.
+    const OPTION = "smp_wp_text_to_speech_settings";
+    // Settings name used up to 1.6.0; moved into OPTION on first read.
+    const LEGACY_OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "smp_wp_text_to_speech_admin";
     const SETTINGS_SLUG = PluginMetadata::ADMIN_PAGE;
     const API_BASE = "https://publish.scalemypublication.com/api/smp-text-to-speech/v1";

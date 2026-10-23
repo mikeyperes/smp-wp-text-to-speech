@@ -17,7 +17,7 @@ if ( ! defined( "ABSPATH" ) ) {
 final class PostEditorModule {
     public function register(): void {
         if ( ! Plugin::article_audio_enabled() ) {
-            add_filter( "acf/prepare_field/name=" . Plugin::audio_field_name(), "__return_false" );
+            \Hexa\PluginCore\Fields\Hooks::on( "prepare_field/name=" . Plugin::audio_field_name(), "__return_false" );
             return;
         }
         add_action( "add_meta_boxes", [ Plugin::class, "register_post_metabox" ] );

@@ -6,6 +6,8 @@ use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
 use Smp\TextToSpeech\Support\Text;
 use WP_Error;
 
+use Hexa\PluginCore\WpAdminComponents\DynamicButton;
+
 if ( ! defined( "ABSPATH" ) ) {
     exit;
 }
@@ -215,8 +217,8 @@ trait RunsDiagnostics {
                     <p>Check current provider credit availability or run the full integration checklist.</p>
                 </div>
                 <div class="hexa-tts-diagnostics-actions">
-                    <button type="button" class="button button-secondary hexa-tts-check-credits">Check credits</button>
-                    <button type="button" class="button button-secondary hexa-tts-check-health">Check health</button>
+                    <?php echo DynamicButton::render( [ "label" => "Check credits", "working_label" => "Checking credits...", "class" => "hpc-button secondary hexa-tts-check-credits" ] ); ?>
+                    <?php echo DynamicButton::render( [ "label" => "Check health", "working_label" => "Checking...", "class" => "hpc-button secondary hexa-tts-check-health" ] ); ?>
                 </div>
             </div>
             <div class="hexa-tts-credit-result" aria-live="polite"></div>

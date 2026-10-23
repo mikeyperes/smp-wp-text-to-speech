@@ -52,7 +52,19 @@
       : (xhr && xhr.statusText ? xhr.statusText : fallback);
   }
 
+  function coreButton($button, state, label) {
+    var core = window.HexaWpCoreDynamicButton, el = $button.get(0);
+    if (!core || !el || !el.hasAttribute('data-hpc-dynamic-button')) {
+      return false;
+    }
+    if (state === 'working') { core.start(el, label); } else if (state === 'success') { core.success(el, label); } else if (state === 'error') { core.error(el, label); } else { core.reset(el); }
+    return true;
+  }
+
   function setDiagnosticButton($button, busy, label) {
+    if (coreButton($button, busy ? 'working' : 'reset', label)) {
+      return;
+    }
     $button.prop('disabled', busy);
     if (busy) {
       $button.data('original-label', $button.text()).attr('aria-busy', 'true').text(label);
@@ -178,7 +190,9 @@
     var $keyField = $card.find('.hexa-tts-site-api-key');
     var originalLabel = $button.text();
 
-    $button.prop('disabled', true).attr('aria-busy', 'true').text('Verifying this domain...');
+    if (!coreButton($button, 'working', 'Verifying this domain...')) {
+      $button.prop('disabled', true).attr('aria-busy', 'true').text('Verifying this domain...');
+    }
     setResult($result, 'loading', 'Proving control of this WordPress domain...', 'The source will return a key only if this exact domain already has an active assignment.');
 
     $.ajax({
@@ -206,7 +220,9 @@
         setResult($result, 'error', 'API key was not fetched', message);
       })
       .always(function () {
-        $button.prop('disabled', false).removeAttr('aria-busy').text(originalLabel);
+        if (!coreButton($button, 'reset')) {
+          $button.prop('disabled', false).removeAttr('aria-busy').text(originalLabel);
+        }
       });
   });
 
