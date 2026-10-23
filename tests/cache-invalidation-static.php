@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-$plugin = file_get_contents( dirname( __DIR__ ) . '/smp-wp-text-to-speech.php' );
+require_once __DIR__ . '/fixtures/plugin-source.php';
+$plugin = smp_tts_test_plugin_source( dirname( __DIR__ ) );
 
 if ( ! is_string( $plugin ) ) {
     fwrite( STDERR, "FAIL: Plugin source could not be read.\n" );

@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 $root = dirname( __DIR__ );
-$plugin = file_get_contents( $root . '/smp-wp-text-to-speech.php' );
+require_once __DIR__ . '/fixtures/plugin-source.php';
+$plugin = smp_tts_test_plugin_source( $root );
 $navigation = file_get_contents( $root . '/src/Admin/SettingsNavigation.php' );
 $core_version = trim( (string) file_get_contents( $root . '/lib/hexa-wordpress-plugin-core/VERSION' ) );
 
@@ -50,14 +51,14 @@ foreach ( [ 'nav-tab-wrapper', 'private static function settings_tabs' ] as $leg
 if (
     ! str_contains( $navigation, 'new TabDefinition(' )
     || ! str_contains( $navigation, 'new TabRegistry()' )
-    || ! str_contains( $navigation, '[ "label" => "Advanced", "tabs" => [ "shortcodes", "schema", "hexa_core" ] ]' )
+    || ! str_contains( $navigation, '[ "label" => "Advanced", "tabs" => [ "shortcodes", "schema", "update-center", "hexa_core" ] ]' )
 ) {
     fwrite( STDERR, "FAIL: SettingsNavigation is not built from shared Core registry primitives.\n" );
     exit( 1 );
 }
 
-if ( '3.22.0' !== $core_version ) {
-    fwrite( STDERR, "FAIL: Expected vendored Hexa WP Core 3.22.0; found {$core_version}.\n" );
+if ( '3.34.1' !== $core_version ) {
+    fwrite( STDERR, "FAIL: Expected vendored Hexa WP Core 3.34.1; found {$core_version}.\n" );
     exit( 1 );
 }
 

@@ -2,6 +2,8 @@
 
 Standalone WordPress plugin for converting post/page text into audio with provider-specific settings, AJAX credential validation, editor extraction, and one-click post audio generation.
 
+Version 1.6.0 adds the "Listen to this article" switch (Features tab): off removes the player, its assets, the audio schema, the editor box and audio field, and refuses generation. The plugin now follows `hexa-plugin-guidelines`: a thin main file, `PluginMetadata`, one module per feature, an Update Center tab, player assets only on pages that show a player, and `smp_wp_text_to_speech_` hook and AJAX names. Bundles Hexa WP Core 3.34.1.
+
 Version 1.5.0 adds the article's AudioObject to Hexa WP Core 3.22.0's shared schema block, linked to the article as its `audio`, instead of printing a separate schema block. Bundles Hexa WP Core 3.22.0.
 
 Version 1.4.1 exposes the site's working (decrypted) Publish Scale key through the `smp_tts_site_api_key` filter so SMP content generation can use the same key.
@@ -52,21 +54,32 @@ smp-wp-text-to-speech.php
 - **Visual previews:** Settings > SMP WP Text To Speech > Display, `/wp-admin/options-general.php?page=smp-wp-text-to-speech&tab=display`. The template picker previews every named skin using the player renderer.
 - **Related features:** [Summary, Contents and FAQ examples](https://github.com/mikeyperes/smp-publication-integration/blob/main/docs/article-design-examples.md) belong to SMP Publication Integration.
 
+### Listen to this article (feature switch)
+- **Does:** turns the whole article audio feature on or off for the site.
+- **Switch:** `article_audio_enabled` (Features tab, "Listen to this article"; on by default). Off: no player on articles, no player CSS or JS, no AudioObject in the schema, no "Listen to this article" box or audio field in the post editor (a site's own `article_audio` field is hidden too), and generation is refused. Saved audio stays in the Media Library. Shortcodes stay registered and print nothing.
+- **Read it from another plugin:** `apply_filters( "smp_wp_text_to_speech_article_audio_enabled", false )`.
+- **Code:** `src/Plugin.php` (`article_audio_enabled`), `src/Modules/PlayerModule.php`, `src/Modules/SchemaModule.php`, `src/Modules/PostEditorModule.php`
+
 ### Audio player
-- **Does:** an audio player for the post's generated audio.
+- **Does:** an audio player for the post's generated audio. Its CSS and JS load only on a single article with audio, or with the first player a shortcode prints ([asset loading](docs/asset-loading.md)).
 - **Switch:** player defaults in settings: `player_label`, `show_player_meta`, `player_template` (default `clean_card`), `player_size`, `primary_color`, `enable_player_controls`.
 - **Use:** `[hexa_tts_player post_id="" label="Listen to this article" show_meta="" preload="metadata" class="" template="clean_card" size="default" color="#3657e3" controls="" enhanced_controls=""]` (alias `[smp_tts_player]`). Place it in the single-post template with a Shortcode widget.
-- **Code:** `smp-wp-text-to-speech.php`
+- **Code:** `src/Concerns/RendersPlayer.php`, `src/Modules/PlayerModule.php`
 - **Custom Elementor skin:** use `template="unstyled_controls"` for the full custom control surface. Plain `unstyled` keeps browser-native audio controls. See the [HTML/CSS example](docs/player-design-examples.md#listen-player).
 
 ### Audio generation
 - **Does:** extracts the article text, sends it to the chosen provider and stores the audio on the post.
 - **Use:** "Generate audio" in the post editor; credentials validated in settings.
 
+### Update Center
+- **Does:** shows this plugin's GitHub version against the installed one with an update button, and the bundled Hexa WP Core against Core on GitHub.
+- **Use:** Settings > SMP WP Text To Speech > Update Center.
+- **Code:** `src/Modules/UpdateCenterModule.php`
+
 ### Audio schema
 - **Does:** adds the article's AudioObject to Hexa WP Core's shared `hexa-schema` block and links it from the article as `audio` and `hasPart`.
 - **Use:** automatic on posts and press releases with generated audio.
-- **Code:** `smp-wp-text-to-speech.php` (`current_schema_nodes`, `link_audio_to_article`)
+- **Code:** `src/Concerns/BuildsAudioSchema.php` (`current_schema_nodes`, `link_audio_to_article`), `src/Modules/SchemaModule.php`
 
 ## Providers
 

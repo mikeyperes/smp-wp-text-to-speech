@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 $root = dirname( __DIR__ );
-$plugin = file_get_contents( $root . '/smp-wp-text-to-speech.php' );
+require_once __DIR__ . '/fixtures/plugin-source.php';
+$plugin = smp_tts_test_plugin_source( $root );
 $script = file_get_contents( $root . '/assets/admin.js' );
 $style = file_get_contents( $root . '/assets/admin.css' );
 
@@ -13,8 +14,8 @@ if ( ! is_string( $plugin ) || ! is_string( $script ) || ! is_string( $style ) )
 }
 
 $required = [
-    'wp_ajax_hexa_tts_check_credits',
-    'wp_ajax_hexa_tts_check_health',
+    'PluginMetadata::hook( "check_credits" )',
+    'PluginMetadata::hook( "check_health" )',
     'self::api_request( "/credits", [], 120 )',
     'self::api_request( "/health", [], 120 )',
     'private static function local_health_checks',
@@ -30,7 +31,7 @@ foreach ( $required as $token ) {
     }
 }
 
-foreach ( [ 'renderCredit', 'renderHealth', 'hexa_tts_check_credits', 'hexa_tts_check_health' ] as $token ) {
+foreach ( [ 'renderCredit', 'renderHealth', 'smp_wp_text_to_speech_check_credits', 'smp_wp_text_to_speech_check_health' ] as $token ) {
     if ( ! str_contains( $script, $token ) ) {
         fwrite( STDERR, "FAIL: Missing diagnostic script token: {$token}\n" );
         exit( 1 );

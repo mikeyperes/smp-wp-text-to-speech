@@ -7,7 +7,7 @@ function sanitize_key( string $value ): string {
 }
 
 function apply_filters( string $hook, mixed $value, ...$arguments ): mixed {
-    if ( 'smp_tts_dashboard_tabs' === $hook && is_array( $value ) ) {
+    if ( 'smp_wp_text_to_speech_dashboard_tabs' === $hook && is_array( $value ) ) {
         $value['hexa_core'] = 'Hexa WP Core';
         $value['extension_diagnostics'] = 'Extension Diagnostics';
     }
@@ -32,6 +32,7 @@ $expected = [
     'display'               => 'Display',
     'shortcodes'            => 'Shortcodes',
     'schema'                => 'Schema',
+    'update-center'         => 'Update Center',
     'hexa_core'             => 'Hexa WP Core',
     'extension_diagnostics' => 'Extension Diagnostics',
 ];
@@ -78,7 +79,7 @@ $groups = $navigation->groups();
 if (
     [ 'overview' ] !== ( $groups[0]['tabs'] ?? [] )
     || [ 'api', 'features', 'display' ] !== ( $groups[1]['tabs'] ?? [] )
-    || [ 'shortcodes', 'schema', 'hexa_core' ] !== ( $groups[2]['tabs'] ?? [] )
+    || [ 'shortcodes', 'schema', 'update-center', 'hexa_core' ] !== ( $groups[2]['tabs'] ?? [] )
     || [ 'extension_diagnostics' ] !== ( $groups[3]['tabs'] ?? [] )
 ) {
     fwrite( STDERR, "FAIL: Settings sidebar groups are incomplete or out of order.\n" );

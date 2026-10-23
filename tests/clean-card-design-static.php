@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 $root = dirname( __DIR__ );
 $css = file_get_contents( $root . '/assets/frontend-1.3.24.css' );
-$plugin = file_get_contents( $root . '/smp-wp-text-to-speech.php' );
+require_once __DIR__ . '/fixtures/plugin-source.php';
+$plugin = smp_tts_test_plugin_source( $root );
 
 if ( ! is_string( $css ) || ! is_string( $plugin ) ) {
     fwrite( STDERR, "FAIL: Clean Card design sources could not be read.\n" );

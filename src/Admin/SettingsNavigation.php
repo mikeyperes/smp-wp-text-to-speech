@@ -13,19 +13,20 @@ final class SettingsNavigation {
         "display"    => "Display",
         "shortcodes" => "Shortcodes",
         "schema"     => "Schema",
+        "update-center" => "Update Center",
     ];
 
     private const GROUPS = [
         [ "label" => "Overview", "tabs" => [ "overview" ] ],
         [ "label" => "Configuration", "tabs" => [ "api", "features", "display" ] ],
-        [ "label" => "Advanced", "tabs" => [ "shortcodes", "schema", "hexa_core" ] ],
+        [ "label" => "Advanced", "tabs" => [ "shortcodes", "schema", "update-center", "hexa_core" ] ],
     ];
 
     /**
      * @return array<string,string>
      */
     public function tabs(): array {
-        $filtered = apply_filters( "smp_tts_dashboard_tabs", self::TABS );
+        $filtered = apply_filters( "smp_wp_text_to_speech_dashboard_tabs", self::TABS );
         $tabs = [];
 
         foreach ( is_array( $filtered ) ? $filtered : self::TABS as $id => $label ) {
@@ -69,7 +70,7 @@ final class SettingsNavigation {
             $groups[] = [ "label" => "More", "tabs" => $leftover ];
         }
 
-        return apply_filters( "smp_tts_dashboard_tab_groups", $groups );
+        return apply_filters( "smp_wp_text_to_speech_dashboard_tab_groups", $groups );
     }
 
     public function registry( callable $renderer, string $capability = "manage_options" ): TabRegistry {

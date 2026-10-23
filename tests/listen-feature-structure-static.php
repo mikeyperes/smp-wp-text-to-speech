@@ -1,0 +1,61 @@
+<?php
+/**
+ * Plugin structure (thin main file, metadata, modules) and the
+ * "Listen to this article" switch that removes the whole feature when off.
+ */
+
+declare(strict_types=1);
+
+$root = dirname( __DIR__ );
+$read = static fn( string $path ): string => (string) file_get_contents( $root . '/' . $path );
+
+$main = $read( 'smp-wp-text-to-speech.php' );
+$metadata = $read( 'src/PluginMetadata.php' );
+$plugin = $read( 'src/Plugin.php' );
+$player = $read( 'src/Modules/PlayerModule.php' );
+$schema = $read( 'src/Modules/SchemaModule.php' );
+$editor = $read( 'src/Modules/PostEditorModule.php' );
+$site_key = $read( 'src/Modules/SiteKeyModule.php' );
+$player_code = $read( 'src/Concerns/RendersPlayer.php' );
+$generation = $read( 'src/Concerns/GeneratesAudio.php' );
+$schema_code = $read( 'src/Concerns/BuildsAudioSchema.php' );
+$settings = $read( 'src/Concerns/ManagesSettings.php' );
+$features = $read( 'src/Concerns/RendersSettingsPage.php' );
+
+preg_match( '/\* Version: ([0-9.]+)/', $main, $header );
+
+$checks = [
+    'Main file only guards, autoloads, registers Core and boots.' => substr_count( $main, "\n" ) < 80
+        && ! str_contains( $main, 'class Plugin' )
+        && str_contains( $main, 'SMP_WP_TEXT_TO_SPEECH_LOADED' )
+        && str_contains( $main, 'hexa_plugin_core_register_package(' )
+        && str_contains( $main, 'spl_autoload_register(' )
+        && str_contains( $main, 'add_action( "plugins_loaded", [ Plugin::class, "init" ], 0 );' ),
+    'PluginMetadata version matches the header.' => isset( $header[1] ) && str_contains( $metadata, 'public const VERSION = "' . $header[1] . '";' ),
+    'Publish contract methods stay on smp_text_to_speech\\Plugin.' => str_contains( $plugin, 'namespace smp_text_to_speech;' ) && str_contains( $plugin, 'final class Plugin {' )
+        && str_contains( $generation, 'public static function generate_for_post(' ) && str_contains( $generation, 'function prepare_generation_content(' )
+        && str_contains( $settings, 'public static function get_settings()' ) && str_contains( $settings, 'function encrypt_secret(' ),
+    'Stored settings option name is unchanged.' => str_contains( $plugin, 'const OPTION = "hexa_tts_settings";' ),
+    'The switch defaults on and is saved from the Features tab.' => str_contains( $settings, '"article_audio_enabled" => 1,' )
+        && str_contains( $settings, '$clean["article_audio_enabled"] = array_key_exists( "article_audio_enabled", $incoming )' )
+        && str_contains( $features, 'name="hexa_tts[article_audio_enabled]"' ) && str_contains( $features, '<h2>Listen to this article</h2>' ),
+    'Off: no automatic player, assets or content filters.' => (bool) preg_match( '/add_shortcode\( "smp_tts_player".*?if \( ! Plugin::article_audio_enabled\(\) \) \{\s+return;\s+\}\s+add_action\( "wp_enqueue_scripts"/s', $player ),
+    'Off: shortcodes print nothing.' => (bool) preg_match( '/function render_player_shortcode\( \$atts = \[\] \) \{\s+if \( ! self::article_audio_enabled\(\) \) \{\s+return "";/', $player_code ),
+    'Off: no audio schema.' => str_contains( $schema, 'if ( ! Plugin::article_audio_enabled() ) {' ) && str_contains( $schema_code, '! self::article_audio_enabled()' ),
+    'Off: no editor box, and the audio field is hidden.' => str_contains( $editor, 'add_filter( "acf/prepare_field/name=" . Plugin::audio_field_name(), "__return_false" );' ),
+    'Off: generation is refused.' => str_contains( $generation, '"hexa_tts_feature_disabled"' ) && substr_count( $generation, 'self::article_audio_enabled()' ) >= 2,
+    'Other plugins can read the switch.' => str_contains( $site_key, 'PluginMetadata::hook( "article_audio_enabled" )' ),
+    'Front-end assets load only where a player is shown.' => str_contains( $player_code, 'is_singular( [ "post", "press-release" ] )' )
+        && str_contains( $player_code, 'self::player_audio_url( (int) get_queried_object_id() )' )
+        && str_contains( $player_code, "if ( ! is_admin() ) {\n            self::enqueue_player_assets();" ),
+    'Update Center tab is registered.' => str_contains( $read( 'src/Admin/SettingsNavigation.php' ), '"update-center" => "Update Center"' )
+        && str_contains( $read( 'src/Modules/UpdateCenterModule.php' ), 'UpdaterPanelRenderer' ) && str_contains( $read( 'src/Modules/UpdateCenterModule.php' ), 'CorePackagePanelRenderer' ),
+    'Repository docs exist.' => is_readable( $root . '/AGENTS.md' ) && is_readable( $root . '/docs/asset-loading.md' ),
+];
+
+$failed = 0;
+foreach ( $checks as $label => $passed ) {
+    echo ( $passed ? 'PASS' : 'FAIL' ) . ' - ' . $label . PHP_EOL;
+    $failed += $passed ? 0 : 1;
+}
+exit( $failed ? 1 : 0 );

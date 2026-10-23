@@ -101,7 +101,7 @@
       url: hexaTts.ajaxUrl,
       method: 'POST',
       dataType: 'json',
-      data: { action: 'hexa_tts_check_credits', nonce: hexaTts.nonce, post_id: $scope.data('post-id') || 0 }
+      data: { action: 'smp_wp_text_to_speech_check_credits', nonce: hexaTts.nonce, post_id: $scope.data('post-id') || 0 }
     }).done(function (response) {
       if (response && response.success) {
         renderCredit($scope, response.data || {});
@@ -123,7 +123,7 @@
       url: hexaTts.ajaxUrl,
       method: 'POST',
       dataType: 'json',
-      data: { action: 'hexa_tts_check_health', nonce: hexaTts.nonce, post_id: $scope.data('post-id') || 0 }
+      data: { action: 'smp_wp_text_to_speech_check_health', nonce: hexaTts.nonce, post_id: $scope.data('post-id') || 0 }
     }).done(function (response) {
       if (response && response.success) {
         renderHealth($scope, response.data || {});
@@ -150,7 +150,7 @@
       url: hexaTts.ajaxUrl,
       method: 'POST',
       data: {
-        action: 'hexa_tts_validate_provider',
+        action: 'smp_wp_text_to_speech_validate_provider',
         nonce: hexaTts.nonce,
         provider: provider,
         fields: providerFields($card)
@@ -186,7 +186,7 @@
       method: 'POST',
       dataType: 'json',
       data: {
-        action: 'hexa_tts_fetch_source_api_key',
+        action: 'smp_wp_text_to_speech_fetch_source_api_key',
         nonce: hexaTts.nonce
       }
     })
@@ -221,7 +221,7 @@
       url: hexaTts.ajaxUrl,
       method: 'POST',
       data: {
-        action: 'hexa_tts_extract_post_content',
+        action: 'smp_wp_text_to_speech_extract_post_content',
         nonce: hexaTts.nonce,
         post_id: $box.data('post-id')
       }
