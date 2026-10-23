@@ -18,17 +18,17 @@ final class AcfAudioFieldResolver {
 
     public static function acfFieldKey( string $field_name ): string {
         $field_name = sanitize_key( $field_name );
-        if ( "" === $field_name || ! function_exists( "acf_get_field_groups" ) || ! function_exists( "acf_get_fields" ) ) {
+        if ( "" === $field_name ) {
             return "";
         }
 
-        $groups = acf_get_field_groups();
+        $groups = \Hexa\PluginCore\Fields\FieldGroups::all();
         if ( ! is_array( $groups ) ) {
             return "";
         }
 
         foreach ( $groups as $group ) {
-            $fields = acf_get_fields( $group );
+            $fields = \Hexa\PluginCore\Fields\FieldGroups::fields( $group );
             $key = self::findFieldKey( is_array( $fields ) ? $fields : [], $field_name );
             if ( "" !== $key ) {
                 return $key;
@@ -91,8 +91,8 @@ final class AcfAudioFieldResolver {
 
     public static function updatePostValue( int $post_id, string $field_name, int $attachment_id ): void {
         $field_key = self::acfFieldKey( $field_name );
-        if ( "" !== $field_key && function_exists( "update_field" ) ) {
-            update_field( $field_key, $attachment_id, $post_id );
+        if ( "" !== $field_key ) {
+            \Hexa\PluginCore\Fields\Field::update( $field_key, $attachment_id, $post_id );
             return;
         }
 

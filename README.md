@@ -2,6 +2,14 @@
 
 Standalone WordPress plugin for converting post/page text into audio with provider-specific settings, AJAX credential validation, editor extraction, and one-click post audio generation.
 
+Version 1.5.0 adds the article's AudioObject to Hexa WP Core 3.22.0's shared schema block, linked to the article as its `audio`, instead of printing a separate schema block. Bundles Hexa WP Core 3.22.0.
+
+Version 1.4.1 exposes the site's working (decrypted) Publish Scale key through the `smp_tts_site_api_key` filter so SMP content generation can use the same key.
+
+Version 1.4.0 removes the ACF Pro requirement: the embedded Article Audio file field, field-key lookup and audio saving run on Hexa WP Core 3.4.5 `Fields`, which uses ACF when it is active and renders and stores the same field natively when it is not. The vendored Hexa WP Core package is updated to 3.4.5.
+
+Version 1.3.25 adds on-demand provider credit detection and a readable integration-health checklist in both the article editor and API settings. Credit checks use a small production-sized synthesis probe because UnrealSpeech does not publish a read-only balance endpoint.
+
 Version 1.3.24 adds an unstyled custom-control player for Elementor-owned presentation, including play/pause, timeline, elapsed and duration labels, volume and mute, skip, speed, keyboard-native range controls, and live status. Narration Card selectors are isolated so no visual skin reaches the unstyled control surface.
 
 Version 1.3.23 lowers the shared styled-player foundation with `:where()` so named templates reliably control their own design and Elementor can override the stable player markup without a specificity fight. The unstyled template remains free of plugin-owned presentation.
@@ -31,6 +39,34 @@ Main file:
 ```text
 smp-wp-text-to-speech.php
 ```
+
+> Feature base for HWS Skills. Read before building on this plugin; use or
+> extend these features instead of rebuilding them.
+
+**Purpose:** turns a post's text into an audio file and plays it on the page. **Admin:** WP Admin → SMP Text To Speech settings (provider, voice, player defaults); one-click generation from the post editor.
+
+## Features
+
+### Design examples and styling
+- **Examples:** [Player HTML, Elementor CSS and selector map](docs/player-design-examples.md).
+- **Visual previews:** Settings > SMP WP Text To Speech > Display, `/wp-admin/options-general.php?page=smp-wp-text-to-speech&tab=display`. The template picker previews every named skin using the player renderer.
+- **Related features:** [Summary, Contents and FAQ examples](https://github.com/mikeyperes/smp-publication-integration/blob/main/docs/article-design-examples.md) belong to SMP Publication Integration.
+
+### Audio player
+- **Does:** an audio player for the post's generated audio.
+- **Switch:** player defaults in settings: `player_label`, `show_player_meta`, `player_template` (default `clean_card`), `player_size`, `primary_color`, `enable_player_controls`.
+- **Use:** `[hexa_tts_player post_id="" label="Listen to this article" show_meta="" preload="metadata" class="" template="clean_card" size="default" color="#3657e3" controls="" enhanced_controls=""]` (alias `[smp_tts_player]`). Place it in the single-post template with a Shortcode widget.
+- **Code:** `smp-wp-text-to-speech.php`
+- **Custom Elementor skin:** use `template="unstyled_controls"` for the full custom control surface. Plain `unstyled` keeps browser-native audio controls. See the [HTML/CSS example](docs/player-design-examples.md#listen-player).
+
+### Audio generation
+- **Does:** extracts the article text, sends it to the chosen provider and stores the audio on the post.
+- **Use:** "Generate audio" in the post editor; credentials validated in settings.
+
+### Audio schema
+- **Does:** adds the article's AudioObject to Hexa WP Core's shared `hexa-schema` block and links it from the article as `audio` and `hasPart`.
+- **Use:** automatic on posts and press releases with generated audio.
+- **Code:** `smp-wp-text-to-speech.php` (`current_schema_nodes`, `link_audio_to_article`)
 
 ## Providers
 

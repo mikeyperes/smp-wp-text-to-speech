@@ -45,6 +45,98 @@
     };
   }
 
+  function diagnosticError(xhr, fallback) {
+    var payload = xhr && xhr.responseJSON;
+    return payload && payload.data && payload.data.message
+      ? payload.data.message
+      : (xhr && xhr.statusText ? xhr.statusText : fallback);
+  }
+
+  function setDiagnosticButton($button, busy, label) {
+    $button.prop('disabled', busy);
+    if (busy) {
+      $button.data('original-label', $button.text()).attr('aria-busy', 'true').text(label);
+      return;
+    }
+    $button.removeAttr('aria-busy').text($button.data('original-label') || $button.text());
+  }
+
+  function renderCredit($scope, data) {
+    var status = data && data.status ? data.status : 'unknown';
+    var available = status === 'available';
+    var unavailable = status === 'unavailable';
+    var $result = $scope.find('.hexa-tts-credit-result');
+    var $state = $scope.closest('.hexa-tts-postbox').find('.hexa-tts-credit-state');
+    var label = available ? 'Credits available' : (unavailable ? 'No credits available' : 'Could not determine');
+
+    $result.removeClass('is-success is-error is-warning').addClass(available ? 'is-success' : (unavailable ? 'is-error' : 'is-warning'));
+    $result.html('<strong>' + escapeHtml(label) + '</strong><span>' + escapeHtml(data && data.message ? data.message : '') + '</span>');
+    $state.removeClass('is-ready is-missing is-unknown').addClass(available ? 'is-ready' : (unavailable ? 'is-missing' : 'is-unknown')).text(label);
+  }
+
+  function renderHealth($scope, data) {
+    var checks = data && Array.isArray(data.checks) ? data.checks : [];
+    var $list = $scope.find('.hexa-tts-health-checklist');
+    $list.empty().prop('hidden', false);
+    checks.forEach(function (check) {
+      var status = check && check.status ? check.status : 'warning';
+      var symbol = status === 'pass' ? '&#10003;' : (status === 'fail' ? '&#10005;' : '!');
+      $list.append(
+        '<li class="is-' + escapeHtml(status) + '">' +
+          '<span class="hexa-tts-check-icon" aria-hidden="true">' + symbol + '</span>' +
+          '<div><strong>' + escapeHtml(check.label || 'Check') + '</strong><p>' + escapeHtml(check.message || '') + '</p></div>' +
+        '</li>'
+      );
+    });
+    if (data && data.credits) {
+      renderCredit($scope, data.credits);
+    }
+  }
+
+  $(document).on('click', '.hexa-tts-check-credits', function () {
+    var $button = $(this);
+    var $scope = $button.closest('.hexa-tts-diagnostics');
+    setDiagnosticButton($button, true, 'Checking credits...');
+    $.ajax({
+      url: hexaTts.ajaxUrl,
+      method: 'POST',
+      dataType: 'json',
+      data: { action: 'hexa_tts_check_credits', nonce: hexaTts.nonce, post_id: $scope.data('post-id') || 0 }
+    }).done(function (response) {
+      if (response && response.success) {
+        renderCredit($scope, response.data || {});
+        return;
+      }
+      renderCredit($scope, { status: 'unknown', message: response && response.data ? response.data.message : 'Credit check failed.' });
+    }).fail(function (xhr) {
+      renderCredit($scope, { status: 'unknown', message: diagnosticError(xhr, 'Credit check failed.') });
+    }).always(function () {
+      setDiagnosticButton($button, false);
+    });
+  });
+
+  $(document).on('click', '.hexa-tts-check-health', function () {
+    var $button = $(this);
+    var $scope = $button.closest('.hexa-tts-diagnostics');
+    setDiagnosticButton($button, true, 'Running checks...');
+    $.ajax({
+      url: hexaTts.ajaxUrl,
+      method: 'POST',
+      dataType: 'json',
+      data: { action: 'hexa_tts_check_health', nonce: hexaTts.nonce, post_id: $scope.data('post-id') || 0 }
+    }).done(function (response) {
+      if (response && response.success) {
+        renderHealth($scope, response.data || {});
+        return;
+      }
+      renderCredit($scope, { status: 'unknown', message: response && response.data ? response.data.message : 'Health check failed.' });
+    }).fail(function (xhr) {
+      renderCredit($scope, { status: 'unknown', message: diagnosticError(xhr, 'Health check failed.') });
+    }).always(function () {
+      setDiagnosticButton($button, false);
+    });
+  });
+
   $(document).on('click', '.hexa-tts-test-provider', function () {
     var $button = $(this);
     var provider = $button.data('provider');
