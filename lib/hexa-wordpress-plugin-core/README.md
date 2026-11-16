@@ -18,13 +18,56 @@
 
 ## Features
 
+### Signed JSON requests
+- **Does:** signs exact JSON bytes with method, path, timestamp, a fresh cryptographic nonce and the calling domain; sends HTTPS POST without redirects or cookies.
+- **Use:** `ApiKeys\SignedJsonClient($header_prefix)->post($url, $payload, $key, $domain, $timeout)` returns the WordPress HTTP response. Hosts own endpoint settings, key storage, domain normalization and response handling.
+- **Code:** `src/ApiKeys/HmacSignature.php`, `src/ApiKeys/SignedJsonClient.php`; [protocol](docs/signed-json.md).
+
+
+- PodcastSeries, PodcastSeason, PodcastEpisode, AudioObject, VideoObject and DataFeed builders with stable IDs, linked graph references, and shared content schema declarations.
+
+### Submission deletion journal and list totals
+- **Does:** atomically records ID/list/UTC deletion tombstones on delete and privacy erase; serialized commits keep deletion cursors reliable. No subscriber personal fields are retained.
+- **Use:** `SubmissionStore::deleted($after,$limit)` returns items, next_after_id and has_more; cursor follows deletion_id. `lists()` includes known empty lists with zero totals. Hosts own authorization, migration and HTTP mapping. InnoDB is required for atomic deletion; a storage failure leaves rows intact.
+- **Code:** src/FrontendForms/SubmissionStore.php; docs/frontend-forms.md.
+
+### Submission snapshot scanning
+- **Does:** reads submissions in ascending ID order with an upper bound and optional collection filter; hosts own authorization.
+- **Use:** `FrontendForms\SubmissionStore::scan($after, $limit, $collection, $upper)` returns items, upper_id, next_after_id and has_more. Reuse upper_id on subsequent pages; limit is clamped to 1-500.
+- **Code:** src/FrontendForms/SubmissionStore.php.
+
+
+### Shortcode inline styles
+- **Does:** queues inline CSS by WordPress handle, surviving discarded render expansions and deduplicating late shortcode styles.
+- **Use:** \Hexa\PluginCore\PublicComponents\InlineStyles::enqueue($handle, $css); see [style lifecycle](docs/shortcode-inline-styles.md).
+- **Code:** src/PublicComponents/InlineStyles.php.
+
+### Collection submissions
+- **Does:** stores normalized, deduplicated per-list submissions with UTC timestamps, safe request metadata, atomic IP rate counters and formula-safe streaming CSV.
+- **Use:** `FrontendForms\SubmissionStore`; see [API and host responsibilities](docs/collection-submissions.md).
+- **Extend:** `hexa_form_submission_client_ip` supplies a client IP for an explicitly trusted reverse proxy.
+- **Code:** `src/FrontendForms/SubmissionStore.php`.
+
+
+
+- Declared extensible builder/system exclusions and taxonomy/content-type sitemap collision protection.
+
+- Opt-in shared sitemap recommendations, explicit Rank Math changes, saved conditions, REST/AJAX and JSON WP-CLI. [Contract](docs/sitemaps.md).
+- Plugin-owned sitemaps: each plugin declares its sitemaps and gets its own Sitemaps section; other screens show them read-only with a link to the owner. [Contract](docs/sitemaps.md#plugin-owned-sitemaps).
+- Site-type sitemap rules: a plugin can recommend a sitemap on or off for one site type only (for example authors off on a person website), and the lookup uses the site's own type by default. [Contract](docs/sitemaps.md#plugin-owned-sitemaps).
+
+- Search filter chips: opt-in `filter_layout="chips"` renders accessible single-choice radio chips, including All, with the same markup under `style="none"`. Dropdowns remain the default. [Markup](docs/search-filter-chips.md).
+
+- Automatic and direct plugin updates resolve a published stable release tag, verify its version, and never fall back to a branch archive.
+
+
 ### Plugin bootstrap and context
 - **Does:** loads one Core copy per site (the newest bundled one among all plugins), builds the plugin's context and boots its modules.
 - **Use:** `hexa_plugin_core_register_package( '<slug>', <core root> )`, then `new PluginContext( [ slug, basename, version, path, url, github_repo, admin_page, capability ] )` and `( new CoreBootstrap( $context ) )->add_module( $m )->boot()`. Modules implement `ModuleInterface` (or extend `RegisterMethodModule`). `CorePackageRuntime::report()` shows which Core copy was selected and any integrity issues. See [Setup protocol](#setup-protocol).
 - **Code:** `bootstrap.php`, `src/CoreBootstrap/`, `src/CoreContracts/`, `src/CoreRuntime/`
 
 ### Admin tabs and dashboard shell
-- **Does:** the plugin's one admin page: top tabs or a grouped, collapsible sidebar with plugin and Core versions, tabs loaded by AJAX with the tab kept in the URL, plus the automatic Hexa Core tab showing this README.
+- **Does:** the plugin's one admin page: top tabs or a grouped, collapsible sidebar with plugin and Core versions and a search box that filters its sections, tabs loaded by AJAX with the tab kept in the URL, plus the automatic Hexa Core tab showing this README.
 - **Use:** `( new HostTabsRenderer() )->render( [ tabs, active, page_url, ajax_action, nonce, root_id, panel_id, layout => 'sidebar', groups, sidebar_identity, render_callback ] )`; `TabRegistry`/`TabDefinition` for the list; `( new CoreTabModule( new CoreTabConfig( [ tabs_filter, render_filter, core_root, readme_path, library_path ] ) ) )->register()`.
 - **Extend:** the host's `<prefix>_dashboard_tabs` and `<prefix>_render_dashboard_tab` filters.
 - **Code:** `src/WpAdminTabs/` (docs: `docs/tabs.md`)
@@ -61,6 +104,11 @@
 - **Does:** admin AJAX actions with nonce and capability checks, request parsing, error handling and JSON replies done once.
 - **Use:** `( new AjaxActionRegistry( [ capability, nonce_action, nonce_field ] ) )->register( [ 'action' => [ 'callback' => fn( AjaxRequest $r ) => [...] ] ] )`; `AjaxRequest::key()` and friends read input; throw `AjaxFailure` for a clean error.
 - **Code:** `src/WpAdminAjax/` (docs: `docs/wp-admin-ajax.md`)
+
+### API key fields
+- **Does:** a real field for any service's API key: save (encrypted through the credential store), remove, and a Test key button that calls the service and says plainly whether the key is active, rejected or unreachable, with the service's own setup steps under it. Saving refuses a key the test rejects.
+- **Use:** `ApiKeyFields::register( new ApiKeyField( id, slug, key_name, label, verifier, steps[], placeholder, help_url, help_label ) )`, then `ApiKeyFields::render( id )` on the screen and `ApiKeyFields::value( id )` in code. A verifier implements `ApiKeyVerifier::verify( string ): ApiKeyCheck`; `HttpApiKeyVerifier` covers services with one read-only endpoint (set `endpoint()`, and optionally `headers()`, `shape_error()`, `on_active()`).
+- **Code:** `src/ApiKeys/` (AJAX actions `hexa_core_api_key_save`, `_delete`, `_test`)
 
 ### Activity log
 - **Does:** a collapsible dark log of what a job did, kept for the page, for a while (transient) or until cleared (option).
@@ -116,9 +164,15 @@
 - **Use:** `FieldSchema::normalize()`, `RichTextValue::sanitize()`/`plain_text()`; `ImageUploadPolicy::validate()`/`accept_attribute()`, `WordPressImageUploader::store()`.
 - **Code:** `src/FrontendForms/`, `src/MediaUploads/` (docs: `docs/frontend-forms.md`, `docs/media-uploads.md`)
 
+### Live slug field
+- **Does:** a name box and a slug box; the slug fills in as the name is typed, typing in the slug box takes it over and is cleaned to slug form live, emptying it hands it back. Optional live preview such as a shortcode. Works on markup loaded later by AJAX.
+- **Use:** `WpAdminComponents\SlugField::render(['name_field'=>'name','slug_field'=>'id','preview'=>'[my_shortcode id="{slug}"]'])`; options `separator`, `max`, `slug_readonly`, `help`, labels and values. Always save `SlugConverter::from_name()` of the posted slug on the server.
+- **Code:** `src/WpAdminComponents/SlugField.php`, `src/DataNormalization/SlugConverter.php`.
+
 ### Data normalization
 - **Does:** reads field and meta values safely and turns them into clean text, URLs, emails, dates, numbers, rows, images and galleries for a plugin's own data mapping.
 - **Use:** `FieldReader::read()`/`first()`, `ValueNormalizer::text()`/`url()`/`email()`/`date()`/`rows()`, `MediaNormalizer::image()`/`gallery()`/`schema_image()`.
+- **Slugs:** `SlugConverter::from_name('Spring Café & News!')` gives `spring-cafe-and-news` (lowercase, accents removed, `&` to `and`, one dash between words, 80 characters by default; pass `'_'` for underscores). `is_valid()` checks a slug; `js()` is the identical browser function (`window.HexaSlug.fromName`).
 - **Code:** `src/DataNormalization/` (docs: `docs/data-normalization.md`)
 
 ### Website type and main entity
@@ -226,15 +280,21 @@
 - **Code:** `src/Users/`
 
 ### Site structure
-- **Does:** the plugin's list of key pages, which page fills each, creating pages from templates, and building WordPress menus from them.
-- **Use:** `PageStructureManager` with the host's page blueprint, `SiteStructureRenderer::render( [ show_pages, show_menus ] )`, `SiteStructureAjaxController::register()`; `PageStructureMenuService`, `PageStructureTemplateService`.
+- **Does:** the plugin's list of key pages, which page fills each, creating pages from templates, placing each page under its parent (also a parent another plugin owns) with its old address redirecting, the facts each page needs, and building WordPress menus from them.
+- **Use:** `PageStructureManager` with the host's page blueprint (`parent`, `slugs` alternatives with `*`, `required_facts`, config `facts_getter`); `ensure_pages()` sets every page up in one call, `ensure_page( $key )` one, `resolve_page_id( $key )` finds a page from any plugin (filter `hexa_site_structure_page_id`), `missing_facts( $key )`, `PageStructureManager::place_under_parent()`, `PageRedirects`; `SiteStructureRenderer::render( [ show_pages, show_menus ] )`, `SiteStructureAjaxController::register()`; `PageStructureMenuService`, `PageStructureTemplateService`.
 - **Code:** `src/SiteStructure/` (docs: `docs/site-structure.md`)
 
 ### Schema tools
 - **Does:** the one schema library: node builders, WordPress data sources, shared `@id`s and one merged `hexa-schema` JSON-LD block per page from every plugin, plus the Rank Math schema switch and a schema dashboard.
-- **Use:** `SchemaNodes::organization()`, `person()`, `article()`, `web_page()` and the rest with `SchemaSources` and `SchemaIds`; `SchemaPage::register( $source, $callback )` to add nodes; `RankMathSchemaControl::register()`; `SchemaGraph::standalone_nodes()`, `validation_issues()`; `SchemaDashboardRenderer::render()`.
+- **Use:** `SchemaNodes::organization()`, `person()`, `person_profile()` (a complete Person from one plain record: names, birth, Country nationality, languages, education as alumniOf and hasCredential, occupations, awards, images, employers, sameAs, Knowledge Graph ID), `occupation()`, `educational_organization()`, `country()`, `quotation()`, `creative_work()`, `article()`, `web_page()` (including ImageGallery), `event()`, `exhibition_event()`, `award_text()` and the rest with `SchemaSources` and `SchemaIds`; `SchemaPage::register( $source, $callback )` to add nodes; `SchemaPage::merge_nodes()` and `document_for()` to merge and print nodes without touching the page; `RankMathSchemaControl::register()`; `SchemaGraph::standalone_nodes()`, `validation_issues()`; `SchemaDashboardRenderer::render()`.
 - **Extend:** `hexa_plugin_core_schema_graph`.
 - **Code:** `src/SchemaTools/` (docs: `docs/schema-tools.md`, `docs/schema-standalone-nodes.md`)
+
+### Schema structures
+- **Does:** each plugin declares the schema structures it owns (which pages, which types, which modes); every structure ships on in its default mode, Core prints the enabled ones in the page's schema block, keeps each structure's mode, and gives every plugin the same Schema panel with live previews and validator links, plus `wp hexa schema`.
+- **Use:** `SchemaStructures::register( $owner, [ 'plugin' => ..., 'settings_url' => ..., 'structures' => [ [ 'id', 'label', 'where', 'modes', 'default', 'option', 'applies' => fn( SchemaContext $c ): bool, 'build' => fn( SchemaContext $c, string $mode ): array, 'sample' => fn(): ?SchemaContext ] ] ] )`; `SchemaStructuresPanel::render( $owner )` in the plugin's Schema tab; `SchemaStructures::mode()`, `set_mode()`, `nodes()`, `document()`, `preview()`; `SchemaContext::current()`, `for_post()`, `for_front_page()`, `for_archive()`. CLI: `wp hexa schema list|preview|set --owner --id [--mode]`.
+- **Extend:** `hexa_plugin_core_schema_structures` (every owner's structures), `hexa_plugin_core_schema_structure_mode_changed` (owner, id, mode).
+- **Code:** `src/SchemaTools/SchemaStructures.php`, `SchemaStructuresPanel.php`, `SchemaStructuresModule.php`, `SchemaContext.php` (docs: `docs/schema-structures.md`)
 
 ### Schema detection
 - **Does:** scans public URLs for JSON-LD, names its source, checks properties, duplicate types and FAQ markup, and shows a dark report.
@@ -243,11 +303,11 @@
 
 ### FAQ sets
 - **Does:** FAQ sets with a primary set, safe answer links, FAQPage schema and list or accordion output.
-- **Use:** `$m = new FaqSetManager(); $set = $m->resolveSet( $sets, 'primary', $slug ); echo $m->renderFaqs( $set, [ 'style' => 'accordion', 'inject_schema' => true ] )`; `FaqSourceResolver`.
+- **Use:** `$m = new FaqSetManager(); $set = $m->resolveSet( $sets, 'primary', $slug ); echo $m->renderFaqs( $set, [ 'style' => 'accordion' ] )`; `buildSchemaNode()` for the page's schema block; `FaqSourceResolver`. Front-end output prints only its own styles, once per page.
 - **Code:** `src/FaqSets/` (docs: `docs/faq-sets.md`)
 
 ### Search
-- **Does:** the one search for every use: a search box with filters (type, category, tag, author, any taxonomy or custom field) and, for people or host directories, sorts. Results show in one of two places: the page's own list narrows in place (category, tag, author, search and post type pages, or any Elementor loop marked `hexa-listing-results`, such as a homepage section), or the box renders its own result cards. Typing and ticking refresh the results without a page reload; the results dim with one shared spinner while loading; filters take several choices and show counts; cards load more on scroll with a Load more link. Every state is a plain URL. Also draws the header search box (a magnifying glass that opens a field in place, or an always-open field), which goes to the search page.
+- **Does:** the one search for every use: a search box with filters (type, category, tag, author, any taxonomy or custom field) and, for people or host directories, sorts. Results show in one of two places: the page's own list narrows in place (category, tag, author, search and post type pages, or any Elementor loop marked `hexa-listing-results`, such as a homepage section), or the box renders its own result cards. Typing and ticking refresh the results without a page reload; the results dim with one shared spinner while loading; filters take several choices and show counts; cards load more on scroll with a Load more link. Every state is a plain URL. The status line marks its count as `<b class="hls-count">` for styling, and any element marked `data-hls-sync` (such as a heading naming the search term) is refreshed with the results. Also draws the header search box (a magnifying glass that opens a field in place, or an always-open field), which goes to the search page.
 - **Use:** register a profile with `SearchRegistry::register( 'id', [...] )` (add `render_item` for cards, `source` = `users` with `roles` for people), then `[hexa_search id="id"]` or `SearchBox::render( 'id', $options )`; `SearchBox::header( $options )` for the header. HWS Base Tools ships `[hws_search]` and `[hws_search_box]`. Add `SearchModule` to the host bootstrap.
 - **Extend:** `hexa_plugin_core_search_target`, `hexa_plugin_core_search_context_args`, `hexa_plugin_core_search_post_types`, `hexa_plugin_core_search_register`.
 - **Code:** `src/Search/`. Markup and styling: HWS Base Tools `docs/hws-search.md`; API: `docs/hexa-search.md`.
@@ -289,13 +349,13 @@
 
 ### Map
 - **Does:** a brandable map of posts or users by address, geocoded in the background without an API key, with clustered pins, group and date filters, item cards and a details sidebar.
-- **Use:** `MapRegistry::register( 'id', [...] )`, add `MapModule`, then `[hexa_map id="id"]`; details at REST `hexa-plugin-core/v1/map/{profile}/details/{item}`.
+- **Use:** `MapRegistry::register( 'id', [...] )`, add `MapModule`, then `[hexa_map id="id"]` (add `pulse="ring"` for a pulse that never redraws the map); details at REST `hexa-plugin-core/v1/map/{profile}/details/{item}`.
 - **Style:** `--hmap-*` CSS variables, including the base map.
 - **Extend:** `hexa_plugin_core_map_register`.
 - **Code:** `src/Map/` (docs: `docs/map.md`)
 
 ### Public components
-- **Does:** shared pieces for public pages: the image zoom viewer (hover preview, full-screen pinch zoom), item links and the in-page lightbox, cache-safe "5 min ago" times, and the profile store and request helpers behind Search, Calendar and Map.
+- **Does:** shared pieces for public pages: the image zoom viewer (hover preview, full-screen pinch zoom), item links and the in-page lightbox (worded Previous and Next with the item's place, stepping smoothly through the component's items, the open item kept in the address as `?hlb=<post ID>` so a reload reopens it), cache-safe "5 min ago" times, and the profile store and request helpers behind Search, Calendar and Map.
 - **Use:** `ImageZoom::html( $attachment_id, $options )`; `ItemLink::attributes()` with `link_behavior` = `page`/`new_tab`/`lightbox` (REST `hexa-plugin-core/v1/lightbox/{component}/{profile}/{post}`); `RelativeTime::html( $timestamp )`; `ProfileStore`, `ProfileValues`, `PublicComponent`.
 - **Code:** `src/PublicComponents/` (docs: `docs/image-zoom.md`, `docs/item-link.md`, `docs/relative-time.md`)
 
@@ -354,3 +414,21 @@ Core is a library, not a WordPress plugin. Changed Core code always ships under 
 Run the complete PHP suite with `php tests/run.php`.
 
 Before adding code in another Codex or Claude chat, read `AGENTS.md`, `HEXA_PLUGIN_CORE_LIBRARY.md`, `docs/folder-map.md`, `docs/setup-protocol.md`, `docs/implementation-checklist.md`, `docs/integration-tests.md`, `docs/new-plugin-master-checklist.md` and the doc for the folder being changed. A feature that does not fit an existing namespace gets its namespace documented first. Every new or changed feature updates its entry in `## Features` in the same commit.
+
+- `src/Sitemaps/`: shared sitemap registry, conditions, Rank Math comparison and administrator endpoints. See `docs/sitemaps.md`.
+
+Term choice limits support `excluded_terms` (IDs or callback) outside the choice count and `applies_to` (WP_Post callback) for host ownership checks. Only signed-in users are limited; CLI and cron saves are exempt.
+
+Site-wide discussion closing uses bounded updates of only comment and ping status fields, with post-cache invalidation. It includes registered post types and attachments without invoking content-save hooks for every row. Explicit ID requests retain native WordPress post updates.
+
+The bounded selector includes all stored post statuses of registered types and closes any discussion value other than closed, including imported nonstandard values.
+
+### Avatar provider ownership
+
+Profile writes require active Simple Local Avatars and reject competing avatar plugins. Simple User Avatar (including network activation) suppresses the local fallback. Replacement and rollback remove outgoing provider derivatives.
+
+### PDF / print
+- **Does:** Renders trusted HTML items as physical-size print pages or PDF, with no domain-specific content.
+- **Use:** `new PdfPrint\PageSize($widthInches, $heightInches)` and `new PdfPrint\HtmlDocument($size)`; call `html($items, $css, true)` or `pdf($items, $css)`. PDF requires host-bundled `dompdf/dompdf`.
+- **Extend:** Hosts supply escaped item HTML, bounded item lists, CSS, permission checks and response delivery.
+- **Code:** `src/PdfPrint/`. See [PDF / print](docs/pdf-print.md).

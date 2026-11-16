@@ -119,3 +119,9 @@ Then update:
 - `README.md`
 - `AGENTS.md`
 - `docs/folder-map.md`
+
+- `src/Sitemaps/`: shared sitemap registry, conditions, Rank Math comparison and administrator endpoints. See `docs/sitemaps.md`.
+
+- `src/PdfPrint/`: `Hexa\PluginCore\PdfPrint`, generic HTML print/PDF.
+
+- `src/ApiKeys/`: reusable key setup and domain-bound HMAC JSON transport. See `docs/signed-json.md`.

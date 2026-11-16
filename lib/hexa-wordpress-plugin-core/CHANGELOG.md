@@ -1,6 +1,98 @@
+## 3.62.0 - 2026-11-15
+
+- Add shared domain-bound HMAC JSON signing and HTTPS POST transport with fresh nonces, exact-body hashes and redirects disabled.
+
+# 3.57.0
+
+## 3.61.0 - 2026-11-13
+
+- Schema structures: `SchemaStructures` registry, `SchemaContext`, `SchemaStructuresPanel` and `SchemaStructuresModule` (AJAX and `wp hexa schema`): each plugin declares its structures, which ship on in their default mode, keep their mode, print in the shared block and preview live.
+- `SchemaNodes::person_profile()`, `occupation()`, `educational_organization()`, `country()`, `quotation()`, `creative_work()`; `ImageGallery` page type; `same_as()` keeps the first spelling of a repeated link.
+- `SchemaPage::merge_nodes()` and `document_for()` merge and print nodes without changing the current page.
+- FAQ output no longer prints the admin UI styles on public pages; its own styles print once per page.
+
+## 3.59.1 - 2026-11-08
+
+- Recognize Simple User Avatar and network-active avatar plugins; enforce Simple Local Avatars for profile writes and clean outgoing derivatives.
+
+
+## 3.59.0
+
+- Include nonstandard discussion statuses when closing all registered content types.
+
+## 3.58.0
+
+- Close site-wide comments and pings in bounded status-only updates with post-cache invalidation, avoiding thousands of content-save hooks.
+
+- Sitemap recommendations ignore Rank Math's noindex. Each row reports `hidden_from_google` with a warning when a recommended sitemap's pages are hidden, and turning a content-type, taxonomy or author sitemap on also makes its pages visible to Google (Titles & Meta robots set to index), so the sitemap actually appears.
+
+# 3.56.1
+
+- Term choice limits skip anonymous, CLI and cron saves, preserve excluded mandatory terms, and accept a host ownership predicate.
+
 # Hexa WordPress Plugin Core changelog
 
 Release notes moved from the README (3.31.1). Newest first; each Core release adds its line here.
+
+Version 3.56.0: name-to-slug conversion: `DataNormalization\SlugConverter` (PHP, with an identical browser twin) and `WpAdminComponents\SlugField`, a name box whose slug box fills in live as you type.
+
+Version 3.55.0: every plugin dashboard with the sidebar layout gets a search box at the top of its sidebar that filters the sections as you type (by section name, ID or group name); Enter opens the first match, Escape clears it.
+
+Version 3.54.0: sitemap site-type rules: a declared row with `site_types` applies only on those site types without taking ownership; recommendation callables receive the site type; the lookup defaults to the site's own type through `hexa_plugin_core_site_type`.
+
+Version 3.53.0: SchemaNodes adds `exhibition_event()` (schema.org ExhibitionEvent with dates, venue Place and address, organizer, works shown as VisualArtwork, and extra properties such as contributor) and `award_text()` (one award as the text Person and Organization `award` takes, since schema.org has no Award type).
+
+Version 3.50.1: WordPress-handle inline styles survive discarded shortcode expansions and print once even for late Elementor widgets; submission storage gains collection-bound single-row deletion.
+
+Version 3.50.0: reusable FrontendForms SubmissionStore adds unique collection/email storage, safe request metadata, Cloudflare-aware IP resolution, atomic rate counters, cursor-based CSV and personal-data helpers.
+
+
+Version 3.49.0: the sitemap engine keeps a hardcoded junk list (page-builder templates, theme parts, shop internals, post formats). Junk sitemaps are never recommended, are flagged `junk` in the lookup, can be turned off together (`disable_junk`, `wp hexa sitemaps disable-junk`) and can be moved back to the main list one by one (`promote`).
+
+Version 3.47.1: the map shortcode takes `pulse="ring"`: happening-now pins pulse as small HTML rings animated with transform and opacity, so the map is no longer redrawn every frame. Without the attribute the pulse is unchanged.
+
+Version 3.47.0: API key fields for every plugin (`src/ApiKeys/`): save, remove and test a service key, stored encrypted, with the service's setup steps; a general key test (`ApiKeyVerifier`, `HttpApiKeyVerifier`) that services extend. HWS Base Tools' Stripe keys are the first user.
+
+Version 3.46.2: on phones the media-layout lightbox shows its Previous, count, Next and close controls as a solid strip above the photo instead of floating over it, so the count stays readable and the photo uncovered.
+
+Version 3.46.1: the item lightbox starts loading the neighbouring items as soon as an item opens (the one before, the one after, and two ahead in the stepping direction), instead of after the shown item finishes, so steps through a slow server stay instant.
+
+Version 3.46.0: stepping in the item lightbox is smooth: the shown item stays until the next is fetched and its photo decoded, then fades through to it (a phone sheet eases to its new height), and the items either side load in the background. Previous and Next are worded buttons with the item's place between them (new label `lightbox_count`, `%1$s of %2$s`), replacing the bare arrow icons.
+
+Version 3.45.0: the item lightbox gets Previous and Next buttons (and left and right arrow keys) that step through the component's other dialog links in page order, and keeps the open item in the address as `?hlb=<post ID>`, updated on every step, so a reload or shared link reopens it; closing removes it. New labels `lightbox_prev` and `lightbox_next`. The calendar ignores `hlb` when it compares addresses.
+
+Version 3.44.2: the live search box shows its result count as `<b class="hls-count">` inside the status line (so a design can style the number), keeps that markup when results update, and after each update also refreshes every element marked `data-hls-sync` (for example a heading that names the search term) from the new page.
+
+Version 3.44.1: `apply_template()` takes a page built with Elementor out of builder mode (removes `_elementor_edit_mode`), so the default text shows instead of the old Elementor design; the Elementor design stays saved on the page.
+
+Version 3.44.0 adds custom-design pages: a page definition with `'design' => 'custom'` is still found, linked and placed under its parent, but `create_page()` makes it an empty draft and `apply_template()` refuses it, so the site's own design (an Elementor build) provides its content. `PageStructureManager::is_custom_design()`; the page list shows a Custom design tag and, in Page details, a note instead of the default text and template.
+
+Version 3.43.0 shows the shortcode reference (`SiteStructureRenderer::shortcode_items_html()`) as one table per group: Detail, Current value and Shortcode for detail rows; Shortcode and What it does for the rest; each shortcode with a Copy button. It carries its own styles, so plugin screens that reuse it look the same.
+
+Version 3.42.1 adds a short side arrow to the page list's Edit page and View buttons, which open in a new tab.
+
+Version 3.42.0 lets a page definition list the site types it does not apply to (`not_for`, for example `[ 'person' ]`). With the manager's `site_type` callback, `site_type_labels` and `site_type_edit_url`, `unavailable_reason()` explains why; such a page is greyed out in the page list with that note and a link to change the site type, cannot be switched on, and is skipped by `ensure_pages()`. A page switched off shows a note that it is not part of the site.
+
+Version 3.41.1 names the section of top-level pages from the `main_pages_title` and `main_pages_note` labels (default "Main pages") instead of a fixed "Other pages".
+
+Version 3.41.0 redoes each page row in the page list: an on/off switch, the page name with its address (a link once the page exists), one status (Published, Not created or Off) with the missing details named under it, and one main button (Edit page or Create page). "Page details" opens the linked-page choice with View, Apply template and Delete, then the details used, the default content and what goes into the page. New `PageStructureManager::is_enabled()` / `set_enabled()` (option `<option_prefix>enabled_pages`; an `optional` page is off until it has a page) and the `toggle_page` AJAX action; `ensure_pages()` skips pages that are off.
+
+Version 3.40.1 brings back the "Page details" expand/collapse under each page (instead of a Details button), gives the row columns fixed widths so names, addresses and dropdowns line up without wrapping, and makes the shortcode reference an expand/collapse.
+
+Version 3.40.0 adds to the page list: a shortcode reference above it (`shortcode_reference`, rows with optional heading, note and current value; `SiteStructureRenderer::shortcode_items_html()` is public so plugin screens can reuse it) and, per page, the details its content uses with a "N details missing" tag (`facts_used` callback, `facts_edit_url`).
+
+Version 3.39.0 lays the page list out in sections (one per page with pages under it, that page first, then "Other pages") with no indentation: each page under another shows "Under <parent>" next to its address. Each row has a Details button that opens the page facts, the default content as it reads (keeping the page's own styles) and "What goes into the page".
+
+Version 3.38.1 relabels the page list template box "What goes into the page" and explains that a shortcode line prints the Default page content shown above it.
+
+Version 3.38.0 redesigns the `SiteStructureRenderer` page list: one row per page (name, status pill, address, linked page, View / Edit / Apply template / Delete), pages listed with a `parent` key nested under that parent, a page not created yet shown at its address under its parent, and one "Page details" expander holding the page facts, the default content as it reads and the template editor (a plain text box). The old table, the separate detail, default-content and template rows, and the red/green Set badges are gone.
+
+Version 3.37.0: `SiteStructureRenderer` shows an expand/collapse "Default page content" under each page row (the default template, rendered; `show_default_content`, on by default), and `assigned_page_id()` treats a deleted or trashed linked page as not linked, so the row offers Create again.
+Version 3.36.1 makes `ensure_page()` prefer a published page at any of a definition's addresses over a draft at its main one (`find_page_by_slug()` and `find_page_by_pattern()` take a status list), so a leftover draft `privacy-policy` no longer wins over the live `privacy-policy-2`. It also notes that 3.36.0 moved `PageRedirects` to the `wp` hook, ahead of redirect plugins that send every 404 home.
+
+Version 3.36.0 lets `ensure_page()` find a page that already exists under another address: a page definition's `slugs` lists alternatives, `*` as a wildcard (`find_page_by_pattern()`), so a site's `her-forward-mission-statement` is linked instead of a second Mission Statement page being created.
+
+Version 3.35.0 lets one plugin's page sit under another plugin's page. `PageStructureManager::resolve_page_id()` finds a page key in any loaded page manager, then through the `hexa_site_structure_page_id` filter; `ensure_page()` / `ensure_pages()` set pages up in one call (the linked page, else a page already at its slug at any level, else a new page) and move each under its `parent`; `place_under_parent()` moves a page and `PageRedirects` 301s its old address; `missing_facts()` checks a page definition's `required_facts` through the `facts_getter` config.
 
 Version 3.34.2 makes the Core fleet sync check the site after copying: it loads the home page once and restores every copied Core package when the site returns a server error or WordPress's critical-error page (`hexa_core_sync_site_broken`). An older host plugin that still used code a newer Core removed (Base Tools 13.13.2 with Core 3.34.1, missing `DirectorySearch`) took americasgoneviral.com down with HTTP 500 on 2026-10-23.
 
@@ -297,3 +389,6 @@ Version 0.19.13 adds reusable collapsed detail subcards and uses them in cleanup
 Version 0.19.12 keeps Core toggle inputs clipped to a 1px focusable control so hidden checkbox fields cannot create horizontal page overflow.
 
 Version 0.19.4 adds:
+
+## 3.60.0
+- Generic PdfPrint physical dimensions and HTML print/PDF renderer; host supplies Dompdf.
