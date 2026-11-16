@@ -5,6 +5,7 @@ namespace smp_text_to_speech\Concerns;
 use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
 use Smp\TextToSpeech\Support\Text;
 use WP_Error;
+use Hexa\PluginCore\ApiKeys\SignedJsonClient;
 
 use Hexa\PluginCore\ActivityLog\ActivityLogConfig;
 use Hexa\PluginCore\ActivityLog\ActivityLogEntry;
@@ -432,23 +433,11 @@ trait GeneratesAudio {
             return null;
         }
 
-        $headers = [ "Accept" => "application/json" ];
-        $api_key = self::api_key();
-        if ( "" !== $api_key ) {
-            $headers["X-SMP-TTS-Key"] = $api_key;
+        $body = self::api_request( "/requests/" . rawurlencode( $public_id ), [], 8 );
+        if ( is_wp_error( $body ) ) {
+            return [ "status" => "unavailable", "message" => $body->get_error_message() ];
         }
-
-        $response = wp_remote_get( self::API_BASE . "/requests/" . rawurlencode( $public_id ), [
-            "timeout" => 8,
-            "headers" => $headers,
-        ] );
-        if ( is_wp_error( $response ) ) {
-            return [ "status" => "unavailable", "message" => $response->get_error_message() ];
-        }
-
-        $code = wp_remote_retrieve_response_code( $response );
-        $body = json_decode( wp_remote_retrieve_body( $response ), true );
-        if ( 200 !== (int) $code || ! is_array( $body ) || empty( $body["success"] ) || empty( $body["request"] ) || ! is_array( $body["request"] ) ) {
+        if ( empty( $body["request"] ) || ! is_array( $body["request"] ) ) {
             return null;
         }
 
@@ -466,7 +455,8 @@ trait GeneratesAudio {
         if ( "" === $api_key ) {
             return new WP_Error( "hexa_tts_missing_api_key", "Missing Publish Scale TTS API key." );
         }
-        $response = wp_remote_post( self::API_BASE . $path, [ "timeout" => $timeout, "headers" => [ "Accept" => "application/json", "Content-Type" => "application/json", "X-SMP-TTS-Key" => $api_key ], "body" => wp_json_encode( $payload ) ] );
+        $base = rtrim( (string) apply_filters( "smp_wp_text_to_speech_api_base", self::API_BASE ), "/" );
+        $response = ( new SignedJsonClient( "X-SMP-" ) )->post( $base . $path, $payload, $api_key, home_url(), (int) $timeout );
         if ( is_wp_error( $response ) ) {
             return $response;
         }

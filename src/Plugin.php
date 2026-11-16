@@ -54,7 +54,8 @@ final class Plugin {
     const LEGACY_OPTION = "hexa_tts_settings";
     const NONCE_ACTION = "smp_wp_text_to_speech_admin";
     const SETTINGS_SLUG = PluginMetadata::ADMIN_PAGE;
-    const API_BASE = "https://publish.scalemypublication.com/api/smp-text-to-speech/v1";
+    const API_BASE = "https://api.scalemypublication.com/v1/text-to-speech";
+    const KEY_API_BASE = "https://publish.scalemypublication.com/api/smp-text-to-speech/v1";
     const GITHUB_REPO = PluginMetadata::REPO;
     const GITHUB_BRANCH = PluginMetadata::BRANCH;
     const REST_NS = "smp-tts/v1";

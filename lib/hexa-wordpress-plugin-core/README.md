@@ -19,8 +19,8 @@
 ## Features
 
 ### Signed JSON requests
-- **Does:** signs exact JSON bytes with method, path, timestamp, a fresh cryptographic nonce and the calling domain; sends HTTPS POST without redirects or cookies.
-- **Use:** `ApiKeys\SignedJsonClient($header_prefix)->post($url, $payload, $key, $domain, $timeout)` returns the WordPress HTTP response. Hosts own endpoint settings, key storage, domain normalization and response handling.
+- **Does:** signs exact JSON bytes with method, path, timestamp, a fresh cryptographic nonce and the normalized calling domain; sends HTTPS POST without redirects or cookies.
+- **Use:** `ApiKeys\SignedJsonClient($header_prefix)->post($url, $payload, $key, $domain, $timeout)` returns the WordPress HTTP response. Hosts own endpoint settings, key storage, response handling.
 - **Code:** `src/ApiKeys/HmacSignature.php`, `src/ApiKeys/SignedJsonClient.php`; [protocol](docs/signed-json.md).
 
 

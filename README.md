@@ -30,6 +30,7 @@
 - **Custom Elementor skin:** use `template="unstyled_controls"` for the full custom control surface. Plain `unstyled` keeps browser-native audio controls. See the [HTML/CSS example](docs/player-design-examples.md#listen-player).
 
 ### Audio generation
+- **Connection:** all service calls, including request status, use signed POST at `https://api.scalemypublication.com/v1/text-to-speech` through Hexa WP Core 3.62.1. The `smp_wp_text_to_speech_api_base` filter owns the endpoint override. Domain-verified key retrieval keeps its existing Publish address.
 - **Does:** extracts the article text, sends it to the chosen provider and stores the audio on the post.
 - **Use:** "Generate audio" in the post editor; credentials validated in settings.
 

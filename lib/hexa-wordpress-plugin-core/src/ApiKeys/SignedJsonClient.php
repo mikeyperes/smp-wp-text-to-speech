@@ -19,6 +19,7 @@ final class SignedJsonClient {
             || isset( $parts['query'] ) || isset( $parts['fragment'] ) || isset( $parts['user'] ) || isset( $parts['pass'] ) ) {
             return new \WP_Error( 'hexa_signed_url_invalid', 'Signed requests require an HTTPS address without credentials, a query or a fragment.' );
         }
+        $domain = $this->domain( $domain );
         if ( '' === $key || '' === $domain ) {
             return new \WP_Error( 'hexa_signed_identity_missing', 'A site key and domain are required.' );
         }
@@ -42,6 +43,17 @@ final class SignedJsonClient {
             'headers' => $headers,
             'body' => $body,
         ] );
+    }
+
+    private function domain( string $value ): string {
+        $url = false === strpos( $value, '://' ) ? 'https://' . $value : $value;
+        $host = strtolower( rtrim( (string) wp_parse_url( $url, PHP_URL_HOST ), '.' ) );
+        $host = (string) preg_replace( '/^www\./', '', $host );
+        if ( filter_var( $host, FILTER_VALIDATE_IP ) || ! filter_var( $host, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME ) || false === strpos( $host, '.' ) ) {
+            return '';
+        }
+
+        return $host;
     }
 
     private function headers( string $path, string $body, string $key, string $domain, string $timestamp, string $nonce ): array {

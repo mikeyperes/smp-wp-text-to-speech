@@ -1776,4 +1776,4 @@ Term choice limits support `excluded_terms` (IDs or callback) outside the choice
 
 ## Signed JSON requests
 
-Use `Hexa\PluginCore\ApiKeys\SignedJsonClient` for domain-bound HMAC HTTPS calls. Hosts provide endpoints, header prefix, key and domain; Core signs exact body bytes and generates a new nonce per send. See `docs/signed-json.md`.
+Use `Hexa\PluginCore\ApiKeys\SignedJsonClient` for domain-bound HMAC HTTPS calls. Hosts provide endpoints, header prefix, key and calling URL or domain; Core normalizes the domain, signs exact body bytes and generates a new nonce per send. See `docs/signed-json.md`.

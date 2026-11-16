@@ -138,7 +138,7 @@ trait RunsDiagnostics {
         set_transient( $transient, $proof, 5 * MINUTE_IN_SECONDS );
 
         $response = wp_remote_post(
-            self::API_BASE . "/site-key/fetch",
+            self::KEY_API_BASE . "/site-key/fetch",
             [
                 "timeout" => 20,
                 "redirection" => 0,

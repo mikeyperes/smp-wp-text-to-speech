@@ -9,7 +9,7 @@ class WP_Error {
     public string $code;
     public function __construct( string $code, string $message ) { $this->code = $code; }
 }
-function wp_parse_url( $url ) { return parse_url( $url ); }
+function wp_parse_url( $url, $component = -1 ) { return parse_url( $url, $component ); }
 function wp_json_encode( $value ) { return json_encode( $value ); }
 function wp_remote_post( $url, $args ) {
     $GLOBALS['sent'][] = [ $url, $args ];
@@ -32,6 +32,10 @@ foreach ( array_keys( $parts ) as $index ) {
 $client = new SignedJsonClient( 'X-Fixture-' );
 $client->post( 'https://api.example.test/v1/example', [], 'fixture-key', 'example.test', 12 );
 $client->post( 'https://api.example.test/v1/example', [ 'text' => 'hello' ], 'fixture-key', 'example.test', 12 );
+$client->post( 'https://api.example.test/v1/example', [], 'fixture-key', 'https://WWW.Example.Test./', 12 );
+check( 'example.test' === $GLOBALS['sent'][2][1]['headers']['X-Fixture-Domain'], 'Calling URL is normalized once in Core' );
+check( $client->post( 'https://api.example.test/v1/example', [], 'fixture-key', '127.0.0.1', 12 ) instanceof WP_Error, 'IP identity rejected' );
+check( $client->post( 'https://api.example.test/v1/example', [], 'fixture-key', 'invalid host', 12 ) instanceof WP_Error, 'Malformed identity rejected' );
 $first = $GLOBALS['sent'][0][1];
 $second = $GLOBALS['sent'][1][1];
 check( '{}' === $first['body'], 'Empty payload is a JSON object' );
@@ -50,5 +54,5 @@ foreach ( [ 'http://api.example.test/v1/example', 'https://api.example.test/v1/e
 check( $client->post( 'https://api.example.test/v1/example', [], '', 'example.test', 12 ) instanceof WP_Error, 'Missing key rejected' );
 check( $client->post( 'https://api.example.test/v1/example', [], 'fixture-key', '', 12 ) instanceof WP_Error, 'Missing domain rejected' );
 check( $client->post( 'https://api.example.test/v1/example', [ 'value' => INF ], 'fixture-key', 'example.test', 12 ) instanceof WP_Error, 'Unencodable JSON rejected' );
-check( 2 === count( $GLOBALS['sent'] ), 'Rejected calls never reach transport' );
+check( 3 === count( $GLOBALS['sent'] ), 'Rejected calls never reach transport' );
 echo "Signed JSON: $checks checks passed\n";

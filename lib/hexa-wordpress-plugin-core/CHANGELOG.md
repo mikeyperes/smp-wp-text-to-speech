@@ -1,3 +1,7 @@
+## 3.62.1 - 2026-11-15
+
+- Normalize calling URLs and domains once in the shared signed transport, including www and trailing-dot handling; refuse IP or malformed identities.
+
 ## 3.62.0 - 2026-11-15
 
 - Add shared domain-bound HMAC JSON signing and HTTPS POST transport with fresh nonces, exact-body hashes and redirects disabled.
