@@ -2,7 +2,8 @@
 
 namespace Smp\TextToSpeech\Support;
 
-final class AcfAudioFieldResolver {
+/** Resolves article audio and the existing attachment metadata. */
+final class AudioFieldResolver {
     public static function fieldName( array $settings ): string {
         $name = isset( $settings["acf_audio_field"] ) ? sanitize_key( $settings["acf_audio_field"] ) : "";
         return "" !== $name ? $name : "article_audio";
@@ -39,7 +40,9 @@ final class AcfAudioFieldResolver {
     }
 
     public static function postedAttachmentId( string $field_name ): int {
-        $posted = $_POST["acf"] ?? [];
+        // Bug: an ACF form could process the Core picker input as its own field.
+        // Fix: read the input from Core's namespace. Why: the stored attachment and reference keys remain unchanged.
+        $posted = $_POST[\Hexa\PluginCore\Fields\Renderer::INPUT] ?? [];
         if ( ! is_array( $posted ) ) {
             return 0;
         }
@@ -145,3 +148,6 @@ final class AcfAudioFieldResolver {
         return "";
     }
 }
+
+// Preserve the original helper class for existing integrations.
+class_alias( AudioFieldResolver::class, __NAMESPACE__ . '\\AcfAudioFieldResolver' );

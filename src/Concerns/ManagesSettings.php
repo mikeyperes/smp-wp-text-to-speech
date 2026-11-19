@@ -2,7 +2,7 @@
 
 namespace smp_text_to_speech\Concerns;
 
-use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
+use Smp\TextToSpeech\Support\AudioFieldResolver;
 
 use Hexa\PluginCore\CredentialVault\CredentialStore;
 
@@ -55,7 +55,7 @@ trait ManagesSettings {
 
     /** The post field that holds the article's audio file. */
     public static function audio_field_name(): string {
-        return AcfAudioFieldResolver::fieldName( self::get_settings() );
+        return AudioFieldResolver::fieldName( self::get_settings() );
     }
 
     public static function get_settings() {
@@ -90,7 +90,7 @@ trait ManagesSettings {
         $clean["default_profile"] = sanitize_key( $incoming["default_profile"] ?? $existing["default_profile"] );
         $clean["default_voice"] = sanitize_text_field( $incoming["default_voice"] ?? $existing["default_voice"] );
         $clean["default_speed"] = (string) floatval( $incoming["default_speed"] ?? $existing["default_speed"] );
-        $clean["acf_audio_field"] = AcfAudioFieldResolver::fieldName( [ "acf_audio_field" => $incoming["acf_audio_field"] ?? $existing["acf_audio_field"] ?? "article_audio" ] );
+        $clean["acf_audio_field"] = AudioFieldResolver::fieldName( [ "acf_audio_field" => $incoming["acf_audio_field"] ?? $existing["acf_audio_field"] ?? "article_audio" ] );
         $clean["article_audio_enabled"] = array_key_exists( "article_audio_enabled", $incoming ) ? 1 : ( "features" === $tab ? 0 : (int) ( $existing["article_audio_enabled"] ?? 1 ) );
         $clean["auto_insert_player"] = array_key_exists( "auto_insert_player", $incoming ) ? 1 : ( in_array( $tab, [ "display", "features" ], true ) ? 0 : (int) ( $existing["auto_insert_player"] ?? 1 ) );
         $clean["include_title"] = array_key_exists( "include_title", $incoming ) ? 1 : ( in_array( $tab, [ "api", "features" ], true ) ? 0 : (int) ( $existing["include_title"] ?? 1 ) );
@@ -166,7 +166,7 @@ trait ManagesSettings {
 
     private static function sanitize_display_settings( array $incoming, array $existing, bool $checkbox_context = false ): array {
         $clean = $existing;
-        $clean["acf_audio_field"] = AcfAudioFieldResolver::fieldName( [ "acf_audio_field" => $incoming["acf_audio_field"] ?? $existing["acf_audio_field"] ?? "article_audio" ] );
+        $clean["acf_audio_field"] = AudioFieldResolver::fieldName( [ "acf_audio_field" => $incoming["acf_audio_field"] ?? $existing["acf_audio_field"] ?? "article_audio" ] );
         $clean["primary_color"] = self::sanitize_color( $incoming["primary_color"] ?? $existing["primary_color"] ?? "#3657e3" );
         $clean["player_label"] = sanitize_text_field( $incoming["player_label"] ?? $existing["player_label"] ?? "Listen to this article" );
         $clean["player_size"] = array_key_exists( sanitize_key( $incoming["player_size"] ?? "" ), self::size_options() ) ? sanitize_key( $incoming["player_size"] ) : ( $existing["player_size"] ?? "default" );

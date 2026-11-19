@@ -31,7 +31,7 @@ foreach ( $required_tokens as $token ) {
 if (
     ! preg_match( '/function handle_save_settings\(\).*?update_option\( self::OPTION, \$clean, false \);\s*self::purge_frontend_cache\(\);/s', $plugin )
     || ! preg_match( '/function handle_import_elementor_color\(\).*?update_option\( self::OPTION, \$settings, false \);\s*self::purge_frontend_cache\(\);/s', $plugin )
-    || ! preg_match( '/function sync_audio_attachment\(.*?AcfAudioFieldResolver::updatePostValue\(.*?self::purge_frontend_cache\( \(int\) \$post_id \);/s', $plugin )
+    || ! preg_match( '/function sync_audio_attachment\(.*?AudioFieldResolver::updatePostValue\(.*?self::purge_frontend_cache\( \(int\) \$post_id \);/s', $plugin )
 ) {
     fwrite( STDERR, "FAIL: A settings or audio mutation does not invalidate its frontend cache.\n" );
     exit( 1 );

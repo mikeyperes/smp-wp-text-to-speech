@@ -185,7 +185,7 @@ trait LoadsAdminAssets {
     feedback.append(document.createTextNode(message + " "));
     feedback.append(link);
     ensureAudio(box, data.audio_url);
-    box.find(".hexa-tts-storage-state").text("Saved to Media Library and ACF");
+    box.find(".hexa-tts-storage-state").text("Saved to Media Library and article metadata");
     box.find(".hexa-tts-storage-note").text("Current " + (data.acf_field || "article_audio") + " value is set.");
     box.attr("data-has-audio", "1");
     if (data.attachment_id) {

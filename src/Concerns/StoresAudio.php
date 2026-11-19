@@ -2,7 +2,7 @@
 
 namespace smp_text_to_speech\Concerns;
 
-use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
+use Smp\TextToSpeech\Support\AudioFieldResolver;
 use Smp\TextToSpeech\Support\AudioAttachmentGuard;
 use WP_Error;
 
@@ -12,18 +12,18 @@ if ( ! defined( "ABSPATH" ) ) {
 
 trait StoresAudio {
     private static function resolve_audio_url( $value ) {
-        return AcfAudioFieldResolver::resolveUrl( $value );
+        return AudioFieldResolver::resolveUrl( $value );
     }
 
     private static function audio_attachment_id_from_value( $value ): int {
-        return AcfAudioFieldResolver::attachmentIdFromValue( $value );
+        return AudioFieldResolver::attachmentIdFromValue( $value );
     }
 
     private static function current_audio_attachment_id( int $post_id, array $settings = [] ): int {
         if ( empty( $settings ) ) {
             $settings = self::get_settings();
         }
-        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
+        $acf_field = AudioFieldResolver::fieldName( $settings );
         foreach ( [ get_post_meta( $post_id, $acf_field, true ), get_post_meta( $post_id, "_hexa_tts_attachment_id", true ) ] as $value ) {
             $attachment_id = self::audio_attachment_id_from_value( $value );
             if ( $attachment_id && "attachment" === get_post_type( $attachment_id ) && 0 === strpos( (string) get_post_mime_type( $attachment_id ), "audio/" ) ) {
@@ -42,7 +42,7 @@ trait StoresAudio {
 
     private static function sync_audio_attachment( $post_id, $attachment_id, $audio_url, $file_path = "", array $api_result = [] ) {
         $settings = self::get_settings();
-        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
+        $acf_field = AudioFieldResolver::fieldName( $settings );
         update_post_meta( $post_id, "_hexa_tts_audio_url", esc_url_raw( $audio_url ) );
         update_post_meta( $post_id, "_hexa_tts_attachment_id", (int) $attachment_id );
         if ( $file_path ) {
@@ -59,7 +59,7 @@ trait StoresAudio {
         update_post_meta( $post_id, "_hexa_tts_provider", sanitize_key( $api_result["provider"] ?? "manual_upload" ) );
         update_post_meta( $post_id, "_hexa_tts_provider_key_last4", sanitize_text_field( $api_result["provider_key_last4"] ?? "" ) );
         update_post_meta( $post_id, "_hexa_tts_acf_field", $acf_field );
-        AcfAudioFieldResolver::updatePostValue( (int) $post_id, $acf_field, (int) $attachment_id );
+        AudioFieldResolver::updatePostValue( (int) $post_id, $acf_field, (int) $attachment_id );
         self::purge_frontend_cache( (int) $post_id );
         $bytes = $file_path && file_exists( $file_path ) ? filesize( $file_path ) : 0;
         return [ "audio_url" => $audio_url, "attachment_id" => (int) $attachment_id, "acf_field" => $acf_field, "acf_value" => (int) $attachment_id, "bytes" => (int) $bytes ];

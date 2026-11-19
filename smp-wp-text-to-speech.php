@@ -3,7 +3,7 @@
  * Plugin Name: SMP WP Text To Speech
  * Plugin URI: https://code.hexawebsystems.com/manual-ai-reports/6/view
  * Description: Publish Scale text-to-speech client for WordPress article narration. Uses hidden server-side API calls, AJAX generation, Media Library storage, and ACF field syncing.
- * Version: 1.6.4
+ * Version: 1.6.5
  * Author: Hexa Web Systems
  * Text Domain: smp-wp-text-to-speech
  * Requires at least: 6.0
@@ -34,6 +34,10 @@ require_once $hexa_plugin_core_root . "/bootstrap.php";
  */
 spl_autoload_register(
     static function( string $class_name ): void {
+        if ( "Smp\\TextToSpeech\\Support\\AcfAudioFieldResolver" === $class_name ) {
+            require_once __DIR__ . "/src/Support/AudioFieldResolver.php";
+            return;
+        }
         foreach ( [ "smp_text_to_speech\\", "Smp\\TextToSpeech\\" ] as $prefix ) {
             if ( 0 !== strncmp( $class_name, $prefix, strlen( $prefix ) ) ) {
                 continue;

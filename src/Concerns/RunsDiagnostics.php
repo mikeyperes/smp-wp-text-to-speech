@@ -2,7 +2,7 @@
 
 namespace smp_text_to_speech\Concerns;
 
-use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
+use Smp\TextToSpeech\Support\AudioFieldResolver;
 use Smp\TextToSpeech\Support\Text;
 use WP_Error;
 
@@ -75,7 +75,7 @@ trait RunsDiagnostics {
         $upload = wp_upload_dir();
         $upload_dir = (string) ( $upload["basedir"] ?? "" );
         $upload_ready = empty( $upload["error"] ) && "" !== $upload_dir && is_dir( $upload_dir ) && is_writable( $upload_dir );
-        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
+        $acf_field = AudioFieldResolver::fieldName( $settings );
         $checks = [
             [
                 "id" => "wordpress_api_key",

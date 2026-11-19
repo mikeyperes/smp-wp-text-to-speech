@@ -2,7 +2,7 @@
 
 namespace smp_text_to_speech\Concerns;
 
-use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
+use Smp\TextToSpeech\Support\AudioFieldResolver;
 use Smp\TextToSpeech\Support\Text;
 use WP_Error;
 use Hexa\PluginCore\ApiKeys\SignedJsonClient;
@@ -195,7 +195,7 @@ trait GeneratesAudio {
         $content = $prepared["text"];
         $hash = $prepared["hash"];
         $force = ! empty( $args["force"] );
-        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
+        $acf_field = AudioFieldResolver::fieldName( $settings );
         $existing_url = (string) get_post_meta( $post_id, "_hexa_tts_audio_url", true );
         $existing_attachment_id = absint( get_post_meta( $post_id, "_hexa_tts_attachment_id", true ) );
         if ( "" === $existing_url && $existing_attachment_id ) {

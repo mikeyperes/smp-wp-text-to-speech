@@ -2,7 +2,7 @@
 
 namespace smp_text_to_speech\Concerns;
 
-use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
+use Smp\TextToSpeech\Support\AudioFieldResolver;
 
 use Hexa\PluginCore\WpAdminComponents\CoreUi;
 use Hexa\PluginCore\WpAdminComponents\DynamicButton;
@@ -14,19 +14,19 @@ if ( ! defined( "ABSPATH" ) ) {
 trait RendersPostEditor {
     private static function embedded_acf_audio_field( $post_id, $acf_field ) {
         $acf_value = get_post_meta( $post_id, $acf_field, true );
-        $attachment_id = AcfAudioFieldResolver::attachmentIdFromValue( $acf_value );
+        $attachment_id = AudioFieldResolver::attachmentIdFromValue( $acf_value );
         if ( ! $attachment_id ) {
             $attachment_id = (int) get_post_meta( $post_id, "_hexa_tts_attachment_id", true );
         }
         $field = [
-            "key" => AcfAudioFieldResolver::renderFieldKey( $acf_field ),
+            "key" => AudioFieldResolver::renderFieldKey( $acf_field ),
             "label" => "Article Audio",
             "name" => $acf_field,
             "type" => "file",
             "instructions" => "Upload or select the audio file for this article. Generated TTS audio is saved here automatically.",
             "required" => 0,
             "value" => $attachment_id ?: "",
-            "prefix" => "acf",
+            "prefix" => \Hexa\PluginCore\Fields\Renderer::INPUT,
             "return_format" => "url",
             "library" => "all",
             "mime_types" => "mp3,m4a,wav,aac,ogg",
@@ -50,7 +50,7 @@ trait RendersPostEditor {
             \Hexa\PluginCore\WpAdminComponents\CoreUi::render_assets();
         }
         $settings = self::get_settings();
-        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
+        $acf_field = AudioFieldResolver::fieldName( $settings );
         $acf_value = get_post_meta( $post->ID, $acf_field, true );
         $audio_url = get_post_meta( $post->ID, "_hexa_tts_audio_url", true );
         $attachment_id = get_post_meta( $post->ID, "_hexa_tts_attachment_id", true );
@@ -73,7 +73,7 @@ trait RendersPostEditor {
             <div class="hexa-tts-simple-status">
                 <div><span class="hexa-tts-kicker">Connection</span><strong class="hexa-tts-api-state <?php echo $api_ready ? "is-ready" : "is-missing"; ?>"><?php echo $api_ready ? "API connected" : "Missing API key"; ?></strong></div>
                 <div><span class="hexa-tts-kicker">Audio</span><strong class="hexa-tts-post-status"><?php echo esc_html( $status ?: ( $audio_url ? "Ready" : "Not generated" ) ); ?></strong></div>
-                <div><span class="hexa-tts-kicker">ACF audio file</span><strong><?php echo esc_html( $acf_field ); ?></strong></div>
+                <div><span class="hexa-tts-kicker">article audio file</span><strong><?php echo esc_html( $acf_field ); ?></strong></div>
                 <div><span class="hexa-tts-kicker">Credits</span><strong class="hexa-tts-credit-state is-unknown">Not checked</strong></div>
             </div>
 
@@ -92,7 +92,7 @@ trait RendersPostEditor {
                 <div class="hexa-tts-acf-card-head">
                     <div>
                         <h3>Article Audio</h3>
-                        <p>This is the actual ACF audio file field <code><?php echo esc_html( $acf_field ); ?></code>. Upload/select your own audio here, or generate audio above.</p>
+                        <p>This is the actual article audio file field <code><?php echo esc_html( $acf_field ); ?></code>. Upload/select your own audio here, or generate audio above.</p>
                     </div>
                     <?php if ( $audio_url ) : ?><a href="<?php echo esc_url( $audio_url ); ?>" target="_blank" rel="noopener noreferrer">Open current MP3</a><?php endif; ?>
                 </div>
@@ -102,7 +102,7 @@ trait RendersPostEditor {
             <div class="hexa-tts-storage-row">
                 <span>Audio storage</span>
                 <?php if ( $audio_url ) : ?>
-                    <strong class="hexa-tts-storage-state">Saved to Media Library and ACF</strong>
+                    <strong class="hexa-tts-storage-state">Saved to Media Library and article metadata</strong>
                     <a class="hexa-tts-open-audio" href="<?php echo esc_url( $audio_url ); ?>" target="_blank" rel="noopener noreferrer">Open MP3</a>
                 <?php else : ?>
                     <strong class="hexa-tts-storage-state">Will save to Media Library and <?php echo esc_html( $acf_field ); ?></strong>
@@ -112,7 +112,7 @@ trait RendersPostEditor {
 
             <?php if ( $audio_url ) : ?>
                 <audio controls preload="metadata" src="<?php echo esc_url( $audio_url ); ?>"></audio>
-                <p class="hexa-tts-current-storage">Attachment ID: <?php echo esc_html( $attachment_id ?: "n/a" ); ?> · ACF audio file field: <?php echo esc_html( $acf_field ); ?></p>
+                <p class="hexa-tts-current-storage">Attachment ID: <?php echo esc_html( $attachment_id ?: "n/a" ); ?> · article audio file field: <?php echo esc_html( $acf_field ); ?></p>
             <?php endif; ?>
 
             <div class="hexa-tts-post-feedback" aria-live="polite"></div>
@@ -154,8 +154,8 @@ trait RendersPostEditor {
             return;
         }
         $settings = self::get_settings();
-        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
-        $attachment_id = AcfAudioFieldResolver::postedAttachmentId( $acf_field );
+        $acf_field = AudioFieldResolver::fieldName( $settings );
+        $attachment_id = AudioFieldResolver::postedAttachmentId( $acf_field );
         if ( ! $attachment_id ) {
             return;
         }

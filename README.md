@@ -13,6 +13,8 @@
 
 ## Features
 
+- The article audio picker uses Core field inputs. Stored Media Library attachments, configured field names and the public audio player are preserved.
+
 - Bundles Hexa WP Core 3.64.0 with its independent field engine. Audio and player settings retain their existing metadata and option keys.
 
 ### Listen to this article (feature switch)

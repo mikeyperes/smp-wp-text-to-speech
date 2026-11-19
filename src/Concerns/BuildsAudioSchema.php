@@ -2,7 +2,7 @@
 
 namespace smp_text_to_speech\Concerns;
 
-use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
+use Smp\TextToSpeech\Support\AudioFieldResolver;
 
 if ( ! defined( "ABSPATH" ) ) {
     exit;
@@ -69,7 +69,7 @@ trait BuildsAudioSchema {
         }
 
         $settings = self::get_settings();
-        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
+        $acf_field = AudioFieldResolver::fieldName( $settings );
         $attachment_id = self::current_audio_attachment_id( $post_id, $settings );
         $url = (string) get_post_meta( $post_id, "_hexa_tts_audio_url", true );
         if ( "" === $url && $attachment_id ) {

@@ -8,7 +8,7 @@ use Hexa\PluginCore\WpAdminTabs\HostTabsRenderer;
 use Hexa\PluginCore\WpAdminTabs\TabDefinition;
 use Hexa\PluginCore\WpAdminTabs\TabRegistry;
 use Smp\TextToSpeech\Admin\SettingsNavigation;
-use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
+use Smp\TextToSpeech\Support\AudioFieldResolver;
 use Smp\TextToSpeech\Support\Text;
 
 use Hexa\PluginCore\WpAdminComponents\CoreUi;
@@ -180,7 +180,7 @@ trait RendersSettingsPage {
         <section class="hexa-tts-hero">
             <p class="hexa-tts-kicker">Article Audio System</p>
             <h2>One-click article narration with Media Library storage, ACF syncing, and front-end player placement.</h2>
-            <p>The browser talks to WordPress only. WordPress performs the API request server-side, stores the MP3, and writes the configured ACF audio file field.</p>
+            <p>The browser talks to WordPress only. WordPress performs the API request server-side, stores the MP3, and writes the configured article audio file field.</p>
         </section>
         <?php ob_start(); ?>
         <div class="hexa-tts-panel-body">
@@ -237,7 +237,7 @@ trait RendersSettingsPage {
                 </div>
                 <div class="hexa-tts-grid hexa-tts-grid-2">
                     <label><span>Site API Key</span><input class="hexa-tts-site-api-key" type="password" name="hexa_tts[api_key]" value="" placeholder="<?php echo esc_attr( $api_key ? "Saved: " . self::mask_secret( $api_key ) : "Paste Publish Scale site API key" ); ?>" autocomplete="off"><small>Stored encrypted in WordPress. Fetch only retrieves a key already assigned to this exact domain; it cannot create, rotate, or claim another site's key. Leave blank to keep the existing key.</small></label>
-                    <label><span>ACF audio file field</span><input type="text" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( AcfAudioFieldResolver::fieldName( $settings ) ); ?>"><small>Mashviral currently uses <code>article_audio</code>.</small></label>
+                    <label><span>article audio file field</span><input type="text" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( AudioFieldResolver::fieldName( $settings ) ); ?>"><small>Mashviral currently uses <code>article_audio</code>.</small></label>
                 </div>
                 <div class="hexa-tts-test-result hexa-tts-central-result" data-provider-result="central" aria-live="polite"></div>
                 <?php if ( ! empty( $last_status["message"] ) ) : ?><div class="hexa-tts-status-card"><strong><?php echo esc_html( $last_status["message"] ); ?></strong><?php if ( ! empty( $last_status["usage"] ) ) : ?><span>Requests: <?php echo esc_html( $last_status["usage"]["requests"] ?? 0 ); ?> · Characters: <?php echo esc_html( $last_status["usage"]["characters"] ?? 0 ); ?> · Est. cost: $<?php echo esc_html( $last_status["usage"]["estimated_cost_usd"] ?? 0 ); ?></span><?php endif; ?></div><?php endif; ?>
@@ -309,7 +309,7 @@ trait RendersSettingsPage {
         $templates = self::template_options();
         $placements = self::placement_options();
         $shortcode = self::display_shortcode( $settings );
-        $acf_field = AcfAudioFieldResolver::fieldName( $settings );
+        $acf_field = AudioFieldResolver::fieldName( $settings );
         $enabled = ! empty( $settings["auto_insert_player"] );
         ?>
         <style>
@@ -365,7 +365,7 @@ trait RendersSettingsPage {
                 <section class="httf-section">
                     <h3>Core controls</h3>
                     <div class="httf-grid">
-                        <label class="httf-field"><span>ACF audio file field</span><input class="hexa-tts-live-control" type="text" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( $acf_field ); ?>"><small>Used by generated storage and the editor upload field.</small></label>
+                        <label class="httf-field"><span>article audio file field</span><input class="hexa-tts-live-control" type="text" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( $acf_field ); ?>"><small>Used by generated storage and the editor upload field.</small></label>
                         <label class="httf-field"><span>Player label</span><input class="hexa-tts-live-control" type="text" name="hexa_tts[player_label]" value="<?php echo esc_attr( $settings["player_label"] ); ?>"></label>
                         <label class="httf-field"><span>Player size</span><select class="hexa-tts-live-control" name="hexa_tts[player_size]"><?php self::render_options( self::size_options(), $settings["player_size"] ); ?></select></label>
                     </div>
@@ -423,7 +423,7 @@ trait RendersSettingsPage {
                     <?php echo self::primary_color_control_html( $settings, "hexa-tts-display-primary-color" ); ?>
                     <label><span>Player label</span><input type="text" class="hexa-tts-live-control" name="hexa_tts[player_label]" value="<?php echo esc_attr( $settings["player_label"] ); ?>"></label>
                     <label><span>Player size</span><select class="hexa-tts-live-control" name="hexa_tts[player_size]"><?php self::render_options( self::size_options(), $settings["player_size"] ); ?></select></label>
-                    <label><span>ACF audio file field</span><input type="text" class="hexa-tts-live-control" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( AcfAudioFieldResolver::fieldName( $settings ) ); ?>"></label>
+                    <label><span>article audio file field</span><input type="text" class="hexa-tts-live-control" name="hexa_tts[acf_audio_field]" value="<?php echo esc_attr( AudioFieldResolver::fieldName( $settings ) ); ?>"></label>
                     <?php echo CoreUi::toggle( "hexa_tts[auto_insert_player]", ! empty( $settings["auto_insert_player"] ), "Enable automatic player placement", [ "input_class" => "hexa-tts-live-control" ] ); ?>
                     <?php echo CoreUi::toggle( "hexa_tts[enable_player_controls]", ! empty( $settings["enable_player_controls"] ), "Show enhanced frontend controls", [ "input_class" => "hexa-tts-live-control" ] ); ?>
                 </div>
@@ -654,7 +654,7 @@ trait RendersSettingsPage {
         return (int) $wpdb->get_var(
             $wpdb->prepare(
                 "SELECT p.ID FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID WHERE pm.meta_key = %s AND p.post_status = %s ORDER BY p.post_date_gmt DESC LIMIT 1",
-                AcfAudioFieldResolver::fieldName( self::get_settings() ),
+                AudioFieldResolver::fieldName( self::get_settings() ),
                 "publish"
             )
         );
@@ -667,7 +667,7 @@ trait RendersSettingsPage {
             return esc_url_raw( $url );
         }
         $settings = self::get_settings();
-        $field = AcfAudioFieldResolver::fieldName( $settings );
+        $field = AudioFieldResolver::fieldName( $settings );
         $value = $wpdb instanceof \wpdb ? $wpdb->get_var( $wpdb->prepare( "SELECT meta_value FROM {$wpdb->postmeta} WHERE meta_key = %s ORDER BY meta_id DESC LIMIT 1", $field ) ) : "";
         $resolved = self::resolve_audio_url( $value );
         return $resolved ? esc_url_raw( $resolved ) : "";

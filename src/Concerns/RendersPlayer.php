@@ -2,7 +2,7 @@
 
 namespace smp_text_to_speech\Concerns;
 
-use Smp\TextToSpeech\Support\AcfAudioFieldResolver;
+use Smp\TextToSpeech\Support\AudioFieldResolver;
 
 if ( ! defined( "ABSPATH" ) ) {
     exit;
@@ -35,7 +35,7 @@ trait RendersPlayer {
         }
         $url = get_post_meta( $post_id, "_hexa_tts_audio_url", true );
         if ( ! $url ) {
-            $url = self::resolve_audio_url( get_post_meta( $post_id, AcfAudioFieldResolver::fieldName( self::get_settings() ), true ) );
+            $url = self::resolve_audio_url( get_post_meta( $post_id, AudioFieldResolver::fieldName( self::get_settings() ), true ) );
         }
 
         return is_string( $url ) ? $url : "";
