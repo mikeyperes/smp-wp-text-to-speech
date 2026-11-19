@@ -18,6 +18,11 @@
 
 ## Features
 
+### Press-release profile client
+- **Does:** validates and reads public author identities, person-profile search, exact person identity, and paginated releases by author or person from a configured HTTPS source. Redirects are disabled; safe HTTP transport rejects private network targets.
+- **Use:** `PressReleaseProfiles\PressReleaseProfilesClient`: `author()`, `find_author()`, `author_releases()`, `search_people()`, `person()`, `releases()`. Each takes the source origin first and returns a success/data or failure/code/message envelope.
+- **Code:** `src/PressReleaseProfiles/`; [protocol](docs/press-release-profiles.md). Hosts own endpoints, publication policy, settings and output.
+
 ### Signed JSON requests
 - **Does:** signs exact JSON bytes with method, path, timestamp, a fresh cryptographic nonce and the normalized calling domain; sends HTTPS POST without redirects or cookies.
 - **Use:** `ApiKeys\SignedJsonClient($header_prefix)->post($url, $payload, $key, $domain, $timeout)` returns the WordPress HTTP response. Hosts own endpoint settings, key storage, response handling.
@@ -139,7 +144,7 @@
 - **Code:** `src/SnippetRegistry/` (docs: `docs/snippet-registry.md`)
 
 ### Fields (no ACF needed)
-- **Does:** the one custom-field API: field groups, reading and saving values, repeaters, options pages, edit forms and the client-friendly help view, with ACF's exact function signatures and storage. With ACF active it hands every call to ACF; without it Core stores, formats and edits the same data itself. Safe during plugin startup: before ACF has started (`acf/init`), `Field::get()` returns the stored value instead of starting ACF too early (`Acf::ready()`). Without ACF, the field script and media library load only on post, user and term edit screens (`AdminScreens::field_screen()`).
+- **Does:** Hexa WP Core registers, reads, formats and saves fields, row loops, options pages and editing forms. Existing field keys, option names and WordPress metadata stay in place. Core uses its own field hooks and editor controls whether or not another field plugin is active.
 - **Use:** `FieldGroups::add( $group )`, `Field::get()`/`update()`/`have_rows()`/`the_row()`/`get_sub_field()`, `OptionsPages::add()`, `Form::render()`/`Form::field()`, `Hooks::on( 'include_fields', ... )` or `hexa_fields_on()` while plugins load; field `developer_instructions` and group `client_view` (`Audience`).
 - **Extend:** `hexa_fields/load_field_groups`, `hexa_fields/*` (ACF-named hooks), `hexa_core_fields_client_view`, ACF's location filters.
 - **Code:** `src/Fields/` (docs: `docs/fields.md`); `bin/migrate-to-fields.php` moves a plugin off ACF calls.

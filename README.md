@@ -13,6 +13,8 @@
 
 ## Features
 
+- Bundles Hexa WP Core 3.64.0 with its independent field engine. Audio and player settings retain their existing metadata and option keys.
+
 ### Listen to this article (feature switch)
 - **Does:** turns the whole article audio feature on or off for the site.
 - **Switch:** `article_audio_enabled` (Features tab, "Listen to this article"; on by default). Off: no player on articles, no player CSS or JS, no AudioObject in the schema, no "Listen to this article" box or audio field in the post editor (a site's own `article_audio` field is hidden too), and generation is refused. Saved audio stays in the Media Library. Shortcodes stay registered and print nothing.
