@@ -12,7 +12,7 @@ if ( ! defined( "ABSPATH" ) ) {
 }
 
 trait RendersPostEditor {
-    private static function embedded_acf_audio_field( $post_id, $acf_field ) {
+    private static function embedded_audio_field( $post_id, $acf_field ) {
         $acf_value = get_post_meta( $post_id, $acf_field, true );
         $attachment_id = AudioFieldResolver::attachmentIdFromValue( $acf_value );
         if ( ! $attachment_id ) {
@@ -96,7 +96,7 @@ trait RendersPostEditor {
                     </div>
                     <?php if ( $audio_url ) : ?><a href="<?php echo esc_url( $audio_url ); ?>" target="_blank" rel="noopener noreferrer">Open current MP3</a><?php endif; ?>
                 </div>
-                <?php self::embedded_acf_audio_field( $post->ID, $acf_field ); ?>
+                <?php self::embedded_audio_field( $post->ID, $acf_field ); ?>
             </div>
 
             <div class="hexa-tts-storage-row">
@@ -134,7 +134,7 @@ trait RendersPostEditor {
                 <div class="hexa-tts-tech-grid">
                     <div><span>Shortcode</span><code>[smp_tts_player post_id="<?php echo esc_attr( $post->ID ); ?>" label="Listen to this article" enhanced_controls="1" preload="metadata"]</code><?php echo CoreUi::copy_button( '[smp_tts_player post_id="' . $post->ID . '" label="Listen to this article" enhanced_controls="1" preload="metadata"]', "Copy shortcode" ); ?></div>
                     <div><span>Legacy shortcode</span><code>[hexa_tts_player post_id="<?php echo esc_attr( $post->ID ); ?>"]</code><?php echo CoreUi::copy_button( '[hexa_tts_player post_id="' . $post->ID . '"]', "Copy legacy" ); ?></div>
-                    <div><span>ACF field</span><code><?php echo esc_html( $acf_field ); ?></code></div>
+                    <div><span>Audio field</span><code><?php echo esc_html( $acf_field ); ?></code></div>
                     <div><span>Attachment ID</span><code><?php echo esc_html( $attachment_id ?: 'none' ); ?></code></div>
                     <div><span>Audio URL</span><code><?php echo esc_html( $audio_url ?: 'none' ); ?></code></div>
                 </div>
@@ -192,7 +192,7 @@ trait RendersPostEditor {
         $file_path = get_attached_file( $attachment_id );
         $stored = self::sync_audio_attachment( $post_id, $attachment_id, $audio_url, $file_path ?: "", [ "provider" => "manual_upload", "cost_usd" => 0 ] );
         update_post_meta( $post_id, "_hexa_tts_status", "Ready" );
-        wp_send_json_success( array_merge( $stored, [ "message" => "Audio file saved to ACF and Media Library." ] ) );
+        wp_send_json_success( array_merge( $stored, [ "message" => "Audio file saved to the article field and Media Library." ] ) );
     }
 
     public static function ajax_extract_post_content() {

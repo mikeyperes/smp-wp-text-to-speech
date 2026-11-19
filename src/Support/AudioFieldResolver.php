@@ -14,10 +14,10 @@ final class AudioFieldResolver {
     }
 
     public static function renderFieldKey( string $field_name ): string {
-        return self::acfFieldKey( $field_name ) ?: self::fallbackFieldKey( $field_name );
+        return self::fieldKey( $field_name ) ?: self::fallbackFieldKey( $field_name );
     }
 
-    public static function acfFieldKey( string $field_name ): string {
+    public static function fieldKey( string $field_name ): string {
         $field_name = sanitize_key( $field_name );
         if ( "" === $field_name ) {
             return "";
@@ -39,6 +39,11 @@ final class AudioFieldResolver {
         return "";
     }
 
+    /** Compatibility alias for integrations using the original method name. */
+    public static function acfFieldKey( string $field_name ): string {
+        return self::fieldKey( $field_name );
+    }
+
     public static function postedAttachmentId( string $field_name ): int {
         // Bug: an ACF form could process the Core picker input as its own field.
         // Fix: read the input from Core's namespace. Why: the stored attachment and reference keys remain unchanged.
@@ -47,7 +52,7 @@ final class AudioFieldResolver {
             return 0;
         }
 
-        $field_key = self::acfFieldKey( $field_name );
+        $field_key = self::fieldKey( $field_name );
         $candidates = array_filter( [ $field_key, self::fallbackFieldKey( $field_name ), $field_name ] );
         foreach ( $candidates as $selector ) {
             if ( array_key_exists( $selector, $posted ) ) {
@@ -93,13 +98,9 @@ final class AudioFieldResolver {
     }
 
     public static function updatePostValue( int $post_id, string $field_name, int $attachment_id ): void {
-        $field_key = self::acfFieldKey( $field_name );
-        if ( "" !== $field_key ) {
-            \Hexa\PluginCore\Fields\Field::update( $field_key, $attachment_id, $post_id );
-            return;
-        }
-
-        update_post_meta( $post_id, $field_name, $attachment_id );
+        // Core also owns writes when the configured field has no registered definition.
+        $selector = self::fieldKey( $field_name ) ?: $field_name;
+        \Hexa\PluginCore\Fields\Field::update( $selector, $attachment_id, $post_id );
     }
 
     private static function findFieldKey( array $fields, string $field_name ): string {

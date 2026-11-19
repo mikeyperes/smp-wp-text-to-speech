@@ -3,7 +3,7 @@
 > Feature base for HWS Skills. Read before building on this plugin; use or
 > extend these features instead of rebuilding them.
 
-**Purpose:** turns an article's text into audio and plays it on the page as "Listen to this article". **Admin:** WP Admin → Settings → SMP WP Text To Speech (one-click generation in the post editor). **Depends on:** Hexa WP Core (bundled); Publish Scale text-to-speech API; ACF optional.
+**Purpose:** turns an article's text into audio and plays it on the page as "Listen to this article". **Admin:** WP Admin → Settings → SMP WP Text To Speech (one-click generation in the post editor). **Depends on:** Hexa WP Core (bundled); Publish Scale text-to-speech API.
 
 ## Design examples and styling
 
@@ -13,7 +13,7 @@
 
 ## Features
 
-- The article audio picker uses Core field inputs. Stored Media Library attachments, configured field names and the public audio player are preserved.
+- The article audio picker reads and saves attachments through Core fields. Stored Media Library attachments, configured field names and the public audio player are preserved.
 
 - Bundles Hexa WP Core 3.64.0 with its independent field engine. Audio and player settings retain their existing metadata and option keys.
 

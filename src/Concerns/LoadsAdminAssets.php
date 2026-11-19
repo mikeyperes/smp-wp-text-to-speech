@@ -305,7 +305,7 @@ trait LoadsAdminAssets {
       }
 
       button.prop("disabled", true);
-      feedback.removeClass("is-error is-success").addClass("is-loading").text("Saving selected audio to ACF field...");
+      feedback.removeClass("is-error is-success").addClass("is-loading").text("Saving selected audio to the article audio field...");
 
       jq.ajax({
         url: hexaTts.ajaxUrl,

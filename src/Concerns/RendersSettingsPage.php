@@ -179,7 +179,7 @@ trait RendersSettingsPage {
         ?>
         <section class="hexa-tts-hero">
             <p class="hexa-tts-kicker">Article Audio System</p>
-            <h2>One-click article narration with Media Library storage, ACF syncing, and front-end player placement.</h2>
+            <h2>One-click article narration with Media Library storage, Core field syncing, and front-end player placement.</h2>
             <p>The browser talks to WordPress only. WordPress performs the API request server-side, stores the MP3, and writes the configured article audio file field.</p>
         </section>
         <?php ob_start(); ?>
@@ -394,7 +394,7 @@ trait RendersSettingsPage {
                     <p class="httf-hint">For Elementor or exact manual placement.</p>
                     <div class="hexa-tts-shortcode-card hexa-tts-dynamic-shortcode"><code><?php echo esc_html( $shortcode ); ?></code><?php echo CoreUi::copy_button( (string) $shortcode, "Copy shortcode" ); ?></div>
                     <div class="httf-proof">
-                        <div><small>ACF field</small><code><?php echo esc_html( $acf_field ); ?></code></div>
+                        <div><small>Audio field</small><code><?php echo esc_html( $acf_field ); ?></code></div>
                         <div><small>Current placement</small><strong><?php echo esc_html( $placements[ $settings["auto_player_placement"] ] ?? "Above article" ); ?></strong></div>
                         <div><small>Current template</small><strong><?php echo esc_html( $templates[ $settings["player_template"] ]["label"] ?? "Clean Card" ); ?></strong></div>
                     </div>

@@ -153,7 +153,7 @@ trait GeneratesAudio {
             self::add_generation_log( $post_id, "Storage failed: " . $stored->get_error_message(), "error" );
             wp_send_json_error( [ "message" => $stored->get_error_message(), "log" => self::generation_log( $post_id ) ] );
         }
-        self::add_generation_log( $post_id, "Attachment stored and ACF/meta field synced.", "success", [ "attachment_id" => $stored["attachment_id"] ?? null, "acf_field" => $stored["acf_field"] ?? null ] );
+        self::add_generation_log( $post_id, "Attachment stored and article audio field synced.", "success", [ "attachment_id" => $stored["attachment_id"] ?? null, "acf_field" => $stored["acf_field"] ?? null ] );
         $deleted_previous_attachment_id = self::delete_replaced_audio_attachment( $previous_attachment_id, (int) ( $stored["attachment_id"] ?? 0 ), $post_id );
         if ( $deleted_previous_attachment_id ) {
             self::add_generation_log( $post_id, "Deleted previous article audio attachment " . $deleted_previous_attachment_id . ".", "success", [ "deleted_attachment_id" => $deleted_previous_attachment_id ] );
