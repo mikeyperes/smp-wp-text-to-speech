@@ -162,7 +162,7 @@ trait GeneratesAudio {
         update_post_meta( $post_id, "_hexa_tts_status", "Ready" );
         update_post_meta( $post_id, "_hexa_tts_text_hash", (string) $prepared["hash"] );
         update_post_meta( $post_id, "_hexa_tts_character_count", (int) $prepared["characters"] );
-        wp_send_json_success( array_merge( $stored, [ "message" => "Audio generated, stored in Media Library, and synced to ACF/meta.", "request_id" => $result["request_id"] ?? "", "archive_url" => $result["archive_url"] ?? "", "cost_usd" => $result["cost_usd"] ?? null, "deleted_attachment_id" => $deleted_previous_attachment_id, "log" => self::generation_log( $post_id ) ] ) );
+        wp_send_json_success( array_merge( $stored, [ "message" => "Audio generated, saved to the Media Library, and linked to this article.", "request_id" => $result["request_id"] ?? "", "archive_url" => $result["archive_url"] ?? "", "cost_usd" => $result["cost_usd"] ?? null, "deleted_attachment_id" => $deleted_previous_attachment_id, "log" => self::generation_log( $post_id ) ] ) );
     }
 
     public static function generate_for_post( $post_id, array $args = [] ) {
@@ -247,7 +247,7 @@ trait GeneratesAudio {
         $deleted_previous_attachment_id = self::delete_replaced_audio_attachment( $previous_attachment_id, (int) ( $stored["attachment_id"] ?? 0 ), $post_id );
 
         return array_merge( $stored, [
-            "message" => "Audio generated, stored in Media Library, and synced to ACF/meta.",
+            "message" => "Audio generated, saved to the Media Library, and linked to this article.",
             "request_id" => $result["request_id"] ?? "",
             "archive_url" => $result["archive_url"] ?? "",
             "cost_usd" => $result["cost_usd"] ?? null,

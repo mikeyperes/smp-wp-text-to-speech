@@ -239,7 +239,7 @@ trait LoadsAdminAssets {
         stopGenerationPoll(box);
         if (response && response.success) {
           renderActivityLog(box, response.data.log || [], { status: "complete", message: response.data.request_id ? "Request " + response.data.request_id + " completed." : "Central API completed." });
-          showSuccess(box, response.data, response.data.message || "Audio generated and saved to ACF.");
+          showSuccess(box, response.data, response.data.message || "Audio generated and saved to the article.");
           buttonState(button, "ok", "Audio generated");
           return;
         }
@@ -319,7 +319,7 @@ trait LoadsAdminAssets {
       })
         .done(function (response) {
           if (response && response.success) {
-            showSuccess(box, response.data, response.data.message || "Audio file saved to ACF.");
+            showSuccess(box, response.data, response.data.message || "Audio file saved to the article.");
             return;
           }
           feedback.removeClass("is-loading is-success").addClass("is-error").text(response && response.data ? response.data.message : "Could not save selected audio.");

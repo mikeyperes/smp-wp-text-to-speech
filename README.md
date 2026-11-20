@@ -13,6 +13,8 @@
 
 ## Features
 
+- Audio generation and upload confirmations describe the saved article audio field.
+
 - The article audio picker reads and saves attachments through Core fields. Stored Media Library attachments, configured field names and the public audio player are preserved.
 
 - Bundles Hexa WP Core 3.64.0 with its independent field engine. Audio and player settings retain their existing metadata and option keys.
